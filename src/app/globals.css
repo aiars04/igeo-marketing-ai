@@ -1,16 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --bg:        #080b11;
-  --surface:   #0e1218;
-  --surface2:  #141921;
-  --surface3:  #1a2030;
-  --border:    rgba(255,255,255,0.07);
-  --border2:   rgba(255,255,255,0.12);
-  --text:      #e2e8f0;
-  --muted:     #64748b;
-  --accent:    #00d4aa;
-  --accent2:   #0ea5e9;
+  /* ── Fondos — dark con tinte azul ── */
+  --bg:       #060c18;
+  --surface:  #090f1e;
+  --surface2: #0e1628;
+  --surface3: #141e34;
+
+  /* ── Bordes con tinte azul ── */
+  --border:   rgba(59,130,246,0.1);
+  --border2:  rgba(59,130,246,0.22);
+
+  /* ── Texto ── */
+  --text:     #dde8f5;
+  --muted:    #4a6a90;
+
+  /* ── Colores de marca iGEO ── */
+  --accent:   #1d6fc8;   /* Azul iGEO logo */
+  --accent2:  #38bdf8;   /* Sky blue – eléctrico */
+  --orange:   #ea580c;   /* Naranja del "i" de iGEO */
+
+  /* ── Glows ── */
+  --glow-blue: rgba(29,111,200,0.18);
+  --glow-sky:  rgba(56,189,248,0.1);
 }
 
 * { box-sizing: border-box; }
@@ -20,37 +32,63 @@ body {
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+/* ── Scrollbars ── */
+::-webkit-scrollbar          { width: 5px; height: 5px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: rgba(59,130,246,0.14); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(59,130,246,0.28); }
 
+.pipeline-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59,130,246,0.14) transparent;
+}
+
+/* ── Animations ── */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
 }
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+  50%       { opacity: 0.3; }
 }
 @keyframes shimmer {
   from { background-position: -200% 0; }
-  to   { background-position: 200% 0; }
+  to   { background-position:  200% 0; }
+}
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.8; }
 }
 
-.animate-fade-in   { animation: fadeIn 0.25s ease both; }
-.animate-pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+.animate-fade-in       { animation: fadeIn 0.2s ease both; }
+.animate-fade-in-scale { animation: fadeInScale 0.25s ease both; }
+.animate-pulse-dot     { animation: pulse-dot 2s ease-in-out infinite; }
+
 .skeleton {
-  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+  background: linear-gradient(
+    90deg,
+    rgba(59,130,246,0.05) 25%,
+    rgba(59,130,246,0.1)  50%,
+    rgba(59,130,246,0.05) 75%
+  );
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 1.6s infinite;
 }
 
-.card-hover { transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; }
+/* ── Card hover ── */
+.card-hover {
+  transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+}
 .card-hover:hover {
-  border-color: rgba(255,255,255,0.14) !important;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  border-color: rgba(59,130,246,0.28) !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(59,130,246,0.08);
   transform: translateY(-1px);
 }
