@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 
 /* ─── SVG spiral mark — basado en el logotipo iGEO ERP ─── */
-function IgeoMark({ size = 32 }: { size?: number }) {
+export function IgeoMark({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
       {/* Arc exterior */}

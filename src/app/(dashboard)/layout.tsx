@@ -9,9 +9,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect('/login')
 
   return (
-    <div className="flex h-full min-h-screen">
+    <div className="min-h-screen bg-[var(--bg)]">
+      {/* Sidebar fixed — se expande al hacer hover */}
       <Sidebar />
-      <main className="flex-1 overflow-auto bg-[var(--bg)]">
+      {/* Main content desplazado el ancho del sidebar colapsado (52px) */}
+      <main className="ml-[52px] h-screen overflow-auto bg-[var(--bg)]">
         {children}
       </main>
     </div>
