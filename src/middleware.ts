@@ -24,6 +24,10 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
+  const isPublicAsset = request.nextUrl.pathname.startsWith('/_next') ||
+    request.nextUrl.pathname.startsWith('/favicon')
+
+  if (isPublicAsset) return supabaseResponse
 
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone()
