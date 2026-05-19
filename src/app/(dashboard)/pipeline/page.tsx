@@ -1,5 +1,7 @@
+'use client'
+
 import { PipelineBoard } from '@/components/pipeline/PipelineBoard'
-import { Sparkles, Filter, Search } from 'lucide-react'
+import { Sparkles, Filter } from 'lucide-react'
 
 function StatPill({
   value,
