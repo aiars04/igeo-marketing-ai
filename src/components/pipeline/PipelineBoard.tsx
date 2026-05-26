@@ -511,110 +511,118 @@ function ContentCard({
 
   return (
     <div
-      className="group relative rounded-lg p-3 cursor-pointer transition-all duration-150 animate-fade-in"
+      className="group relative rounded-xl cursor-pointer transition-all duration-150 animate-fade-in overflow-hidden"
       style={{
-        background: 'var(--surface2)',
+        background: 'var(--surface)',
         border: '1px solid var(--border2)',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
       }}
       onClick={() => onSelect(item)}
       onMouseEnter={e => {
-        e.currentTarget.style.background = 'var(--surface3)'
-        e.currentTarget.style.borderColor = `${stageCfg.accentHex}55`
+        e.currentTarget.style.borderColor = `${stageCfg.accentHex}66`
+        e.currentTarget.style.background = 'var(--surface2)'
+        e.currentTarget.style.boxShadow = `0 4px 12px rgba(0,0,0,0.3), 0 0 0 1px ${stageCfg.accentHex}22`
+        e.currentTarget.style.transform = 'translateY(-1px)'
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.background = 'var(--surface2)'
         e.currentTarget.style.borderColor = 'var(--border2)'
+        e.currentTarget.style.background = 'var(--surface)'
+        e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.2)'
+        e.currentTarget.style.transform = 'translateY(0)'
       }}
     >
-      {/* Top row: channel + market + status + menu */}
-      <div className="flex items-center justify-between mb-2 gap-2">
-        <ChannelBadge channel={item.channel as Channel} />
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-[11px] leading-none">{MARKET_FLAG[item.market] ?? ''}</span>
-          <StatusDot status={item.status} />
-          <div onClick={e => e.stopPropagation()}>
-            <CardMenu item={item} onMove={onMove} />
+      {/* Main content area */}
+      <div className="p-4">
+        {/* Top row: channel + market + status + menu */}
+        <div className="flex items-center justify-between mb-3.5 gap-2">
+          <ChannelBadge channel={item.channel as Channel} />
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[12px] leading-none">{MARKET_FLAG[item.market] ?? ''}</span>
+            <StatusDot status={item.status} />
+            <div onClick={e => e.stopPropagation()}>
+              <CardMenu item={item} onMove={onMove} />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Title */}
-      <p
-        className="text-[13px] font-medium leading-[1.45] mb-2.5 break-words"
-        style={{ color: 'var(--text)' }}
-      >
-        {item.title}
-      </p>
-
-      {/* Footer badges */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {item.ai_generated && (
-          <span
-            className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded"
-            style={{ color: 'var(--accent2)', background: 'rgba(56,189,248,0.10)', border: '1px solid rgba(56,189,248,0.20)' }}
-          >
-            <Sparkles size={8} /> IA
-          </span>
-        )}
-        {item.clarity_pass === true && (
-          <span
-            className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
-            style={{ color: 'var(--success)', background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.22)' }}
-          >
-            Clarity ✓
-          </span>
-        )}
-        {item.clarity_pass === false && (
-          <span
-            className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
-            style={{ color: 'var(--warning)', background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.22)' }}
-          >
-            Revisar
-          </span>
-        )}
-        {item.human_approved && item.approved_by && (
-          <span
-            className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded"
-            style={{ color: 'var(--success)', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.20)' }}
-          >
-            <CheckCheck size={9} /> {item.approved_by}
-          </span>
-        )}
-      </div>
-
-      {/* Scheduled date */}
-      {item.scheduled_at && (
-        <div
-          className="mt-2.5 pt-2.5 flex items-center gap-1.5 text-[11px] font-medium tabular-nums"
-          style={{ borderTop: '1px solid var(--border)', color: 'var(--warning)' }}
+        {/* Title — más grande y con respiro */}
+        <p
+          className="text-[14px] font-medium leading-[1.5] mb-3.5 break-words"
+          style={{ color: 'var(--text)' }}
         >
-          <Calendar size={11} className="shrink-0" />
-          {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
-            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-          })}
-        </div>
-      )}
+          {item.title}
+        </p>
 
-      {/* Quick approve button */}
+        {/* Footer badges */}
+        {(item.ai_generated || item.clarity_pass !== null || item.human_approved) && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {item.ai_generated && (
+              <span
+                className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded"
+                style={{ color: 'var(--accent2)', background: 'rgba(56,189,248,0.10)', border: '1px solid rgba(56,189,248,0.22)' }}
+              >
+                <Sparkles size={9} /> IA
+              </span>
+            )}
+            {item.clarity_pass === true && (
+              <span
+                className="text-[10px] font-semibold px-2 py-1 rounded"
+                style={{ color: 'var(--success)', background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.22)' }}
+              >
+                Clarity ✓
+              </span>
+            )}
+            {item.clarity_pass === false && (
+              <span
+                className="text-[10px] font-semibold px-2 py-1 rounded"
+                style={{ color: 'var(--warning)', background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.22)' }}
+              >
+                Revisar
+              </span>
+            )}
+            {item.human_approved && item.approved_by && (
+              <span
+                className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded"
+                style={{ color: 'var(--success)', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.20)' }}
+              >
+                <CheckCheck size={10} /> {item.approved_by}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Scheduled date */}
+        {item.scheduled_at && (
+          <div
+            className="mt-3 pt-3 flex items-center gap-2 text-[11.5px] font-medium tabular-nums"
+            style={{ borderTop: '1px solid var(--border)', color: 'var(--warning)' }}
+          >
+            <Calendar size={12} className="shrink-0" />
+            {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
+              day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Quick approve button — in footer bar */}
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="mt-2.5 w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-semibold transition-all"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-[11.5px] font-semibold transition-colors"
           style={{
-            background: 'rgba(52,211,153,0.10)',
-            border: '1px solid rgba(52,211,153,0.25)',
+            background: 'rgba(52,211,153,0.08)',
+            borderTop: '1px solid rgba(52,211,153,0.20)',
             color: 'var(--success)',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(52,211,153,0.18)'
-            e.currentTarget.style.borderColor = 'rgba(52,211,153,0.45)'
+            e.currentTarget.style.background = 'rgba(52,211,153,0.16)'
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(52,211,153,0.10)'
-            e.currentTarget.style.borderColor = 'rgba(52,211,153,0.25)'
+            e.currentTarget.style.background = 'rgba(52,211,153,0.08)'
           }}
         >
-          <CheckCircle2 size={12} />
+          <CheckCircle2 size={13} />
           Aprobar y avanzar
         </button>
       )}
@@ -651,46 +659,58 @@ function Column({
     : items.filter(i => filterChannels.includes(i.channel as Channel))
 
   return (
-    <div className="flex flex-col w-[280px] shrink-0 h-full">
+    <div className="flex flex-col w-[316px] shrink-0 h-full">
 
-      {/* Header — clean and functional */}
-      <div className="px-1 mb-2.5">
-        <div className="flex items-center gap-2 mb-1">
+      {/* Header — caja con presencia */}
+      <div
+        className="rounded-xl px-4 py-3 mb-3 relative overflow-hidden"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border2)',
+        }}
+      >
+        {/* Accent bar top */}
+        <div
+          className="absolute top-0 left-0 right-0 h-[2px]"
+          style={{ background: cfg.accentHex }}
+        />
+
+        <div className="flex items-center gap-2.5 mb-1.5">
           <div
-            className="w-5 h-5 rounded flex items-center justify-center shrink-0"
-            style={{ background: `${cfg.accentHex}18`, border: `1px solid ${cfg.accentHex}35` }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: `${cfg.accentHex}18`, border: `1px solid ${cfg.accentHex}38` }}
           >
-            <Icon size={11} style={{ color: cfg.accentHex }} />
+            <Icon size={14} style={{ color: cfg.accentHex }} />
           </div>
-          <h3 className="text-[13px] font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+          <h3 className="text-[13.5px] font-semibold tracking-tight flex-1" style={{ color: 'var(--text)' }}>
             {cfg.label}
           </h3>
           <span
-            className="text-[11px] font-semibold px-1.5 py-0.5 rounded tabular-nums leading-none"
+            className="text-[12px] font-bold px-2 py-0.5 rounded tabular-nums leading-none"
             style={{
               color: cfg.accentHex,
-              background: `${cfg.accentHex}15`,
-              border: `1px solid ${cfg.accentHex}25`,
+              background: `${cfg.accentHex}18`,
+              border: `1px solid ${cfg.accentHex}30`,
             }}
           >
             {filteredItems.length}
           </span>
           {cfg.automatic && (
             <span
-              className="ml-auto flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide"
+              className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide"
               style={{ color: 'var(--warning)', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.28)' }}
             >
               <Zap size={8} /> Auto
             </span>
           )}
         </div>
-        <p className="text-[11px] leading-tight ml-7" style={{ color: 'var(--muted)' }}>
+        <p className="text-[11.5px] leading-snug ml-10" style={{ color: 'var(--muted)' }}>
           {cfg.subtitle}
         </p>
       </div>
 
       {/* Cards */}
-      <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+      <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
         {filteredItems.map(item => (
           <ContentCard
             key={item.id}
@@ -703,10 +723,10 @@ function Column({
 
         {cfg.automatic ? (
           <div
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-[11px] font-medium"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-3.5 rounded-xl text-[11.5px] font-medium"
             style={{ border: '1px dashed var(--border2)', color: 'var(--muted)', opacity: 0.7 }}
           >
-            <Zap size={11} /> PostiZ programa automáticamente
+            <Zap size={12} /> PostiZ programa automáticamente
           </div>
         ) : showAddForm ? (
           <AddForm
@@ -717,11 +737,11 @@ function Column({
         ) : (
           <button
             onClick={() => setShowAddForm(true)}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-[12px] font-medium transition-all"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-[12.5px] font-medium transition-all"
             style={{ border: '1px dashed var(--border2)', color: 'var(--muted)' }}
             onMouseEnter={e => {
               e.currentTarget.style.color        = cfg.accentHex
-              e.currentTarget.style.borderColor  = `${cfg.accentHex}50`
+              e.currentTarget.style.borderColor  = `${cfg.accentHex}55`
               e.currentTarget.style.background   = `${cfg.accentHex}06`
             }}
             onMouseLeave={e => {
@@ -730,7 +750,7 @@ function Column({
               e.currentTarget.style.background   = 'transparent'
             }}
           >
-            <Plus size={12} /> Añadir
+            <Plus size={13} /> Añadir tarjeta
           </button>
         )}
       </div>
@@ -757,7 +777,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
 
   return (
     <>
-      <div className="flex gap-4 h-full overflow-x-auto pb-4 px-6 pt-5 pipeline-scroll">
+      <div className="flex gap-5 h-full overflow-x-auto pb-6 px-6 pt-6 pipeline-scroll">
         {STAGES.map((stage, idx) => (
           <Column
             key={stage}
