@@ -234,38 +234,28 @@ export default function CalendarPage() {
     <div className="flex flex-col h-screen">
 
       {/* ─── Topbar ─── */}
-      <div className="topbar shrink-0 gap-4 justify-between">
+      <div className="flex items-center justify-between px-6 h-[60px] shrink-0 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-5 min-w-0">
           <div className="shrink-0">
-            <div className="text-eyebrow mb-1" style={{ color: 'var(--orange3)' }}>
-              <span className="inline-block w-3 h-px mr-1.5 align-middle" style={{ background: 'var(--orange)' }} />
-              Planificación
-            </div>
-            <h1 className="font-display text-[22px] font-bold leading-none tracking-[-0.025em] capitalize" style={{ color: 'var(--text)' }}>
+            <h1 className="text-[16px] font-semibold tracking-tight leading-none capitalize" style={{ color: 'var(--text)' }}>
               {format(firstDay, 'MMMM yyyy', { locale: es })}
             </h1>
-          </div>
-          <div
-            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium backdrop-blur-sm"
-            style={{ background: 'rgba(255,246,235,0.025)', border: '1px solid var(--border2)', color: 'var(--text2)' }}
-          >
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--orange3)', boxShadow: '0 0 8px rgba(251,146,60,0.55)' }} />
-            <span className="tabular-nums">
-              {format(firstDay, "d MMM", { locale: es })} — {format(endOfMonth(firstDay), "d MMM yyyy", { locale: es })}
-            </span>
+            <p className="text-[11.5px] mt-1 leading-none" style={{ color: 'var(--muted)' }}>
+              Planificación de contenido
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <div
-            className="flex items-center overflow-hidden rounded-full backdrop-blur-sm"
-            style={{ border: '1px solid var(--border2)', background: 'rgba(255,246,235,0.025)' }}
+            className="flex items-center overflow-hidden rounded-lg"
+            style={{ border: '1px solid var(--border2)' }}
           >
             <button
               onClick={() => setCurrentMonth(format(add(firstDay, { months: -1 }), 'MMM-yyyy'))}
-              className="p-2 transition-colors"
+              className="p-1.5 transition-colors"
               style={{ color: 'var(--text2)' }}
-              onMouseEnter={e => { e.currentTarget.style.color = 'var(--orange3)'; e.currentTarget.style.background = 'rgba(234,88,12,0.08)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--surface2)' }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = 'transparent' }}
               aria-label="Mes anterior"
             >
@@ -273,18 +263,18 @@ export default function CalendarPage() {
             </button>
             <button
               onClick={() => { setCurrentMonth(format(today, 'MMM-yyyy')); setSelectedDay(today) }}
-              className="px-3 py-1.5 text-[11.5px] font-semibold transition-colors"
+              className="px-3 py-1 text-[12px] font-medium transition-colors"
               style={{ color: 'var(--text2)', borderLeft: '1px solid var(--border2)', borderRight: '1px solid var(--border2)' }}
-              onMouseEnter={e => { e.currentTarget.style.color = 'var(--orange3)'; e.currentTarget.style.background = 'rgba(234,88,12,0.08)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--surface2)' }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = 'transparent' }}
             >
               Hoy
             </button>
             <button
               onClick={() => setCurrentMonth(format(add(firstDay, { months: 1 }), 'MMM-yyyy'))}
-              className="p-2 transition-colors"
+              className="p-1.5 transition-colors"
               style={{ color: 'var(--text2)' }}
-              onMouseEnter={e => { e.currentTarget.style.color = 'var(--orange3)'; e.currentTarget.style.background = 'rgba(234,88,12,0.08)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--surface2)' }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = 'transparent' }}
               aria-label="Mes siguiente"
             >

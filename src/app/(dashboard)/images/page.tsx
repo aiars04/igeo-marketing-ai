@@ -163,42 +163,41 @@ export default function ImagesPage() {
   return (
     <div className="flex flex-col h-screen">
       {/* Topbar */}
-      <div className="topbar shrink-0 gap-4 justify-between">
+      <div className="flex items-center justify-between px-6 h-[60px] shrink-0 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-5 min-w-0">
           <div className="shrink-0">
-            <div className="text-eyebrow mb-1" style={{ color: 'var(--orange3)' }}>
-              <span className="inline-block w-3 h-px mr-1.5 align-middle" style={{ background: 'var(--orange)' }} />
-              Banco visual
-            </div>
-            <h1 className="font-display text-[22px] font-bold leading-none tracking-[-0.025em]" style={{ color: 'var(--text)' }}>
+            <h1 className="text-[16px] font-semibold tracking-tight leading-none" style={{ color: 'var(--text)' }}>
               Imágenes
             </h1>
+            <p className="text-[11.5px] mt-1 leading-none" style={{ color: 'var(--muted)' }}>
+              Banco visual generado con IA
+            </p>
           </div>
           <div className="hidden md:flex items-center gap-2">
             <div
-              className="flex items-baseline gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tabular-nums backdrop-blur-sm"
-              style={{ background: 'rgba(255,246,235,0.025)', border: '1px solid var(--border2)' }}
+              className="flex items-baseline gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium tabular-nums"
+              style={{ background: 'var(--surface2)', border: '1px solid var(--border2)' }}
             >
-              <span className="font-display font-bold text-[14px] tracking-[-0.02em]" style={{ color: 'var(--text)' }}>{totalImages}</span>
-              <span style={{ color: 'var(--text2)', opacity: 0.8 }}>activos</span>
+              <span className="font-semibold text-[12.5px]" style={{ color: 'var(--text)' }}>{totalImages}</span>
+              <span style={{ color: 'var(--text2)', opacity: 0.85 }}>activos</span>
             </div>
             <div
-              className="flex items-baseline gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tabular-nums backdrop-blur-sm"
-              style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.30)' }}
+              className="flex items-baseline gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium tabular-nums"
+              style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)' }}
             >
-              <span className="font-display font-bold text-[14px] tracking-[-0.02em]" style={{ color: 'var(--success)' }}>{approvedImages}</span>
+              <span className="font-semibold text-[12.5px]" style={{ color: 'var(--success)' }}>{approvedImages}</span>
               <span style={{ color: 'var(--success)', opacity: 0.85 }}>aprobadas</span>
             </div>
             <div
-              className="flex items-baseline gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tabular-nums backdrop-blur-sm"
-              style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.28)' }}
+              className="flex items-baseline gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium tabular-nums"
+              style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)' }}
             >
-              <span className="font-display font-bold text-[14px] tracking-[-0.02em]" style={{ color: 'var(--warning)' }}>{pendingImages}</span>
+              <span className="font-semibold text-[12.5px]" style={{ color: 'var(--warning)' }}>{pendingImages}</span>
               <span style={{ color: 'var(--warning)', opacity: 0.85 }}>pendientes</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => showToast('Próximamente: sube tus propios activos visuales', 'info')}
             className="btn-ghost flex items-center gap-1.5"
@@ -214,19 +213,18 @@ export default function ImagesPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-7">
+      <div className="flex-1 overflow-auto p-6">
         {/* Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {images.map(img => (
             <div
               key={img.id}
-              className="group relative overflow-hidden transition-all duration-200 hover-lift"
+              className="group relative overflow-hidden transition-colors duration-150 rounded-lg"
               style={{
-                background: 'linear-gradient(180deg, rgba(255,246,235,0.025), transparent 50%), var(--surface2)',
+                background: 'var(--surface2)',
                 border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-lg)',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-warm)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border2)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
             >
               {/* Placeholder image */}

@@ -139,30 +139,18 @@ export default function IdeasPage() {
   return (
     <div className="flex flex-col h-screen">
       {/* Topbar */}
-      <div className="topbar shrink-0 gap-4 justify-between">
+      <div className="flex items-center justify-between px-6 h-[60px] shrink-0 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-5 min-w-0">
           <div className="shrink-0">
-            <div className="text-eyebrow mb-1" style={{ color: 'var(--orange3)' }}>
-              <span className="inline-block w-3 h-px mr-1.5 align-middle" style={{ background: 'var(--orange)' }} />
-              Backlog creativo
-            </div>
-            <h1 className="font-display text-[22px] font-bold leading-none tracking-[-0.025em]" style={{ color: 'var(--text)' }}>
+            <h1 className="text-[16px] font-semibold tracking-tight leading-none" style={{ color: 'var(--text)' }}>
               Ideas
             </h1>
-          </div>
-          <div
-            className="hidden md:flex items-baseline gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tabular-nums backdrop-blur-sm"
-            style={{ background: 'rgba(255,246,235,0.025)', border: '1px solid var(--border2)' }}
-          >
-            <span className="font-display font-bold text-[14px] tracking-[-0.02em]" style={{ color: 'var(--text)' }}>
-              {visibleIdeas.length}
-            </span>
-            <span style={{ color: 'var(--text2)', opacity: 0.8 }}>
-              {visibleIdeas.length === 1 ? 'idea en revisión' : 'ideas en revisión'}
-            </span>
+            <p className="text-[11.5px] mt-1 leading-none" style={{ color: 'var(--muted)' }}>
+              {visibleIdeas.length} {visibleIdeas.length === 1 ? 'idea en revisión' : 'ideas en revisión'}
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleSuggestAI}
             disabled={loadingAI}
@@ -191,18 +179,18 @@ export default function IdeasPage() {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-auto p-7">
-        <div className="max-w-3xl mx-auto space-y-2.5 stagger">
+      <div className="flex-1 overflow-auto p-6">
+        <div className="max-w-3xl mx-auto space-y-2 stagger">
           {visibleIdeas.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4 text-center animate-fade-up">
               <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                style={{ background: 'rgba(234,88,12,0.08)', border: '1px solid var(--border-warm)' }}
+                className="w-12 h-12 rounded-lg flex items-center justify-center"
+                style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
               >
-                <Sparkles size={26} style={{ color: 'var(--orange3)', opacity: 0.6 }} />
+                <Sparkles size={20} style={{ color: 'var(--muted)' }} />
               </div>
               <div>
-                <p className="font-display text-[15px] font-bold tracking-[-0.02em]" style={{ color: 'var(--text)' }}>
+                <p className="text-[14px] font-semibold" style={{ color: 'var(--text)' }}>
                   No hay ideas pendientes
                 </p>
                 <p className="text-[12px] mt-1" style={{ color: 'var(--muted)' }}>
@@ -329,13 +317,12 @@ function IdeaCard({
 }) {
   return (
     <div
-      className="flex items-center gap-4 p-4 group animate-fade-up transition-all duration-200 hover-lift"
+      className="flex items-center gap-4 p-4 group animate-fade-up transition-colors duration-150 rounded-lg"
       style={{
-        background: 'linear-gradient(180deg, rgba(255,246,235,0.025), transparent 50%), var(--surface2)',
+        background: 'var(--surface2)',
         border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg)',
       }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-warm)' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border2)' }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
     >
       <div className="shrink-0">
@@ -343,7 +330,7 @@ function IdeaCard({
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="font-display text-[13.5px] font-semibold leading-snug tracking-[-0.015em]" style={{ color: 'var(--text)' }}>
+        <p className="text-[13.5px] font-medium leading-snug" style={{ color: 'var(--text)' }}>
           {idea.title}
         </p>
         <div className="flex items-center gap-2 mt-2 flex-wrap">

@@ -12,7 +12,7 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
-  const maxWidth = size === 'sm' ? 440 : size === 'lg' ? 720 : size === 'xl' ? 920 : 580
+  const maxWidth = size === 'sm' ? 420 : size === 'lg' ? 680 : size === 'xl' ? 880 : 560
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -27,11 +27,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in"
-      style={{
-        background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.7), rgba(0,0,0,0.85))',
-        backdropFilter: 'blur(10px) saturate(120%)',
-        WebkitBackdropFilter: 'blur(10px) saturate(120%)',
-      }}
+      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => {
         if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose()
       }}
@@ -41,73 +37,34 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
         className="animate-scale-in w-full relative overflow-hidden"
         style={{
           maxWidth,
-          background: `
-            linear-gradient(180deg, rgba(234,88,12,0.04), transparent 30%),
-            var(--surface)
-          `,
+          background: 'var(--surface)',
           border: '1px solid var(--border2)',
           borderRadius: 'var(--radius-xl)',
-          boxShadow: `
-            0 32px 96px rgba(0, 0, 0, 0.75),
-            0 0 0 1px rgba(255, 246, 235, 0.04),
-            0 0 80px rgba(234, 88, 12, 0.08)
-          `,
+          boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
         }}
         onMouseDown={e => e.stopPropagation()}
       >
-        {/* Top accent line */}
-        <div
-          className="absolute top-0 left-7 right-7 h-px"
-          style={{
-            background: 'linear-gradient(90deg, transparent, rgba(234,88,12,0.7) 50%, transparent)',
-            boxShadow: '0 0 12px rgba(234,88,12,0.5)',
-          }}
-        />
-
-        {/* Top glow */}
-        <div
-          className="absolute -top-32 left-1/2 -translate-x-1/2 w-[60%] h-32 pointer-events-none opacity-50"
-          style={{ background: 'radial-gradient(ellipse, rgba(234,88,12,0.4), transparent 70%)' }}
-        />
-
         {/* Header */}
         <div
-          className="flex items-center justify-between px-6 py-5 relative"
+          className="flex items-center justify-between px-5 py-4"
           style={{ borderBottom: '1px solid var(--border)' }}
         >
-          <div className="min-w-0 flex-1 pr-3">
-            <div className="text-[9px] font-bold uppercase tracking-[0.2em] mb-1.5" style={{ color: 'var(--orange3)' }}>
-              <span className="inline-block w-2.5 h-px mr-1.5 align-middle" style={{ background: 'var(--orange)' }} />
-              Detalle
-            </div>
-            <h2
-              className="font-display text-[18px] font-bold tracking-[-0.025em] leading-tight truncate"
-              style={{ color: 'var(--text)' }}
-            >
-              {title}
-            </h2>
-          </div>
+          <h2 className="text-[14px] font-semibold tracking-tight truncate pr-3" style={{ color: 'var(--text)' }}>
+            {title}
+          </h2>
           <button
             onClick={onClose}
-            className="rounded-full p-2 transition-all shrink-0"
-            style={{ color: 'var(--muted)', border: '1px solid var(--border2)' }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'rgba(234, 88, 12, 0.08)'
-              e.currentTarget.style.color = 'var(--orange3)'
-              e.currentTarget.style.borderColor = 'var(--border-warm)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = 'var(--muted)'
-              e.currentTarget.style.borderColor = 'var(--border2)'
-            }}
+            className="rounded-md p-1.5 transition-colors shrink-0"
+            style={{ color: 'var(--muted)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'var(--text)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--muted)' }}
           >
-            <X size={14} />
+            <X size={15} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-6 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 96px)' }}>
+        <div className="px-5 py-5 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 64px)' }}>
           {children}
         </div>
       </div>

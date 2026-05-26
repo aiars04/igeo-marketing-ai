@@ -416,77 +416,75 @@ function ContentTypeCard({
 
   return (
     <div
-      className="overflow-hidden transition-all duration-200 flex flex-col hover-lift"
+      className="overflow-hidden transition-colors duration-150 flex flex-col rounded-lg"
       style={{
-        background: 'linear-gradient(180deg, rgba(255,246,235,0.025), transparent 50%), var(--surface2)',
+        background: 'var(--surface2)',
         border: `1px solid ${ct.active ? 'var(--border)' : 'rgba(255,255,255,0.04)'}`,
-        borderRadius: 'var(--radius-xl)',
         opacity: ct.active ? 1 : 0.55,
       }}
-      onMouseEnter={e => { if (ct.active) e.currentTarget.style.borderColor = 'var(--border-warm)' }}
+      onMouseEnter={e => { if (ct.active) e.currentTarget.style.borderColor = 'var(--border2)' }}
       onMouseLeave={e => { if (ct.active) e.currentTarget.style.borderColor = 'var(--border)' }}
     >
       {/* Header */}
-      <div className="flex items-start gap-3 p-5 pb-3">
+      <div className="flex items-start gap-3 p-4 pb-3">
         <div
-          className="w-2 h-2 rounded-full mt-2 shrink-0"
-          style={{ background: colors.dot, boxShadow: `0 0 8px ${colors.dot}` }}
+          className="w-2 h-2 rounded-full mt-1.5 shrink-0"
+          style={{ background: colors.dot }}
         />
         <div className="flex-1 min-w-0">
           <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold uppercase tracking-[0.1em] mb-2"
-            style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.dot}40` }}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium mb-1.5"
+            style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.dot}30` }}
           >
             {CHANNEL_LABELS[ct.channel]}
           </span>
-          <h3 className="font-display text-[15px] font-bold tracking-[-0.02em] leading-snug" style={{ color: 'var(--text)' }}>
+          <h3 className="text-[14px] font-semibold leading-snug" style={{ color: 'var(--text)' }}>
             {ct.name}
           </h3>
           <p className="text-[12px] mt-1.5 leading-relaxed line-clamp-2" style={{ color: 'var(--muted)' }}>
             {ct.description}
           </p>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <button onClick={() => onToggle(ct.id)} className="p-1.5 rounded-full transition-colors hover:bg-[rgba(234,88,12,0.08)]" title={ct.active ? 'Desactivar' : 'Activar'}>
-            {ct.active ? <ToggleRight size={17} style={{ color: 'var(--orange3)' }} /> : <ToggleLeft size={17} style={{ color: 'var(--muted)' }} />}
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button onClick={() => onToggle(ct.id)} className="p-1.5 rounded-md transition-colors hover:bg-[var(--surface3)]" title={ct.active ? 'Desactivar' : 'Activar'}>
+            {ct.active ? <ToggleRight size={16} style={{ color: 'var(--orange3)' }} /> : <ToggleLeft size={16} style={{ color: 'var(--muted)' }} />}
           </button>
-          <button onClick={() => onEdit(ct)} className="p-1.5 rounded-full transition-colors hover:bg-[rgba(234,88,12,0.08)]" title="Editar">
+          <button onClick={() => onEdit(ct)} className="p-1.5 rounded-md transition-colors hover:bg-[var(--surface3)]" title="Editar">
             <Pencil size={13} style={{ color: 'var(--muted)' }} />
           </button>
-          <button onClick={() => onDelete(ct.id)} className="p-1.5 rounded-full transition-colors hover:bg-[rgba(239,68,68,0.1)]" title="Eliminar">
+          <button onClick={() => onDelete(ct.id)} className="p-1.5 rounded-md transition-colors hover:bg-[rgba(239,68,68,0.1)]" title="Eliminar">
             <Trash2 size={13} className="text-red-400/60 hover:text-red-400 transition-colors" />
           </button>
         </div>
       </div>
 
       {/* IA instructions expandable */}
-      <div className="px-5 pb-2">
+      <div className="px-4 pb-2">
         <div
-          className="overflow-hidden"
+          className="overflow-hidden rounded-md"
           style={{
-            background: 'rgba(7,7,13,0.4)',
+            background: 'var(--surface)',
             border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)',
           }}
         >
-          <button className="w-full flex items-center justify-between px-3.5 py-2.5 text-left" onClick={() => setExpanded(p => !p)}>
+          <button className="w-full flex items-center justify-between px-3 py-2 text-left" onClick={() => setExpanded(p => !p)}>
             <div className="flex items-center gap-2">
-              <Bot size={13} style={{ color: 'var(--orange3)' }} />
-              <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--orange3)' }}>
+              <Bot size={12} style={{ color: 'var(--text2)' }} />
+              <span className="text-[11px] font-medium" style={{ color: 'var(--text2)' }}>
                 Instrucciones para la IA
               </span>
             </div>
             {expanded ? <ChevronUp size={12} style={{ color: 'var(--muted)' }} /> : <ChevronDown size={12} style={{ color: 'var(--muted)' }} />}
           </button>
           {expanded && (
-            <div className="px-3.5 pb-3 space-y-3 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div className="px-3 pb-3 space-y-3 border-t" style={{ borderColor: 'var(--border)' }}>
               <div className="pt-2.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.14em] block mb-1" style={{ color: 'var(--muted)' }}>Proceso</span>
-                <p className="text-[11.5px] leading-relaxed" style={{ color: 'var(--text2)' }}>{ct.process}</p>
+                <span className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Proceso</span>
+                <p className="text-[12px] leading-relaxed" style={{ color: 'var(--text2)' }}>{ct.process}</p>
               </div>
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-[0.14em] block mb-1" style={{ color: 'var(--muted)' }}>Estilo iGEO</span>
-                <p className="text-[11.5px] leading-relaxed" style={{ color: 'var(--text2)' }}>{ct.style}</p>
+                <span className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Estilo iGEO</span>
+                <p className="text-[12px] leading-relaxed" style={{ color: 'var(--text2)' }}>{ct.style}</p>
               </div>
             </div>
           )}
@@ -494,18 +492,18 @@ function ContentTypeCard({
       </div>
 
       {/* Footer — docs button */}
-      <div className="px-5 py-3.5 mt-auto flex items-center justify-between" style={{ borderTop: '1px solid var(--border)' }}>
-        <span className="text-[10px] tabular-nums" style={{ color: 'var(--muted)' }}>Creado {ct.createdAt}</span>
+      <div className="px-4 py-3 mt-auto flex items-center justify-between" style={{ borderTop: '1px solid var(--border)' }}>
+        <span className="text-[11px] tabular-nums" style={{ color: 'var(--muted)' }}>Creado {ct.createdAt}</span>
         <button
           onClick={() => onOpenDocs(ct)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-[1.02]"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors"
           style={{
-            background: docCount > 0 ? colors.bg : 'rgba(255,246,235,0.025)',
+            background: docCount > 0 ? colors.bg : 'var(--surface3)',
             color:      docCount > 0 ? colors.text : 'var(--text2)',
-            border:     `1px solid ${docCount > 0 ? `${colors.dot}40` : 'var(--border2)'}`,
+            border:     `1px solid ${docCount > 0 ? `${colors.dot}30` : 'var(--border2)'}`,
           }}
         >
-          <FolderOpen size={12} />
+          <FolderOpen size={11} />
           {docCount > 0 ? `${docCount} ${docCount === 1 ? 'documento' : 'documentos'}` : 'Añadir documentos'}
         </button>
       </div>
@@ -662,23 +660,15 @@ export default function AdminPage() {
     <div className="flex flex-col h-screen overflow-hidden">
 
       {/* ─── Header ─── */}
-      <div className="topbar shrink-0 gap-4 justify-between">
+      <div className="flex items-center justify-between px-6 h-[60px] shrink-0 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-5 min-w-0">
           <div className="shrink-0">
-            <div className="text-eyebrow mb-1" style={{ color: 'var(--orange3)' }}>
-              <span className="inline-block w-3 h-px mr-1.5 align-middle" style={{ background: 'var(--orange)' }} />
-              Configuración IA
-            </div>
-            <h1 className="font-display text-[22px] font-bold leading-none tracking-[-0.025em]" style={{ color: 'var(--text)' }}>
+            <h1 className="text-[16px] font-semibold tracking-tight leading-none" style={{ color: 'var(--text)' }}>
               Admin
             </h1>
-          </div>
-          <div
-            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium backdrop-blur-sm"
-            style={{ background: 'rgba(255,246,235,0.025)', border: '1px solid var(--border2)', color: 'var(--text2)' }}
-          >
-            <BookOpen size={11} style={{ color: 'var(--orange3)' }} />
-            Tipos de contenido & documentos de referencia
+            <p className="text-[11.5px] mt-1 leading-none" style={{ color: 'var(--muted)' }}>
+              Tipos de contenido y documentos de referencia
+            </p>
           </div>
         </div>
         <button className="btn-primary shrink-0" onClick={openCreate}><Plus size={13} /> Nuevo tipo</button>
@@ -686,58 +676,58 @@ export default function AdminPage() {
 
       {/* ─── Stats ─── */}
       <div
-        className="flex gap-2 px-7 py-3 shrink-0 flex-wrap items-center"
-        style={{ borderBottom: '1px solid var(--border)', background: 'rgba(7,7,13,0.4)', backdropFilter: 'blur(10px)' }}
+        className="flex gap-2 px-6 py-2.5 shrink-0 flex-wrap items-center"
+        style={{ borderBottom: '1px solid var(--border)' }}
       >
         {[
-          { label: 'Total tipos', value: types.length,   color: 'var(--text)',    glow: 'transparent' },
-          { label: 'Activos',     value: activeCount,    color: 'var(--success)', glow: 'rgba(52,211,153,0.55)' },
-          { label: 'Inactivos',   value: inactiveCount,  color: 'var(--muted)',   glow: 'transparent' },
-          { label: 'Documentos',  value: Object.values(docCounts).reduce((a, b) => a + b, 0), color: 'var(--orange3)', glow: 'rgba(251,146,60,0.45)' },
+          { label: 'Total tipos', value: types.length,   color: 'var(--text)' },
+          { label: 'Activos',     value: activeCount,    color: 'var(--success)' },
+          { label: 'Inactivos',   value: inactiveCount,  color: 'var(--muted)' },
+          { label: 'Documentos',  value: Object.values(docCounts).reduce((a, b) => a + b, 0), color: 'var(--text)' },
         ].map(s => (
           <div
             key={s.label}
-            className="flex items-baseline gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tabular-nums backdrop-blur-sm"
-            style={{ background: 'rgba(255,246,235,0.025)', border: '1px solid var(--border2)' }}
+            className="flex items-baseline gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium tabular-nums"
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border2)' }}
           >
             <span
-              className="font-display font-bold text-[14px] tracking-[-0.02em]"
-              style={{ color: s.color, textShadow: s.glow !== 'transparent' ? `0 0 12px ${s.glow}` : 'none' }}
+              className="font-semibold text-[12.5px]"
+              style={{ color: s.color }}
             >
               {s.value}
             </span>
-            <span style={{ color: 'var(--text2)', opacity: 0.8 }}>{s.label}</span>
+            <span style={{ color: 'var(--text2)', opacity: 0.85 }}>{s.label}</span>
           </div>
         ))}
         <div
-          className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-full"
-          style={{ background: 'rgba(234,88,12,0.08)', border: '1px solid var(--border-warm)' }}
+          className="ml-auto flex items-center gap-2 px-2.5 py-1 rounded-md"
+          style={{ background: 'var(--surface2)', border: '1px solid var(--border2)' }}
         >
-          <Bot size={12} style={{ color: 'var(--orange3)' }} />
-          <span className="text-[11px] font-medium" style={{ color: 'var(--orange3)' }}>
+          <Bot size={11} style={{ color: 'var(--text2)' }} />
+          <span className="text-[11px]" style={{ color: 'var(--text2)' }}>
             Solo los tipos activos están disponibles en el calendario y la IA
           </span>
         </div>
       </div>
 
       {/* ─── Grid ─── */}
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-6 py-5">
         {types.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center animate-fade-up">
             <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(234,88,12,0.08)', border: '1px solid var(--border-warm)' }}
+              className="w-12 h-12 rounded-lg flex items-center justify-center"
+              style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
             >
-              <BookOpen size={28} style={{ color: 'var(--orange3)' }} />
+              <BookOpen size={22} style={{ color: 'var(--muted)' }} />
             </div>
             <div>
-              <p className="font-display text-[16px] font-bold tracking-[-0.02em]" style={{ color: 'var(--text)' }}>Sin tipos de contenido</p>
-              <p className="text-[12px] mt-1.5" style={{ color: 'var(--muted)' }}>Crea el primero para empezar a planificar contenido con IA</p>
+              <p className="text-[14px] font-semibold" style={{ color: 'var(--text)' }}>Sin tipos de contenido</p>
+              <p className="text-[12px] mt-1" style={{ color: 'var(--muted)' }}>Crea el primero para empezar a planificar contenido con IA</p>
             </div>
             <button className="btn-primary" onClick={openCreate}><Plus size={13} /> Crear tipo</button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 stagger">
             {types.map(ct => (
               <ContentTypeCard
                 key={ct.id}

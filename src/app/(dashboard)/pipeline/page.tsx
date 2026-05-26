@@ -38,18 +38,18 @@ function StatPill({
   variant?: 'default' | 'amber' | 'emerald'
 }) {
   const s = {
-    default: { bg: 'rgba(255,246,235,0.025)', border: 'var(--border2)', color: 'var(--text2)', valueColor: 'var(--text)' },
-    amber:   { bg: 'rgba(251,191,36,0.08)',   border: 'rgba(251,191,36,0.28)', color: '#fbbf24', valueColor: '#fbbf24' },
-    emerald: { bg: 'rgba(52,211,153,0.08)',   border: 'rgba(52,211,153,0.30)', color: '#34d399', valueColor: '#34d399' },
+    default: { bg: 'var(--surface2)',          border: 'var(--border2)',         color: 'var(--text2)', valueColor: 'var(--text)' },
+    amber:   { bg: 'rgba(251,191,36,0.08)',    border: 'rgba(251,191,36,0.25)',  color: '#fbbf24',      valueColor: '#fbbf24'    },
+    emerald: { bg: 'rgba(52,211,153,0.08)',    border: 'rgba(52,211,153,0.25)',  color: '#34d399',      valueColor: '#34d399'    },
   }[variant]
 
   return (
     <div
-      className="flex items-baseline gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tabular-nums backdrop-blur-sm"
+      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium tabular-nums"
       style={{ background: s.bg, border: `1px solid ${s.border}` }}
     >
-      <span className="font-display font-bold text-[14px] tracking-[-0.02em]" style={{ color: s.valueColor }}>{value}</span>
-      <span style={{ color: s.color, opacity: 0.8 }}>{label}</span>
+      <span className="font-semibold text-[12.5px]" style={{ color: s.valueColor }}>{value}</span>
+      <span style={{ color: s.color, opacity: 0.85 }}>{label}</span>
     </div>
   )
 }
@@ -204,16 +204,15 @@ export default function PipelinePage() {
   return (
     <div className="flex flex-col h-screen relative">
       {/* Topbar */}
-      <div className="topbar shrink-0 gap-4 justify-between">
-        <div className="flex items-center gap-6 min-w-0">
+      <div className="flex items-center justify-between px-6 h-[60px] shrink-0 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-5 min-w-0">
           <div className="shrink-0">
-            <div className="text-eyebrow mb-1" style={{ color: 'var(--orange3)' }}>
-              <span className="inline-block w-3 h-px mr-1.5 align-middle" style={{ background: 'var(--orange)' }} />
-              Marketing Workflow
-            </div>
-            <h1 className="font-display text-[22px] font-bold leading-none tracking-[-0.025em]" style={{ color: 'var(--text)' }}>
+            <h1 className="text-[16px] font-semibold tracking-tight leading-none" style={{ color: 'var(--text)' }}>
               Pipeline
             </h1>
+            <p className="text-[11.5px] mt-1 leading-none" style={{ color: 'var(--muted)' }}>
+              Ideas → Copy → Diseño → Programación → Análisis
+            </p>
           </div>
           <div className="hidden md:flex items-center gap-2">
             <StatPill value={totalItems} label="piezas"      variant="default" />
