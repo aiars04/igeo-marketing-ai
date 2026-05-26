@@ -517,14 +517,14 @@ function ContentCard({
 
   return (
     <div
-      className="group relative rounded-2xl p-4 cursor-pointer transition-all duration-200 animate-fade-up overflow-hidden"
+      className="group relative rounded-2xl pl-5 pr-3.5 py-3.5 cursor-pointer transition-all duration-200 animate-fade-up overflow-hidden"
       style={{
         background: `
           linear-gradient(180deg, rgba(255,246,235,0.025), transparent 50%),
-          linear-gradient(135deg, ${stageCfg.accentHex}06 0%, transparent 40%),
+          linear-gradient(135deg, ${stageCfg.accentHex}08 0%, transparent 40%),
           var(--surface2)
         `,
-        border: '1px solid var(--border)',
+        border: '1px solid var(--border2)',
         boxShadow: '0 1px 0 rgba(255,246,235,0.03) inset, 0 2px 8px rgba(0,0,0,0.3)',
       }}
       onClick={() => onSelect(item)}
@@ -535,7 +535,7 @@ function ContentCard({
       }}
       onMouseLeave={e => {
         e.currentTarget.style.boxShadow     = '0 1px 0 rgba(255,246,235,0.03) inset, 0 2px 8px rgba(0,0,0,0.3)'
-        e.currentTarget.style.borderColor   = 'var(--border)'
+        e.currentTarget.style.borderColor   = 'var(--border2)'
         e.currentTarget.style.transform     = 'translateY(0)'
       }}
     >
@@ -544,12 +544,12 @@ function ContentCard({
         className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full transition-all"
         style={{
           background: `linear-gradient(180deg, ${stageCfg.accentHex}, ${stageCfg.accentHex}77)`,
-          boxShadow: `0 0 12px ${stageCfg.accentHex}55`,
+          boxShadow: `0 0 10px ${stageCfg.accentHex}55`,
         }}
       />
 
       {/* Top row: channel + market + status + menu */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2.5 gap-2">
         <ChannelBadge channel={item.channel as Channel} />
         <div className="flex items-center gap-2">
           <span className="text-[11px] leading-none">{MARKET_FLAG[item.market] ?? ''}</span>
@@ -562,7 +562,7 @@ function ContentCard({
 
       {/* Title — display font for editorial feel */}
       <p
-        className="text-[13.5px] font-semibold leading-[1.35] mb-3 tracking-[-0.01em] font-display"
+        className="text-[13px] font-semibold leading-[1.4] mb-3 tracking-[-0.005em] font-display break-words"
         style={{ color: 'var(--text)' }}
       >
         {item.title}
@@ -676,21 +676,21 @@ function Column({
     : items.filter(i => filterChannels.includes(i.channel as Channel))
 
   return (
-    <div className="flex flex-col w-[300px] shrink-0 h-full" style={{ animationDelay: `${index * 60}ms` }}>
+    <div className="flex flex-col w-[268px] shrink-0 h-full" style={{ animationDelay: `${index * 60}ms` }}>
 
       {/* ── Editorial header ── */}
       <div
-        className="mb-4 rounded-2xl overflow-hidden relative animate-fade-up"
+        className="mb-3 rounded-2xl overflow-hidden relative animate-fade-up"
         style={{
           background: `
-            linear-gradient(180deg, ${cfg.accentHex}08 0%, transparent 60%),
+            linear-gradient(180deg, ${cfg.accentHex}10 0%, transparent 70%),
             var(--surface)
           `,
-          border: '1px solid var(--border)',
-          boxShadow: '0 1px 0 rgba(255,246,235,0.04) inset',
+          border: '1px solid var(--border2)',
+          boxShadow: '0 1px 0 rgba(255,246,235,0.04) inset, 0 4px 16px rgba(0,0,0,0.3)',
         }}
       >
-        {/* Top accent bar with shimmer */}
+        {/* Top accent bar */}
         <div
           className="col-accent-bar"
           style={{
@@ -698,65 +698,67 @@ function Column({
           }}
         />
 
-        <div className="px-4 pt-4 pb-3.5">
-          {/* Step indicator + auto badge */}
-          <div className="flex items-center justify-between mb-2.5">
-            <span
-              className="text-[9px] font-bold uppercase tracking-[0.2em] tabular-nums"
-              style={{ color: cfg.accentHex, opacity: 0.7 }}
-            >
-              Step {index + 1}
-            </span>
+        <div className="px-4 pt-3.5 pb-3.5">
+          {/* Top row: icon + step + auto */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                style={{
+                  background: `${cfg.accentHex}18`,
+                  border: `1px solid ${cfg.accentHex}40`,
+                  boxShadow: `0 0 12px ${cfg.accentHex}30`,
+                }}
+              >
+                <Icon size={13} style={{ color: cfg.accentHex }} />
+              </div>
+              <span
+                className="text-[9px] font-bold uppercase tracking-[0.18em] tabular-nums"
+                style={{ color: cfg.accentHex, opacity: 0.85 }}
+              >
+                Step {index + 1}
+              </span>
+            </div>
             {cfg.automatic && (
               <span
-                className="flex items-center gap-1 text-[8.5px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
-                style={{ color: 'var(--warning)', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.28)' }}
+                className="flex items-center gap-1 text-[8.5px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0"
+                style={{ color: 'var(--warning)', background: 'rgba(251,191,36,0.14)', border: '1px solid rgba(251,191,36,0.32)' }}
               >
                 <Zap size={8} /> Auto
               </span>
             )}
           </div>
 
-          {/* Title row with mega number */}
-          <div className="flex items-end justify-between gap-2 mb-1">
+          {/* Title + mega number row */}
+          <div className="flex items-end justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h3
-                className="font-display text-[15px] font-bold tracking-[-0.02em] leading-tight"
+                className="font-display text-[14px] font-bold tracking-[-0.02em] leading-[1.15]"
                 style={{ color: 'var(--text)' }}
               >
                 {cfg.label}
               </h3>
-              <p className="text-[10.5px] leading-tight mt-1" style={{ color: 'var(--muted)' }}>
+              <p className="text-[10px] leading-tight mt-1 truncate" style={{ color: 'var(--muted)' }}>
                 {cfg.subtitle}
               </p>
             </div>
-            <div className="flex items-baseline gap-1 shrink-0">
-              <span
-                className="font-display font-extrabold tabular-nums leading-none"
-                style={{
-                  fontSize: '36px',
-                  letterSpacing: '-0.05em',
-                  color: cfg.accentHex,
-                  textShadow: `0 0 28px ${cfg.accentHex}55`,
-                }}
-              >
-                {filteredItems.length.toString().padStart(2, '0')}
-              </span>
-            </div>
-          </div>
-
-          {/* Icon corner */}
-          <div
-            className="absolute top-3.5 right-3.5 w-7 h-7 rounded-lg flex items-center justify-center opacity-40"
-            style={{ background: `${cfg.accentHex}15`, border: `1px solid ${cfg.accentHex}30` }}
-          >
-            <Icon size={13} style={{ color: cfg.accentHex }} />
+            <span
+              className="font-display font-extrabold tabular-nums leading-none shrink-0"
+              style={{
+                fontSize: '30px',
+                letterSpacing: '-0.045em',
+                color: cfg.accentHex,
+                textShadow: `0 0 24px ${cfg.accentHex}55`,
+              }}
+            >
+              {filteredItems.length.toString().padStart(2, '0')}
+            </span>
           </div>
         </div>
       </div>
 
       {/* ── Cards ── */}
-      <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1">
         {filteredItems.map(item => (
           <ContentCard
             key={item.id}
@@ -830,7 +832,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
 
   return (
     <>
-      <div className="flex gap-5 h-full overflow-x-auto pb-6 px-7 pt-6 pipeline-scroll relative">
+      <div className="flex gap-4 h-full overflow-x-auto pb-6 px-5 pt-5 pipeline-scroll relative">
         {STAGES.map((stage, idx) => (
           <Column
             key={stage}

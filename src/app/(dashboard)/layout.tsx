@@ -12,7 +12,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       {/* Fondo animado — muy sutil detrás del contenido */}
-      <div className="fixed inset-0 z-0 pointer-events-none" style={{ opacity: 0.28 }}>
+      <div className="fixed inset-0 z-0 pointer-events-none" style={{ opacity: 0.22 }}>
         <FloatingPaths />
       </div>
 
@@ -20,7 +20,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <Sidebar />
 
       {/* Contenido principal */}
-      <main className="relative z-10 h-screen overflow-auto" style={{ marginLeft: 'var(--sidebar-collapsed)' }}>
+      <main
+        className="relative z-10 h-screen overflow-y-auto overflow-x-hidden"
+        style={{
+          marginLeft: 'var(--sidebar-collapsed)',
+          width: 'calc(100% - var(--sidebar-collapsed))',
+        }}
+      >
         {children}
       </main>
     </div>

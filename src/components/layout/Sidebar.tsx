@@ -166,10 +166,9 @@ export function Sidebar() {
       style={{
         width: open ? 'var(--sidebar-expanded)' : 'var(--sidebar-collapsed)',
         transition: 'width 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
-        background: 'rgba(10, 10, 22, 0.65)',
-        backdropFilter: 'blur(24px) saturate(150%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(150%)',
-        borderRight: '1px solid var(--border)',
+        background: 'linear-gradient(180deg, #0d0d1a 0%, #0a0a14 100%)',
+        borderRight: '1px solid var(--border2)',
+        boxShadow: '4px 0 24px rgba(0, 0, 0, 0.4)',
       }}
     >
       {/* ── Top warm glow ── */}
