@@ -90,7 +90,7 @@ export default function LoginPage() {
                 placeholder="hola@igeoerp.com"
                 className="w-full rounded-xl px-3.5 py-2.5 text-[13px] placeholder:text-[var(--muted)] text-[var(--text)] outline-none transition-all"
                 style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
-                onFocus={e  => { e.currentTarget.style.borderColor = 'rgba(29,111,200,0.55)' }}
+                onFocus={e  => { e.currentTarget.style.borderColor = 'rgba(234,88,12,0.55)' }}
                 onBlur={e   => { e.currentTarget.style.borderColor = 'var(--border)' }}
               />
             </div>
@@ -110,7 +110,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   className="w-full rounded-xl px-3.5 py-2.5 pr-10 text-[13px] placeholder:text-[var(--muted)] text-[var(--text)] outline-none transition-all"
                   style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'rgba(29,111,200,0.55)' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'rgba(234,88,12,0.55)' }}
                   onBlur={e  => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 />
                 <button

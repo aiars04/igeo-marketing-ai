@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { FloatingPaths } from '@/components/ui/FloatingPaths'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -9,11 +10,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect('/login')
 
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      {/* Sidebar fixed — se expande al hacer hover */}
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      {/* Fondo animado — muy sutil detrás del contenido */}
+      <div className="fixed inset-0 z-0 pointer-events-none" style={{ opacity: 0.28 }}>
+        <FloatingPaths />
+      </div>
+
+      {/* Sidebar fixed */}
       <Sidebar />
-      {/* Main content desplazado el ancho del sidebar colapsado (52px) */}
-      <main className="ml-[52px] h-screen overflow-auto bg-[var(--bg)]">
+
+      {/* Contenido principal */}
+      <main className="relative z-10 h-screen overflow-auto" style={{ marginLeft: 'var(--sidebar-collapsed)' }}>
         {children}
       </main>
     </div>

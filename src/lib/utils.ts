@@ -7,18 +7,20 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const STAGE_CONFIG: Record<Stage, {
-  label:    string
-  color:    string
-  bg:       string
-  border:   string
-  dotColor: string
+  label:      string
+  subtitle:   string
+  color:      string
+  bg:         string
+  border:     string
+  dotColor:   string
+  accentHex:  string
+  automatic?: boolean
 }> = {
-  ideas:     { label: 'Ideas',      color: 'text-violet-400',  bg: 'bg-violet-500/10',  border: 'border-violet-500/20',  dotColor: 'bg-violet-400' },
-  copy:      { label: 'Copy',       color: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    dotColor: 'bg-blue-400' },
-  design:    { label: 'Diseño',     color: 'text-cyan-400',    bg: 'bg-cyan-500/10',    border: 'border-cyan-500/20',    dotColor: 'bg-cyan-400' },
-  scheduled: { label: 'Programado', color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   dotColor: 'bg-amber-400' },
-  published: { label: 'Publicado',  color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', dotColor: 'bg-emerald-400' },
-  analyzed:  { label: 'Análisis',   color: 'text-rose-400',    bg: 'bg-rose-500/10',    border: 'border-rose-500/20',    dotColor: 'bg-rose-400' },
+  ideas:     { label: 'Ideas & Aprobación', subtitle: 'Genera, filtra y aprueba',   color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20', dotColor: 'bg-violet-400', accentHex: '#a78bfa' },
+  copy:      { label: 'Copy & Revisión',    subtitle: 'Redacta y revisa el texto',  color: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/20',   dotColor: 'bg-blue-400',   accentHex: '#60a5fa' },
+  design:    { label: 'Diseño',             subtitle: 'Crea y aprueba los visuales',color: 'text-cyan-400',   bg: 'bg-cyan-500/10',   border: 'border-cyan-500/20',   dotColor: 'bg-cyan-400',   accentHex: '#22d3ee' },
+  scheduled: { label: 'Programación',       subtitle: 'Automático via PostiZ',      color: 'text-amber-400',  bg: 'bg-amber-500/10',  border: 'border-amber-500/20',  dotColor: 'bg-amber-400',  accentHex: '#fbbf24', automatic: true },
+  analyzed:  { label: 'Análisis IA',        subtitle: 'Rendimiento a 7 días',       color: 'text-rose-400',   bg: 'bg-rose-500/10',   border: 'border-rose-500/20',   dotColor: 'bg-rose-400',   accentHex: '#fb7185' },
 }
 
 export const CHANNEL_CONFIG: Record<Channel, { label: string; color: string; icon: string }> = {
@@ -41,4 +43,4 @@ export const MARKET_CONFIG: Record<Market, { label: string; flag: string }> = {
   brasil:   { label: 'Brasil',   flag: '🇧🇷' },
 }
 
-export const STAGES: Stage[] = ['ideas', 'copy', 'design', 'scheduled', 'published', 'analyzed']
+export const STAGES: Stage[] = ['ideas', 'copy', 'design', 'scheduled', 'analyzed']

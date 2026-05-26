@@ -6,37 +6,34 @@ import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutGrid, Calendar, Lightbulb, Image,
-  Settings, BarChart3, LogOut,
+  Settings, BarChart3, LogOut, BookOpen, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { IgeoMark } from '@/components/ui/Logo'
 
-/* ─── Config ─── */
-const nav = [
+/* ─── Nav config ─── */
+const NAV_TOP = [
   { href: '/pipeline',  icon: LayoutGrid, label: 'Pipeline',   badge: null },
   { href: '/calendar',  icon: Calendar,   label: 'Calendario', badge: null },
   { href: '/ideas',     icon: Lightbulb,  label: 'Ideas',      badge: '3'  },
   { href: '/images',    icon: Image,      label: 'Imágenes',   badge: null },
   { href: '/analytics', icon: BarChart3,  label: 'Análisis',   badge: null },
-  { href: '/settings',  icon: Settings,   label: 'Ajustes',    badge: null },
+]
+const NAV_BOTTOM = [
+  { href: '/admin',    icon: BookOpen, label: 'Admin',   badge: null },
+  { href: '/settings', icon: Settings, label: 'Ajustes', badge: null },
 ]
 
-/* ─── Label animado ─── */
-function FadeLabel({ show, children, className }: {
-  show: boolean
-  children: React.ReactNode
-  className?: string
-}) {
+/* ─── Animated label ─── */
+function Label({ show, children }: { show: boolean; children: React.ReactNode }) {
   return (
     <AnimatePresence initial={false}>
       {show && (
         <motion.span
-          key="label"
-          initial={{ opacity: 0, x: -6 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -6 }}
-          transition={{ duration: 0.14 }}
-          className={cn('whitespace-nowrap overflow-hidden', className)}
+          initial={{ opacity: 0, x: -4, width: 0 }}
+          animate={{ opacity: 1, x: 0, width: 'auto' }}
+          exit={{ opacity: 0, x: -4, width: 0 }}
+          transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+          className="overflow-hidden whitespace-nowrap flex-1 min-w-0"
         >
           {children}
         </motion.span>
@@ -45,121 +42,220 @@ function FadeLabel({ show, children, className }: {
   )
 }
 
+/* ─── Nav item ─── */
+function NavItem({
+  href, icon: Icon, label, badge, active, open,
+}: {
+  href: string; icon: React.ElementType; label: string
+  badge: string | null; active: boolean; open: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className="relative flex items-center h-9 rounded-xl overflow-hidden transition-all duration-150 group"
+      style={{
+        paddingLeft: 10,
+        paddingRight: open ? 10 : 10,
+        background: active ? 'rgba(234,88,12,0.10)' : 'transparent',
+      }}
+      onMouseEnter={e => {
+        if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+      }}
+      onMouseLeave={e => {
+        if (!active) e.currentTarget.style.background = 'transparent'
+      }}
+    >
+      {/* Orange left bar for active */}
+      {active && (
+        <motion.span
+          layoutId="nav-active-bar"
+          className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
+          style={{ background: 'linear-gradient(180deg, #f97316, #ea580c)' }}
+          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+        />
+      )}
+
+      {/* Icon */}
+      <Icon
+        size={16}
+        strokeWidth={active ? 2.5 : 1.8}
+        className="shrink-0 transition-colors duration-150"
+        style={{ color: active ? '#f97316' : 'var(--muted)' }}
+      />
+
+      {/* Label */}
+      <Label show={open}>
+        <span
+          className="ml-2.5 text-[13px] font-medium tracking-[-0.01em] transition-colors"
+          style={{
+            color: active ? 'var(--text)' : 'var(--text2)',
+          }}
+        >
+          {label}
+        </span>
+      </Label>
+
+      {/* Badge */}
+      {badge && open && (
+        <motion.span
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.8 }}
+          className="ml-auto shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+          style={{
+            background: active ? 'rgba(234,88,12,0.25)' : 'rgba(255,255,255,0.08)',
+            color: active ? '#fb923c' : 'var(--text2)',
+          }}
+        >
+          {badge}
+        </motion.span>
+      )}
+    </Link>
+  )
+}
+
 /* ─── Sidebar ─── */
 export function Sidebar() {
-  const pathname     = usePathname()
+  const pathname = usePathname()
   const [open, setOpen] = useState(false)
 
   return (
     <aside
-      className="fixed left-0 top-0 z-40 h-full flex flex-col border-r border-[var(--border)] overflow-hidden"
-      style={{
-        background:  'var(--surface)',
-        width:       open ? '220px' : '52px',
-        transition:  'width 0.18s cubic-bezier(0.4,0,0.2,1)',
-      }}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
+      className="fixed left-0 top-0 z-40 h-full flex flex-col"
+      style={{
+        width: open ? 'var(--sidebar-expanded)' : 'var(--sidebar-collapsed)',
+        transition: 'width 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        background: 'var(--surface)',
+        borderRight: '1px solid var(--border)',
+      }}
     >
-      {/* Gradient top glow */}
+      {/* ── Top glow ── */}
       <div
-        className="absolute top-0 left-0 right-0 h-28 pointer-events-none"
-        style={{ background: 'linear-gradient(to bottom, var(--glow-blue), transparent)' }}
+        className="absolute top-0 left-0 right-0 h-32 pointer-events-none"
+        style={{ background: 'linear-gradient(180deg, rgba(234,88,12,0.06) 0%, transparent 100%)' }}
       />
 
-      {/* ── Logo ── */}
-      <div className="relative flex items-center h-[62px] px-3.5 shrink-0 border-b border-[var(--border)]">
-        <div className="shrink-0">
-          <IgeoMark size={26} />
+      {/* ── Brand ── */}
+      <div
+        className="relative flex items-center shrink-0 overflow-hidden"
+        style={{ height: 62, paddingLeft: 14, borderBottom: '1px solid var(--border)' }}
+      >
+        {/* iGEO monogram */}
+        <div
+          className="shrink-0 flex items-center justify-center rounded-xl font-bold text-[14px] relative overflow-hidden"
+          style={{
+            width: 32, height: 32,
+            background: 'linear-gradient(135deg, #1a0a04 0%, #2d1106 100%)',
+            border: '1px solid rgba(234,88,12,0.25)',
+            boxShadow: '0 0 16px rgba(234,88,12,0.18)',
+          }}
+        >
+          <span style={{ color: '#ea580c' }}>i</span>
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(234,88,12,0.15) 0%, transparent 60%)',
+              pointerEvents: 'none',
+            }}
+          />
         </div>
-        <FadeLabel show={open} className="flex flex-col leading-none ml-2.5">
-          <div className="flex items-baseline gap-px">
-            <span className="font-bold text-[13.5px]" style={{ color: '#EA580C' }}>i</span>
-            <span className="font-bold text-[13.5px] text-white">GEO</span>
-            <span className="font-semibold text-[11px] text-[var(--muted)] ml-1">ERP</span>
+
+        {/* Wordmark */}
+        <Label show={open}>
+          <div className="ml-3 flex flex-col leading-none">
+            <div
+              className="flex items-baseline gap-0.5 font-display"
+            >
+              <span className="text-[14px] font-800 tracking-tight" style={{ color: '#ea580c' }}>i</span>
+              <span className="text-[14px] font-700 text-white tracking-tight">GEO</span>
+              <span className="text-[11px] font-500 ml-1" style={{ color: 'var(--muted)' }}>ERP</span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <Zap size={8} style={{ color: '#f97316' }} />
+              <span
+                className="text-[9px] font-bold tracking-[0.12em] uppercase"
+                style={{ color: '#f97316' }}
+              >
+                Marketing AI
+              </span>
+            </div>
           </div>
-          <span
-            className="text-[9.5px] font-semibold tracking-[0.1em] uppercase"
-            style={{ color: 'var(--accent2)' }}
-          >
-            Marketing AI
-          </span>
-        </FadeLabel>
+        </Label>
       </div>
 
-      {/* ── Nav ── */}
-      <nav className="relative flex-1 py-3 px-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
-        {nav.map(({ href, icon: Icon, label, badge }) => {
-          const active = pathname === href || pathname.startsWith(href + '/')
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                'relative group flex items-center h-[34px] px-2.5 rounded-lg text-[13px] font-medium transition-colors duration-150 overflow-hidden',
-                active
-                  ? 'bg-[var(--surface3)] text-white'
-                  : 'text-[var(--muted)] hover:text-white hover:bg-[var(--surface2)]',
-              )}
-            >
-              {/* Left active indicator */}
-              {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] rounded-r-full bg-[var(--accent)]" />
-              )}
+      {/* ── Main nav ── */}
+      <nav className="relative flex-1 flex flex-col px-2 pt-3 gap-0.5 overflow-hidden">
+        {NAV_TOP.map(item => (
+          <NavItem
+            key={item.href}
+            {...item}
+            active={pathname === item.href || pathname.startsWith(item.href + '/')}
+            open={open}
+          />
+        ))}
 
-              <Icon
-                size={16}
-                className={cn(
-                  'shrink-0 transition-colors',
-                  active ? 'text-[var(--accent)]' : 'text-[var(--muted)] group-hover:text-white',
-                )}
-                strokeWidth={active ? 2.5 : 2}
-              />
+        {/* Divider */}
+        <div className="mx-2 my-2" style={{ height: 1, background: 'var(--border)' }} />
 
-              <FadeLabel show={open} className="ml-2.5 flex-1 truncate">
-                {label}
-              </FadeLabel>
-
-              {badge && open && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className={cn(
-                    'ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full',
-                    active
-                      ? 'bg-[var(--accent)]/20 text-[var(--accent2)]'
-                      : 'bg-[var(--surface3)] text-[var(--muted)]',
-                  )}
-                >
-                  {badge}
-                </motion.span>
-              )}
-            </Link>
-          )
-        })}
+        {NAV_BOTTOM.map(item => (
+          <NavItem
+            key={item.href}
+            {...item}
+            active={pathname === item.href || pathname.startsWith(item.href + '/')}
+            open={open}
+          />
+        ))}
       </nav>
 
-      {/* ── Usuario ── */}
-      <div className="relative px-2 py-3 shrink-0 border-t border-[var(--border)]">
-        <div className="flex items-center h-[34px] px-2.5 rounded-lg hover:bg-[var(--surface2)] cursor-pointer transition-colors overflow-hidden">
+      {/* ── User section ── */}
+      <div
+        className="relative shrink-0 px-2 py-3"
+        style={{ borderTop: '1px solid var(--border)' }}
+      >
+        <div
+          className="flex items-center rounded-xl px-2 py-2 gap-2.5 cursor-pointer transition-colors overflow-hidden"
+          style={{ background: 'transparent' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+        >
+          {/* Avatar */}
           <div
-            className="w-[22px] h-[22px] shrink-0 rounded-md flex items-center justify-center text-[11px] font-bold text-white"
-            style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent2))' }}
+            className="shrink-0 flex items-center justify-center rounded-lg text-[11px] font-bold text-white"
+            style={{
+              width: 28, height: 28,
+              background: 'linear-gradient(135deg, var(--orange) 0%, #9a3412 100%)',
+              boxShadow: '0 2px 8px rgba(234,88,12,0.35)',
+            }}
           >
             R
           </div>
-          <FadeLabel show={open} className="ml-2.5 flex flex-col flex-1 min-w-0">
-            <span className="text-[12px] font-semibold text-[var(--text)] leading-none">Ramón</span>
-            <span className="text-[10px] text-[var(--muted)] mt-0.5">Editor</span>
-          </FadeLabel>
+
+          <Label show={open}>
+            <div className="flex flex-col min-w-0 flex-1">
+              <span
+                className="text-[12px] font-semibold leading-none truncate"
+                style={{ color: 'var(--text)' }}
+              >
+                Ramón
+              </span>
+              <span
+                className="text-[10px] mt-0.5 truncate"
+                style={{ color: 'var(--muted)' }}
+              >
+                Editor
+              </span>
+            </div>
+          </Label>
+
           {open && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="ml-auto shrink-0"
+              className="shrink-0 ml-auto"
             >
-              <LogOut size={12} className="text-[var(--muted)]" />
+              <LogOut size={12} style={{ color: 'var(--muted)' }} />
             </motion.div>
           )}
         </div>
