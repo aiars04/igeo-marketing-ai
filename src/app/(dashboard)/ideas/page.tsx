@@ -139,14 +139,30 @@ export default function IdeasPage() {
   return (
     <div className="flex flex-col h-screen">
       {/* Topbar */}
-      <div className="flex items-center justify-between px-6 h-[62px] border-b border-[var(--border)] shrink-0">
-        <div>
-          <h1 className="text-[15px] font-bold text-white leading-none">Ideas</h1>
-          <p className="text-[11px] text-[var(--muted)] mt-0.5">
-            {visibleIdeas.length} idea{visibleIdeas.length !== 1 ? 's' : ''} en revisión
-          </p>
+      <div className="topbar shrink-0 gap-4 justify-between">
+        <div className="flex items-center gap-5 min-w-0">
+          <div className="shrink-0">
+            <div className="text-eyebrow mb-1" style={{ color: 'var(--orange3)' }}>
+              <span className="inline-block w-3 h-px mr-1.5 align-middle" style={{ background: 'var(--orange)' }} />
+              Backlog creativo
+            </div>
+            <h1 className="font-display text-[22px] font-bold leading-none tracking-[-0.025em]" style={{ color: 'var(--text)' }}>
+              Ideas
+            </h1>
+          </div>
+          <div
+            className="hidden md:flex items-baseline gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tabular-nums backdrop-blur-sm"
+            style={{ background: 'rgba(255,246,235,0.025)', border: '1px solid var(--border2)' }}
+          >
+            <span className="font-display font-bold text-[14px] tracking-[-0.02em]" style={{ color: 'var(--text)' }}>
+              {visibleIdeas.length}
+            </span>
+            <span style={{ color: 'var(--text2)', opacity: 0.8 }}>
+              {visibleIdeas.length === 1 ? 'idea en revisión' : 'ideas en revisión'}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 shrink-0">
           <button
             onClick={handleSuggestAI}
             disabled={loadingAI}
@@ -166,7 +182,7 @@ export default function IdeasPage() {
           </button>
           <button
             onClick={() => setAddModalOpen(true)}
-            className="btn-primary flex items-center gap-1.5"
+            className="btn-primary flex items-center gap-2"
           >
             <Plus size={13} />
             Nueva idea
@@ -175,13 +191,24 @@ export default function IdeasPage() {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-3xl mx-auto space-y-2">
+      <div className="flex-1 overflow-auto p-7">
+        <div className="max-w-3xl mx-auto space-y-2.5 stagger">
           {visibleIdeas.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-3 text-[var(--muted)]">
-              <Sparkles size={32} style={{ opacity: 0.3 }} />
-              <p className="text-[14px]">No hay ideas pendientes</p>
-              <p className="text-[12px]">Genera nuevas ideas con IA o añade una manualmente</p>
+            <div className="flex flex-col items-center justify-center py-24 gap-4 text-center animate-fade-up">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                style={{ background: 'rgba(234,88,12,0.08)', border: '1px solid var(--border-warm)' }}
+              >
+                <Sparkles size={26} style={{ color: 'var(--orange3)', opacity: 0.6 }} />
+              </div>
+              <div>
+                <p className="font-display text-[15px] font-bold tracking-[-0.02em]" style={{ color: 'var(--text)' }}>
+                  No hay ideas pendientes
+                </p>
+                <p className="text-[12px] mt-1" style={{ color: 'var(--muted)' }}>
+                  Genera nuevas ideas con IA o añade una manualmente
+                </p>
+              </div>
             </div>
           ) : (
             visibleIdeas.map(idea => (
@@ -302,32 +329,36 @@ function IdeaCard({
 }) {
   return (
     <div
-      className="flex items-center gap-4 p-4 rounded-xl border border-[var(--border)] group animate-fade-in transition-all duration-200 hover:border-[var(--border2)] hover:bg-[var(--surface2)]"
-      style={{ background: 'var(--surface)' }}
+      className="flex items-center gap-4 p-4 group animate-fade-up transition-all duration-200 hover-lift"
+      style={{
+        background: 'linear-gradient(180deg, rgba(255,246,235,0.025), transparent 50%), var(--surface2)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-lg)',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-warm)' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
     >
       <div className="shrink-0">
         <ChannelBadge channel={idea.channel} />
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-[13.5px] font-medium leading-snug" style={{ color: 'var(--text)' }}>
+        <p className="font-display text-[13.5px] font-semibold leading-snug tracking-[-0.015em]" style={{ color: 'var(--text)' }}>
           {idea.title}
         </p>
-        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-          <span className="text-[11px] text-[var(--muted)]">{FLAGS[idea.market] ?? '🌐'} {idea.market}</span>
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <span className="text-[11px] tabular-nums" style={{ color: 'var(--muted)' }}>{FLAGS[idea.market] ?? '🌐'} {idea.market}</span>
           {idea.source === 'ai' && (
-            <span
-              className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-              style={{ color: 'var(--accent2)', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.18)' }}
-            >
-              <Sparkles size={8} /> Sugerido por IA
+            <span className="badge badge-blue">
+              <Sparkles size={9} /> Sugerido por IA
             </span>
           )}
           {idea.status === 'accepted' && (
-            <span
-              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md text-emerald-400"
-              style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)' }}
-            >
+            <span className="badge badge-green">
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }}
+              />
               Aceptada
             </span>
           )}
@@ -339,7 +370,7 @@ function IdeaCard({
           <button
             onClick={() => onAccept(idea.id)}
             title="Aceptar"
-            className="p-2 rounded-lg transition-colors hover:bg-emerald-500/10 text-[var(--muted)] hover:text-emerald-400"
+            className="p-2 rounded-full transition-colors hover:bg-emerald-500/10 text-[var(--muted)] hover:text-emerald-400"
           >
             <ThumbsUp size={14} />
           </button>
@@ -347,14 +378,16 @@ function IdeaCard({
         <button
           onClick={() => onDiscard(idea.id)}
           title="Descartar"
-          className="p-2 rounded-lg transition-colors hover:bg-rose-500/10 text-[var(--muted)] hover:text-rose-400"
+          className="p-2 rounded-full transition-colors hover:bg-rose-500/10 text-[var(--muted)] hover:text-rose-400"
         >
           <ThumbsDown size={14} />
         </button>
         <button
           onClick={() => onConvert(idea.id)}
           title="Añadir al pipeline"
-          className="p-2 rounded-lg transition-colors hover:bg-[var(--surface3)] text-[var(--muted)] hover:text-white"
+          className="p-2 rounded-full transition-colors text-[var(--muted)]"
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(234,88,12,0.10)'; e.currentTarget.style.color = 'var(--orange3)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--muted)' }}
         >
           <ArrowRight size={14} />
         </button>

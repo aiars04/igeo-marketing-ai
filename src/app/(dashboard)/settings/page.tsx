@@ -1,96 +1,191 @@
 'use client'
 
-import { Settings, Globe, Users, Key, Zap } from 'lucide-react'
+import { Globe, Users, Key } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MARKET_CONFIG } from '@/lib/utils'
 
-const sections = [
-  { id: 'brand',    icon: Zap,     label: 'Marca y contexto' },
-  { id: 'markets',  icon: Globe,   label: 'Mercados' },
-  { id: 'users',    icon: Users,   label: 'Usuarios' },
-  { id: 'api',      icon: Key,     label: 'Integraciones' },
-]
-
 export default function SettingsPage() {
+  const cardStyle = {
+    background: 'linear-gradient(180deg, rgba(255,246,235,0.025), transparent 50%), var(--surface2)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-xl)',
+  }
+
   return (
     <div className="flex flex-col h-screen">
-      <div className="flex items-center px-6 h-[60px] border-b border-[var(--border)] shrink-0">
-        <div>
-          <h1 className="text-[15px] font-semibold text-white">Configuración</h1>
-          <p className="text-[12px] text-[var(--muted)]">Ajustes del sistema</p>
+      {/* Topbar */}
+      <div className="topbar shrink-0 gap-4 justify-between">
+        <div className="flex items-center gap-5 min-w-0">
+          <div className="shrink-0">
+            <div className="text-eyebrow mb-1" style={{ color: 'var(--orange3)' }}>
+              <span className="inline-block w-3 h-px mr-1.5 align-middle" style={{ background: 'var(--orange)' }} />
+              Preferencias
+            </div>
+            <h1 className="font-display text-[22px] font-bold leading-none tracking-[-0.025em]" style={{ color: 'var(--text)' }}>
+              Ajustes
+            </h1>
+          </div>
+          <div
+            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium backdrop-blur-sm"
+            style={{ background: 'rgba(255,246,235,0.025)', border: '1px solid var(--border2)', color: 'var(--text2)' }}
+          >
+            Integraciones · mercados · usuarios
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-2xl mx-auto space-y-4">
+      <div className="flex-1 overflow-auto p-7">
+        <div className="max-w-3xl mx-auto space-y-5 stagger">
 
           {/* API Keys */}
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
-            <div className="flex items-center gap-2.5 mb-4">
-              <Key size={15} className="text-[var(--accent)]" />
-              <h2 className="text-[14px] font-semibold text-white">Integraciones</h2>
+          <div className="p-6 animate-fade-up" style={cardStyle}>
+            <div className="flex items-center gap-3 mb-5">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(234,88,12,0.10)', border: '1px solid var(--border-warm)' }}
+              >
+                <Key size={15} style={{ color: 'var(--orange3)' }} />
+              </div>
+              <div>
+                <div className="text-eyebrow mb-0.5">Conexiones</div>
+                <h2 className="font-display text-[16px] font-bold tracking-[-0.02em]" style={{ color: 'var(--text)' }}>
+                  Integraciones
+                </h2>
+              </div>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {[
                 { label: 'Gemini API Key', key: 'GEMINI_API_KEY', status: 'configured', desc: 'Generación de contenido e imágenes' },
                 { label: 'Nano Banana Pro', key: 'INFSH_TOKEN', status: 'configured', desc: 'Generación avanzada de imágenes' },
                 { label: 'Postiz API', key: 'POSTIZ_API_KEY', status: 'pending', desc: 'Publicación automática multi-red social' },
-              ].map(item => (
-                <div key={item.key} className="flex items-center justify-between p-3 bg-[var(--surface2)] rounded-lg">
-                  <div>
-                    <div className="text-[13px] font-medium text-[var(--text)]">{item.label}</div>
-                    <div className="text-[11px] text-[var(--muted)]">{item.desc}</div>
+              ].map(item => {
+                const configured = item.status === 'configured'
+                return (
+                  <div
+                    key={item.key}
+                    className="flex items-center justify-between p-3.5 transition-colors"
+                    style={{
+                      background: 'rgba(7,7,13,0.4)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius)',
+                    }}
+                  >
+                    <div className="min-w-0">
+                      <div className="font-display text-[13px] font-semibold tracking-[-0.015em]" style={{ color: 'var(--text)' }}>
+                        {item.label}
+                      </div>
+                      <div className="text-[11px] mt-0.5" style={{ color: 'var(--muted)' }}>{item.desc}</div>
+                    </div>
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] px-2.5 py-1 rounded-full shrink-0 ml-3',
+                      )}
+                      style={configured
+                        ? { background: 'rgba(52,211,153,0.12)', color: 'var(--success)', border: '1px solid rgba(52,211,153,0.30)' }
+                        : { background: 'rgba(251,191,36,0.12)', color: 'var(--warning)', border: '1px solid rgba(251,191,36,0.28)' }
+                      }
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{
+                          background: configured ? 'var(--success)' : 'var(--warning)',
+                          boxShadow: `0 0 8px ${configured ? 'var(--success)' : 'var(--warning)'}`,
+                        }}
+                      />
+                      {configured ? 'Configurado' : 'Pendiente'}
+                    </span>
                   </div>
-                  <span className={cn(
-                    'text-[10px] font-semibold px-2 py-1 rounded-full',
-                    item.status === 'configured'
-                      ? 'bg-emerald-500/10 text-emerald-400'
-                      : 'bg-amber-500/10 text-amber-400'
-                  )}>
-                    {item.status === 'configured' ? 'Configurado' : 'Pendiente'}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
           {/* Markets */}
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
-            <div className="flex items-center gap-2.5 mb-4">
-              <Globe size={15} className="text-[var(--accent)]" />
-              <h2 className="text-[14px] font-semibold text-white">Mercados activos</h2>
+          <div className="p-6 animate-fade-up" style={cardStyle}>
+            <div className="flex items-center gap-3 mb-5">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(234,88,12,0.10)', border: '1px solid var(--border-warm)' }}
+              >
+                <Globe size={15} style={{ color: 'var(--orange3)' }} />
+              </div>
+              <div>
+                <div className="text-eyebrow mb-0.5">Cobertura</div>
+                <h2 className="font-display text-[16px] font-bold tracking-[-0.02em]" style={{ color: 'var(--text)' }}>
+                  Mercados activos
+                </h2>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               {Object.entries(MARKET_CONFIG).map(([key, mk]) => (
-                <div key={key} className="flex items-center gap-2 p-2.5 bg-[var(--surface2)] rounded-lg">
+                <div
+                  key={key}
+                  className="flex items-center gap-3 px-3.5 py-2.5"
+                  style={{
+                    background: 'rgba(7,7,13,0.4)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                  }}
+                >
                   <span className="text-base">{mk.flag}</span>
-                  <span className="text-[13px] text-[var(--text)]">{mk.label}</span>
-                  <span className="ml-auto w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="text-[13px] font-medium" style={{ color: 'var(--text)' }}>{mk.label}</span>
+                  <span
+                    className="ml-auto w-1.5 h-1.5 rounded-full"
+                    style={{ background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }}
+                  />
                 </div>
               ))}
             </div>
           </div>
 
           {/* Users */}
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
-            <div className="flex items-center gap-2.5 mb-4">
-              <Users size={15} className="text-[var(--accent)]" />
-              <h2 className="text-[14px] font-semibold text-white">Usuarios</h2>
+          <div className="p-6 animate-fade-up" style={cardStyle}>
+            <div className="flex items-center gap-3 mb-5">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(234,88,12,0.10)', border: '1px solid var(--border-warm)' }}
+              >
+                <Users size={15} style={{ color: 'var(--orange3)' }} />
+              </div>
+              <div>
+                <div className="text-eyebrow mb-0.5">Equipo</div>
+                <h2 className="font-display text-[16px] font-bold tracking-[-0.02em]" style={{ color: 'var(--text)' }}>
+                  Usuarios
+                </h2>
+              </div>
             </div>
             <div className="space-y-2">
               {[
-                { name: 'Adrián Ruiz',   role: 'Superadmin', color: 'from-[var(--accent)] to-[var(--accent2)]' },
+                { name: 'Adrián Ruiz',   role: 'Superadmin', color: 'from-[var(--orange2)] to-[var(--orange)]' },
                 { name: 'Silvia',        role: 'Aprobador',  color: 'from-violet-500 to-pink-500' },
                 { name: 'Ramón',         role: 'Editor',     color: 'from-amber-500 to-red-500' },
               ].map(u => (
-                <div key={u.name} className="flex items-center gap-3 p-2.5 bg-[var(--surface2)] rounded-lg">
-                  <div className={cn('w-7 h-7 rounded-full bg-gradient-to-br flex items-center justify-center text-[11px] font-bold text-white', u.color)}>
+                <div
+                  key={u.name}
+                  className="flex items-center gap-3 p-2.5"
+                  style={{
+                    background: 'rgba(7,7,13,0.4)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                  }}
+                >
+                  <div
+                    className={cn('w-8 h-8 rounded-full bg-gradient-to-br flex items-center justify-center font-display text-[12px] font-bold text-white', u.color)}
+                    style={{ boxShadow: '0 0 12px rgba(234,88,12,0.20)' }}
+                  >
                     {u.name[0]}
                   </div>
-                  <div className="flex-1">
-                    <div className="text-[13px] font-medium text-[var(--text)]">{u.name}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-display text-[13px] font-semibold tracking-[-0.015em]" style={{ color: 'var(--text)' }}>
+                      {u.name}
+                    </div>
                   </div>
-                  <span className="text-[11px] text-[var(--muted)]">{u.role}</span>
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(255,246,235,0.04)', color: 'var(--text2)', border: '1px solid var(--border2)' }}
+                  >
+                    {u.role}
+                  </span>
                 </div>
               ))}
             </div>

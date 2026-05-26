@@ -16,13 +16,25 @@ const MOCK_POSTS = [
 ]
 
 function ScoreBar({ score }: { score: number }) {
-  const color = score >= 85 ? '#34d399' : score >= 70 ? '#fbbf24' : '#f87171'
+  const color = score >= 85 ? 'var(--success)' : score >= 70 ? 'var(--warning)' : 'var(--danger)'
+  const glow  = score >= 85 ? 'rgba(52,211,153,0.55)' : score >= 70 ? 'rgba(251,191,36,0.55)' : 'rgba(248,113,113,0.55)'
   return (
-    <div className="flex items-center gap-2 shrink-0">
-      <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface3)' }}>
-        <div className="h-full rounded-full" style={{ width: `${score}%`, background: color }} />
+    <div className="flex items-center gap-2.5 shrink-0">
+      <div
+        className="w-20 h-1.5 rounded-full overflow-hidden"
+        style={{ background: 'rgba(255,246,235,0.04)', border: '1px solid var(--border)' }}
+      >
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${score}%`, background: color, boxShadow: `0 0 8px ${glow}` }}
+        />
       </div>
-      <span className="text-[13px] font-bold" style={{ color }}>{score}</span>
+      <span
+        className="font-display text-[14px] font-bold tracking-[-0.02em] tabular-nums w-7 text-right"
+        style={{ color }}
+      >
+        {score}
+      </span>
     </div>
   )
 }
@@ -32,37 +44,78 @@ export default function AnalyticsPage() {
     <div className="flex flex-col h-screen">
 
       {/* Topbar */}
-      <div className="flex items-center justify-between px-6 h-[62px] border-b border-[var(--border)] shrink-0">
-        <div>
-          <h1 className="text-[15px] font-bold text-white leading-none">Análisis de rendimiento</h1>
-          <p className="text-[11px] text-[var(--muted)] mt-0.5">Evaluación IA a los 7 días de publicar</p>
+      <div className="topbar shrink-0 gap-4 justify-between">
+        <div className="flex items-center gap-5 min-w-0">
+          <div className="shrink-0">
+            <div className="text-eyebrow mb-1" style={{ color: 'var(--orange3)' }}>
+              <span className="inline-block w-3 h-px mr-1.5 align-middle" style={{ background: 'var(--orange)' }} />
+              Performance
+            </div>
+            <h1 className="font-display text-[22px] font-bold leading-none tracking-[-0.025em]" style={{ color: 'var(--text)' }}>
+              Análisis
+            </h1>
+          </div>
+          <div
+            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium backdrop-blur-sm"
+            style={{ background: 'rgba(255,246,235,0.025)', border: '1px solid var(--border2)', color: 'var(--text2)' }}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }}
+            />
+            Evaluación IA · 7 días post-publicación
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--muted)]">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-dot inline-block" />
-          Datos actualizados
+        <div className="flex items-center gap-2 shrink-0">
+          <div
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-semibold backdrop-blur-sm"
+            style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.30)', color: 'var(--success)' }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot inline-block" style={{ background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }} />
+            Datos actualizados
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-4xl mx-auto space-y-5">
+      <div className="flex-1 overflow-auto p-7">
+        <div className="max-w-5xl mx-auto space-y-6 stagger">
+
+          {/* Section eyebrow */}
+          <div>
+            <div className="text-eyebrow mb-1.5">
+              <span className="inline-block w-3 h-px mr-1.5 align-middle" style={{ background: 'var(--orange)' }} />
+              Métricas globales
+            </div>
+            <h2 className="font-display text-[18px] font-bold tracking-[-0.02em]" style={{ color: 'var(--text)' }}>
+              Rendimiento del último periodo
+            </h2>
+          </div>
 
           {/* KPI cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-up">
             {MOCK_STATS.map(s => (
               <div
                 key={s.label}
-                className="rounded-xl p-4"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                className="card card-glow p-5"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(255,246,235,0.025), transparent 50%), var(--surface2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-lg)',
+                }}
               >
                 <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
                   style={{ background: s.bg, border: `1px solid ${s.border}` }}
                 >
-                  <s.icon size={15} className={s.color} />
+                  <s.icon size={16} className={s.color} />
                 </div>
-                <div className="text-[24px] font-bold text-white leading-none">{s.value}</div>
-                <div className="text-[11px] text-[var(--muted)] mt-1">{s.label}</div>
-                <div className="flex items-center gap-1 mt-1.5 text-[11px] font-semibold text-emerald-400">
+                <div className="font-display text-[28px] font-bold tracking-[-0.035em] leading-none" style={{ color: 'var(--text)' }}>
+                  {s.value}
+                </div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] mt-1.5" style={{ color: 'var(--muted)' }}>
+                  {s.label}
+                </div>
+                <div className="flex items-center gap-1 mt-2 text-[11px] font-semibold tabular-nums" style={{ color: 'var(--success)' }}>
                   <ArrowUpRight size={11} />
                   {s.delta} vs mes anterior
                 </div>
@@ -72,30 +125,60 @@ export default function AnalyticsPage() {
 
           {/* Top posts */}
           <div
-            className="rounded-xl p-5"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+            className="p-6 animate-fade-up"
+            style={{
+              background: 'linear-gradient(180deg, rgba(255,246,235,0.025), transparent 50%), var(--surface2)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-xl)',
+            }}
           >
-            <h2 className="text-[13px] font-bold text-white mb-4 flex items-center gap-2">
-              <TrendingUp size={14} className="text-[var(--accent2)]" />
-              Top contenido publicado
-            </h2>
-            <div className="space-y-2">
+            <div className="flex items-center gap-3 mb-5">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(234,88,12,0.10)', border: '1px solid var(--border-warm)' }}
+              >
+                <TrendingUp size={15} style={{ color: 'var(--orange3)' }} />
+              </div>
+              <div>
+                <div className="text-eyebrow mb-0.5">Ranking</div>
+                <h2 className="font-display text-[16px] font-bold tracking-[-0.02em]" style={{ color: 'var(--text)' }}>
+                  Top contenido publicado
+                </h2>
+              </div>
+            </div>
+            <div className="space-y-2.5">
               {MOCK_POSTS.map((p, i) => (
                 <div
                   key={p.title}
-                  className="flex items-center gap-4 p-3 rounded-lg"
-                  style={{ background: 'var(--surface2)' }}
+                  className="flex items-center gap-4 p-3.5 transition-colors"
+                  style={{
+                    background: 'rgba(7,7,13,0.35)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-warm)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 >
-                  <span className="text-[11px] font-bold text-[var(--muted)] w-4 shrink-0">#{i + 1}</span>
+                  <span
+                    className="font-display text-[14px] font-bold tracking-[-0.02em] w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                    style={{
+                      background: i === 0 ? 'linear-gradient(135deg, var(--orange2), var(--orange))' : 'rgba(255,246,235,0.04)',
+                      color: i === 0 ? 'white' : 'var(--text2)',
+                      border: i === 0 ? '1px solid rgba(253,186,116,0.4)' : '1px solid var(--border2)',
+                      boxShadow: i === 0 ? '0 0 12px rgba(234,88,12,0.35)' : 'none',
+                    }}
+                  >
+                    {i + 1}
+                  </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-[var(--text)] truncate">{p.title}</p>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <p className="font-display text-[13.5px] font-semibold tracking-[-0.015em] truncate" style={{ color: 'var(--text)' }}>{p.title}</p>
+                    <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
                       <ChannelBadge channel={p.channel} />
-                      <span className="text-[11px] text-[var(--muted)]">{p.date}</span>
-                      <span className="flex items-center gap-1 text-[11px] text-[var(--muted)]">
+                      <span className="text-[11px] tabular-nums" style={{ color: 'var(--muted)' }}>{p.date}</span>
+                      <span className="flex items-center gap-1 text-[11px] tabular-nums" style={{ color: 'var(--muted)' }}>
                         <Eye size={11} /> {p.impressions}
                       </span>
-                      <span className="flex items-center gap-1 text-[11px] text-[var(--muted)]">
+                      <span className="flex items-center gap-1 text-[11px] tabular-nums" style={{ color: 'var(--muted)' }}>
                         <Heart size={11} /> {p.interactions}
                       </span>
                     </div>
@@ -108,17 +191,25 @@ export default function AnalyticsPage() {
 
           {/* Coming soon */}
           <div
-            className="rounded-xl p-8 text-center"
-            style={{ background: 'var(--surface)', border: '1px dashed var(--border)' }}
+            className="p-10 text-center animate-fade-up"
+            style={{
+              background: 'rgba(7,7,13,0.4)',
+              border: '1px dashed var(--border3)',
+              borderRadius: 'var(--radius-xl)',
+            }}
           >
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
-              style={{ background: 'var(--surface2)' }}
+              className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ background: 'rgba(234,88,12,0.08)', border: '1px solid var(--border-warm)' }}
             >
-              <BarChart3 size={22} className="text-[var(--muted)]" />
+              <BarChart3 size={24} style={{ color: 'var(--orange3)' }} />
             </div>
-            <p className="text-[13px] font-medium text-[var(--muted)]">Análisis IA automático a los 7 días de publicar</p>
-            <p className="text-[11px] text-[var(--muted)] opacity-60 mt-1">Se activa al conectar Postiz — Fase 2</p>
+            <p className="font-display text-[15px] font-bold tracking-[-0.02em]" style={{ color: 'var(--text)' }}>
+              Análisis IA automático a los 7 días de publicar
+            </p>
+            <p className="text-[12px] mt-1.5" style={{ color: 'var(--muted)' }}>
+              Se activa al conectar Postiz — Fase 2
+            </p>
           </div>
 
         </div>

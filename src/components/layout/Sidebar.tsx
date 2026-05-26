@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutGrid, Calendar, Lightbulb, Image,
-  Settings, BarChart3, LogOut, BookOpen, Zap,
+  Settings, BarChart3, LogOut, BookOpen, Sparkles, ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -29,14 +29,38 @@ function Label({ show, children }: { show: boolean; children: React.ReactNode })
     <AnimatePresence initial={false}>
       {show && (
         <motion.span
-          initial={{ opacity: 0, x: -4, width: 0 }}
+          initial={{ opacity: 0, x: -6, width: 0 }}
           animate={{ opacity: 1, x: 0, width: 'auto' }}
-          exit={{ opacity: 0, x: -4, width: 0 }}
-          transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+          exit={{ opacity: 0, x: -6, width: 0 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="overflow-hidden whitespace-nowrap flex-1 min-w-0"
         >
           {children}
         </motion.span>
+      )}
+    </AnimatePresence>
+  )
+}
+
+/* ─── Section label ─── */
+function SectionLabel({ show, children }: { show: boolean; children: React.ReactNode }) {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.18 }}
+          className="overflow-hidden px-3 pb-1.5 pt-2"
+        >
+          <span
+            className="text-[9px] font-bold uppercase tracking-[0.18em]"
+            style={{ color: 'var(--muted)' }}
+          >
+            {children}
+          </span>
+        </motion.div>
       )}
     </AnimatePresence>
   )
@@ -52,14 +76,16 @@ function NavItem({
   return (
     <Link
       href={href}
-      className="relative flex items-center h-9 rounded-xl overflow-hidden transition-all duration-150 group"
+      className="relative flex items-center h-10 rounded-xl overflow-hidden transition-all duration-150 group mx-2"
       style={{
-        paddingLeft: 10,
-        paddingRight: open ? 10 : 10,
-        background: active ? 'rgba(234,88,12,0.10)' : 'transparent',
+        paddingLeft: 12,
+        paddingRight: open ? 12 : 12,
+        background: active
+          ? 'linear-gradient(90deg, rgba(234,88,12,0.16) 0%, rgba(234,88,12,0.04) 100%)'
+          : 'transparent',
       }}
       onMouseEnter={e => {
-        if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+        if (!active) e.currentTarget.style.background = 'rgba(255, 246, 235, 0.04)'
       }}
       onMouseLeave={e => {
         if (!active) e.currentTarget.style.background = 'transparent'
@@ -69,26 +95,38 @@ function NavItem({
       {active && (
         <motion.span
           layoutId="nav-active-bar"
-          className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
-          style={{ background: 'linear-gradient(180deg, #f97316, #ea580c)' }}
+          className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full"
+          style={{
+            background: 'linear-gradient(180deg, var(--orange3), var(--orange))',
+            boxShadow: '0 0 12px rgba(234,88,12,0.6)',
+          }}
           transition={{ type: 'spring', stiffness: 500, damping: 35 }}
         />
       )}
 
-      {/* Icon */}
-      <Icon
-        size={16}
-        strokeWidth={active ? 2.5 : 1.8}
-        className="shrink-0 transition-colors duration-150"
-        style={{ color: active ? '#f97316' : 'var(--muted)' }}
-      />
+      {/* Icon container */}
+      <span
+        className="shrink-0 flex items-center justify-center rounded-lg transition-all duration-150"
+        style={{
+          width: 26, height: 26,
+          background: active ? 'rgba(234,88,12,0.18)' : 'transparent',
+          border: active ? '1px solid rgba(234,88,12,0.30)' : '1px solid transparent',
+        }}
+      >
+        <Icon
+          size={14}
+          strokeWidth={active ? 2.4 : 1.8}
+          style={{ color: active ? 'var(--orange3)' : 'var(--text2)' }}
+        />
+      </span>
 
       {/* Label */}
       <Label show={open}>
         <span
-          className="ml-2.5 text-[13px] font-medium tracking-[-0.01em] transition-colors"
+          className="ml-3 text-[13px] tracking-[-0.005em] transition-colors"
           style={{
             color: active ? 'var(--text)' : 'var(--text2)',
+            fontWeight: active ? 600 : 500,
           }}
         >
           {label}
@@ -101,10 +139,11 @@ function NavItem({
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.8 }}
-          className="ml-auto shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+          className="ml-auto shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full tabular-nums"
           style={{
-            background: active ? 'rgba(234,88,12,0.25)' : 'rgba(255,255,255,0.08)',
-            color: active ? '#fb923c' : 'var(--text2)',
+            background: active ? 'rgba(234,88,12,0.28)' : 'rgba(255, 246, 235, 0.06)',
+            color: active ? 'var(--orange3)' : 'var(--text2)',
+            border: active ? '1px solid rgba(234,88,12,0.4)' : '1px solid var(--border)',
           }}
         >
           {badge}
@@ -126,37 +165,44 @@ export function Sidebar() {
       className="fixed left-0 top-0 z-40 h-full flex flex-col"
       style={{
         width: open ? 'var(--sidebar-expanded)' : 'var(--sidebar-collapsed)',
-        transition: 'width 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-        background: 'var(--surface)',
+        transition: 'width 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
+        background: 'rgba(10, 10, 22, 0.65)',
+        backdropFilter: 'blur(24px) saturate(150%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(150%)',
         borderRight: '1px solid var(--border)',
       }}
     >
-      {/* ── Top glow ── */}
+      {/* ── Top warm glow ── */}
       <div
-        className="absolute top-0 left-0 right-0 h-32 pointer-events-none"
-        style={{ background: 'linear-gradient(180deg, rgba(234,88,12,0.06) 0%, transparent 100%)' }}
+        className="absolute top-0 left-0 right-0 h-48 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 100% 80% at 50% 0%, rgba(234,88,12,0.10) 0%, transparent 65%)' }}
+      />
+      {/* ── Right edge highlight ── */}
+      <div
+        className="absolute top-0 right-0 bottom-0 w-px pointer-events-none"
+        style={{ background: 'linear-gradient(180deg, transparent, rgba(234,88,12,0.18) 50%, transparent)' }}
       />
 
       {/* ── Brand ── */}
       <div
         className="relative flex items-center shrink-0 overflow-hidden"
-        style={{ height: 62, paddingLeft: 14, borderBottom: '1px solid var(--border)' }}
+        style={{ height: 72, paddingLeft: 16, borderBottom: '1px solid var(--border)' }}
       >
         {/* iGEO monogram */}
         <div
-          className="shrink-0 flex items-center justify-center rounded-xl font-bold text-[14px] relative overflow-hidden"
+          className="shrink-0 flex items-center justify-center rounded-xl font-bold text-[15px] relative overflow-hidden"
           style={{
-            width: 32, height: 32,
-            background: 'linear-gradient(135deg, #1a0a04 0%, #2d1106 100%)',
-            border: '1px solid rgba(234,88,12,0.25)',
-            boxShadow: '0 0 16px rgba(234,88,12,0.18)',
+            width: 34, height: 34,
+            background: 'linear-gradient(135deg, #2d1106 0%, #0a0a14 100%)',
+            border: '1px solid rgba(234,88,12,0.4)',
+            boxShadow: '0 0 24px rgba(234,88,12,0.32), 0 1px 0 rgba(255,255,255,0.08) inset',
           }}
         >
-          <span style={{ color: '#ea580c' }}>i</span>
+          <span className="font-display" style={{ color: 'var(--orange3)' }}>i</span>
           <div
             className="absolute inset-0"
             style={{
-              background: 'linear-gradient(135deg, rgba(234,88,12,0.15) 0%, transparent 60%)',
+              background: 'radial-gradient(circle at 30% 30%, rgba(253,186,116,0.25) 0%, transparent 60%)',
               pointerEvents: 'none',
             }}
           />
@@ -165,18 +211,16 @@ export function Sidebar() {
         {/* Wordmark */}
         <Label show={open}>
           <div className="ml-3 flex flex-col leading-none">
-            <div
-              className="flex items-baseline gap-0.5 font-display"
-            >
-              <span className="text-[14px] font-800 tracking-tight" style={{ color: '#ea580c' }}>i</span>
-              <span className="text-[14px] font-700 text-white tracking-tight">GEO</span>
-              <span className="text-[11px] font-500 ml-1" style={{ color: 'var(--muted)' }}>ERP</span>
+            <div className="flex items-baseline gap-0.5 font-display">
+              <span className="text-[16px] font-extrabold tracking-[-0.04em]" style={{ color: 'var(--orange3)' }}>i</span>
+              <span className="text-[16px] font-bold text-white tracking-[-0.04em]">GEO</span>
+              <span className="text-[10px] font-medium ml-1.5 tracking-wider" style={{ color: 'var(--muted)' }}>ERP</span>
             </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <Zap size={8} style={{ color: '#f97316' }} />
+            <div className="flex items-center gap-1.5 mt-1">
+              <Sparkles size={8} style={{ color: 'var(--orange2)' }} />
               <span
-                className="text-[9px] font-bold tracking-[0.12em] uppercase"
-                style={{ color: '#f97316' }}
+                className="text-[8.5px] font-bold tracking-[0.18em] uppercase"
+                style={{ color: 'var(--orange3)' }}
               >
                 Marketing AI
               </span>
@@ -186,7 +230,8 @@ export function Sidebar() {
       </div>
 
       {/* ── Main nav ── */}
-      <nav className="relative flex-1 flex flex-col px-2 pt-3 gap-0.5 overflow-hidden">
+      <nav className="relative flex-1 flex flex-col pt-2 gap-0.5 overflow-hidden">
+        <SectionLabel show={open}>Workspace</SectionLabel>
         {NAV_TOP.map(item => (
           <NavItem
             key={item.href}
@@ -197,8 +242,9 @@ export function Sidebar() {
         ))}
 
         {/* Divider */}
-        <div className="mx-2 my-2" style={{ height: 1, background: 'var(--border)' }} />
+        <div className="mx-4 my-3 divider-gradient" />
 
+        <SectionLabel show={open}>System</SectionLabel>
         {NAV_BOTTOM.map(item => (
           <NavItem
             key={item.href}
@@ -211,51 +257,64 @@ export function Sidebar() {
 
       {/* ── User section ── */}
       <div
-        className="relative shrink-0 px-2 py-3"
+        className="relative shrink-0 p-2"
         style={{ borderTop: '1px solid var(--border)' }}
       >
         <div
-          className="flex items-center rounded-xl px-2 py-2 gap-2.5 cursor-pointer transition-colors overflow-hidden"
-          style={{ background: 'transparent' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+          className="flex items-center rounded-xl px-2.5 py-2.5 gap-3 cursor-pointer transition-all overflow-hidden group"
+          style={{
+            background: 'rgba(255, 246, 235, 0.02)',
+            border: '1px solid var(--border)',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(234, 88, 12, 0.06)'
+            e.currentTarget.style.borderColor = 'var(--border-warm)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(255, 246, 235, 0.02)'
+            e.currentTarget.style.borderColor = 'var(--border)'
+          }}
         >
           {/* Avatar */}
           <div
-            className="shrink-0 flex items-center justify-center rounded-lg text-[11px] font-bold text-white"
+            className="shrink-0 flex items-center justify-center rounded-lg text-[12px] font-bold text-white relative"
             style={{
-              width: 28, height: 28,
-              background: 'linear-gradient(135deg, var(--orange) 0%, #9a3412 100%)',
-              boxShadow: '0 2px 8px rgba(234,88,12,0.35)',
+              width: 30, height: 30,
+              background: 'linear-gradient(135deg, var(--orange2) 0%, var(--orange-deep) 100%)',
+              boxShadow: '0 4px 12px rgba(234,88,12,0.4), 0 1px 0 rgba(255,255,255,0.15) inset',
             }}
           >
             R
+            <span
+              className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+              style={{ background: 'var(--success)', border: '2px solid var(--surface)' }}
+            />
           </div>
 
           <Label show={open}>
             <div className="flex flex-col min-w-0 flex-1">
               <span
-                className="text-[12px] font-semibold leading-none truncate"
+                className="text-[12.5px] font-semibold leading-none truncate"
                 style={{ color: 'var(--text)' }}
               >
                 Ramón
               </span>
               <span
-                className="text-[10px] mt-0.5 truncate"
+                className="text-[10px] mt-1 truncate tracking-wide"
                 style={{ color: 'var(--muted)' }}
               >
-                Editor
+                Editor · iGEO
               </span>
             </div>
           </Label>
 
           {open && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="shrink-0 ml-auto"
+              initial={{ opacity: 0, x: -4 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="shrink-0 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <LogOut size={12} style={{ color: 'var(--muted)' }} />
+              <LogOut size={13} style={{ color: 'var(--muted)' }} />
             </motion.div>
           )}
         </div>

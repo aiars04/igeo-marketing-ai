@@ -57,18 +57,20 @@ function ImageMenu({
     <div ref={ref} className="relative">
       <button
         onClick={e => { e.stopPropagation(); setOpen(v => !v) }}
-        className="p-1 rounded hover:bg-[var(--surface3)] transition-colors opacity-0 group-hover:opacity-100"
+        className="p-1.5 rounded-full hover:bg-[rgba(234,88,12,0.08)] transition-colors opacity-0 group-hover:opacity-100"
       >
-        <MoreHorizontal size={12} className="text-[var(--muted)]" />
+        <MoreHorizontal size={12} className="text-[var(--muted)] hover:text-[var(--orange3)]" />
       </button>
 
       {open && (
         <div
-          className="absolute right-0 bottom-full mb-1 z-50 rounded-xl shadow-2xl overflow-hidden py-1"
+          className="absolute right-0 bottom-full mb-1 z-50 shadow-2xl overflow-hidden py-1"
           style={{
             background: 'var(--surface3)',
             border: '1px solid var(--border2)',
+            borderRadius: 'var(--radius)',
             minWidth: 160,
+            boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
           }}
         >
           <button
@@ -161,68 +163,94 @@ export default function ImagesPage() {
   return (
     <div className="flex flex-col h-screen">
       {/* Topbar */}
-      <div className="flex items-center justify-between px-6 h-[60px] border-b border-[var(--border)] shrink-0">
-        <div>
-          <h1 className="text-[15px] font-semibold text-white">Banco de imágenes</h1>
-          <p className="text-[12px] text-[var(--muted)]">Activos visuales generados con IA</p>
+      <div className="topbar shrink-0 gap-4 justify-between">
+        <div className="flex items-center gap-5 min-w-0">
+          <div className="shrink-0">
+            <div className="text-eyebrow mb-1" style={{ color: 'var(--orange3)' }}>
+              <span className="inline-block w-3 h-px mr-1.5 align-middle" style={{ background: 'var(--orange)' }} />
+              Banco visual
+            </div>
+            <h1 className="font-display text-[22px] font-bold leading-none tracking-[-0.025em]" style={{ color: 'var(--text)' }}>
+              Imágenes
+            </h1>
+          </div>
+          <div className="hidden md:flex items-center gap-2">
+            <div
+              className="flex items-baseline gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tabular-nums backdrop-blur-sm"
+              style={{ background: 'rgba(255,246,235,0.025)', border: '1px solid var(--border2)' }}
+            >
+              <span className="font-display font-bold text-[14px] tracking-[-0.02em]" style={{ color: 'var(--text)' }}>{totalImages}</span>
+              <span style={{ color: 'var(--text2)', opacity: 0.8 }}>activos</span>
+            </div>
+            <div
+              className="flex items-baseline gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tabular-nums backdrop-blur-sm"
+              style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.30)' }}
+            >
+              <span className="font-display font-bold text-[14px] tracking-[-0.02em]" style={{ color: 'var(--success)' }}>{approvedImages}</span>
+              <span style={{ color: 'var(--success)', opacity: 0.85 }}>aprobadas</span>
+            </div>
+            <div
+              className="flex items-baseline gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tabular-nums backdrop-blur-sm"
+              style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.28)' }}
+            >
+              <span className="font-display font-bold text-[14px] tracking-[-0.02em]" style={{ color: 'var(--warning)' }}>{pendingImages}</span>
+              <span style={{ color: 'var(--warning)', opacity: 0.85 }}>pendientes</span>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 shrink-0">
           <button
             onClick={() => showToast('Próximamente: sube tus propios activos visuales', 'info')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] text-[12px] text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+            className="btn-ghost flex items-center gap-1.5"
           >
             <Plus size={13} /> Subir imagen
           </button>
           <button
             onClick={() => { setGeneratePrompt(''); setGenerateModal({ open: true }) }}
-            className="btn-primary flex items-center gap-1.5 text-[12px] px-3 py-1.5"
+            className="btn-primary flex items-center gap-2"
           >
             <Sparkles size={13} /> Generar imagen
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-6">
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6 max-w-lg">
-          {[
-            { label: 'Total imágenes', value: totalImages },
-            { label: 'Aprobadas',      value: approvedImages },
-            { label: 'Pendientes',     value: pendingImages },
-          ].map(s => (
-            <div key={s.label} className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-3">
-              <div className="text-[20px] font-bold text-white">{s.value}</div>
-              <div className="text-[11px] text-[var(--muted)]">{s.label}</div>
-            </div>
-          ))}
-        </div>
-
+      <div className="flex-1 overflow-auto p-7">
         {/* Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {images.map(img => (
             <div
               key={img.id}
-              className="group relative bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden transition-all duration-200 hover:border-[var(--border2)] hover:shadow-lg hover:-translate-y-0.5"
+              className="group relative overflow-hidden transition-all duration-200 hover-lift"
+              style={{
+                background: 'linear-gradient(180deg, rgba(255,246,235,0.025), transparent 50%), var(--surface2)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-lg)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-warm)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
             >
               {/* Placeholder image */}
               <div className="aspect-square bg-gradient-to-br from-[var(--surface3)] to-[var(--surface2)] flex items-center justify-center">
                 <ImageIcon size={32} className="text-[var(--muted)] opacity-30" />
               </div>
               {/* Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end pointer-events-none">
                 <p className="text-[11px] text-white leading-snug line-clamp-2">{img.prompt}</p>
               </div>
               {/* Badges */}
               <div className="absolute top-2 right-2 flex gap-1">
                 {img.approved && (
-                  <span className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                  <span
+                    className="w-5 h-5 rounded-full flex items-center justify-center"
+                    style={{ background: 'var(--success)', boxShadow: '0 0 12px rgba(52,211,153,0.55)' }}
+                  >
                     <Check size={10} className="text-white" strokeWidth={3} />
                   </span>
                 )}
               </div>
               {/* Footer */}
-              <div className="p-2.5 flex items-center justify-between">
-                <span className="text-[10px] text-[var(--muted)]">{img.date}</span>
+              <div className="p-2.5 flex items-center justify-between" style={{ borderTop: '1px solid var(--border)' }}>
+                <span className="text-[10px] tabular-nums" style={{ color: 'var(--muted)' }}>{img.date}</span>
                 <ImageMenu img={img} onToggleApprove={handleToggleApprove} onDelete={handleDelete} />
               </div>
             </div>
