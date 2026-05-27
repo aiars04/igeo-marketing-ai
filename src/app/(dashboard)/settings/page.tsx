@@ -5,22 +5,16 @@ import { cn } from '@/lib/utils'
 import { MARKET_CONFIG } from '@/lib/utils'
 
 export default function SettingsPage() {
-  const cardStyle = {
-    background: 'var(--surface2)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius-lg)',
-  }
-
   return (
     <div className="flex flex-col h-screen">
       {/* Topbar */}
       <div className="flex items-center justify-between px-6 h-[60px] shrink-0 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-5 min-w-0">
           <div className="shrink-0">
-            <h1 className="text-[16px] font-semibold tracking-tight leading-none" style={{ color: 'var(--text)' }}>
+            <h1 className="page-title">
               Ajustes
             </h1>
-            <p className="text-[11.5px] mt-1 leading-none" style={{ color: 'var(--muted)' }}>
+            <p className="section-label mt-1">
               Integraciones, mercados y usuarios
             </p>
           </div>
@@ -31,10 +25,10 @@ export default function SettingsPage() {
         <div className="max-w-3xl mx-auto space-y-4 stagger">
 
           {/* API Keys */}
-          <div className="p-4 animate-fade-up" style={cardStyle}>
+          <div className="card animate-fade-up">
             <div className="flex items-center gap-2.5 mb-4">
-              <Key size={15} style={{ color: 'var(--text2)' }} />
-              <h2 className="text-[14px] font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+              <Key size={15} style={{ color: 'var(--ink-2)' }} />
+              <h2 className="section-title" style={{ fontSize: 15, fontWeight: 600 }}>
                 Integraciones
               </h2>
             </div>
@@ -48,31 +42,26 @@ export default function SettingsPage() {
                 return (
                   <div
                     key={item.key}
-                    className="flex items-center justify-between p-3 transition-colors rounded-md"
+                    className="flex items-center justify-between p-3 rounded-lg"
                     style={{
-                      background: 'var(--surface)',
+                      background: 'var(--surface-2)',
                       border: '1px solid var(--border)',
+                      transition: 'border-color 0.15s ease',
                     }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                   >
                     <div className="min-w-0">
-                      <div className="text-[13px] font-medium" style={{ color: 'var(--text)' }}>
+                      <div className="text-[14px] font-medium" style={{ color: 'var(--ink)' }}>
                         {item.label}
                       </div>
-                      <div className="text-[11.5px] mt-0.5" style={{ color: 'var(--muted)' }}>{item.desc}</div>
+                      <div className="text-[12px] mt-0.5" style={{ color: 'var(--ink-2)' }}>{item.desc}</div>
                     </div>
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded shrink-0 ml-3',
-                      )}
-                      style={configured
-                        ? { background: 'rgba(52,211,153,0.10)', color: 'var(--success)', border: '1px solid rgba(52,211,153,0.25)' }
-                        : { background: 'rgba(251,191,36,0.10)', color: 'var(--warning)', border: '1px solid rgba(251,191,36,0.25)' }
-                      }
-                    >
+                    <span className={cn('badge shrink-0 ml-3', configured ? 'badge-green' : 'badge-amber')}>
                       <span
                         className="w-1.5 h-1.5 rounded-full"
                         style={{
-                          background: configured ? 'var(--success)' : 'var(--warning)',
+                          background: configured ? 'var(--green)' : 'var(--amber)',
                         }}
                       />
                       {configured ? 'Configurado' : 'Pendiente'}
@@ -84,10 +73,10 @@ export default function SettingsPage() {
           </div>
 
           {/* Markets */}
-          <div className="p-4 animate-fade-up" style={cardStyle}>
+          <div className="card animate-fade-up">
             <div className="flex items-center gap-2.5 mb-4">
-              <Globe size={15} style={{ color: 'var(--text2)' }} />
-              <h2 className="text-[14px] font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+              <Globe size={15} style={{ color: 'var(--ink-2)' }} />
+              <h2 className="section-title" style={{ fontSize: 15, fontWeight: 600 }}>
                 Mercados activos
               </h2>
             </div>
@@ -95,17 +84,20 @@ export default function SettingsPage() {
               {Object.entries(MARKET_CONFIG).map(([key, mk]) => (
                 <div
                   key={key}
-                  className="flex items-center gap-3 px-3 py-2 rounded-md"
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg"
                   style={{
-                    background: 'var(--surface)',
+                    background: 'var(--surface-2)',
                     border: '1px solid var(--border)',
+                    transition: 'border-color 0.15s ease',
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 >
                   <span className="text-base">{mk.flag}</span>
-                  <span className="text-[13px] font-medium" style={{ color: 'var(--text)' }}>{mk.label}</span>
+                  <span className="text-[13px] font-medium" style={{ color: 'var(--ink)' }}>{mk.label}</span>
                   <span
                     className="ml-auto w-1.5 h-1.5 rounded-full"
-                    style={{ background: 'var(--success)' }}
+                    style={{ background: 'var(--green)' }}
                   />
                 </div>
               ))}
@@ -113,41 +105,42 @@ export default function SettingsPage() {
           </div>
 
           {/* Users */}
-          <div className="p-4 animate-fade-up" style={cardStyle}>
+          <div className="card animate-fade-up">
             <div className="flex items-center gap-2.5 mb-4">
-              <Users size={15} style={{ color: 'var(--text2)' }} />
-              <h2 className="text-[14px] font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+              <Users size={15} style={{ color: 'var(--ink-2)' }} />
+              <h2 className="section-title" style={{ fontSize: 15, fontWeight: 600 }}>
                 Usuarios
               </h2>
             </div>
             <div className="space-y-2">
               {[
-                { name: 'Adrián Ruiz',   role: 'Superadmin', color: 'from-[var(--orange2)] to-[var(--orange)]' },
-                { name: 'Silvia',        role: 'Aprobador',  color: 'from-violet-500 to-pink-500' },
-                { name: 'Ramón',         role: 'Editor',     color: 'from-amber-500 to-red-500' },
+                { name: 'Adrián Ruiz',   role: 'Superadmin', color: 'from-[var(--orange)] to-[var(--orange-deep)]' },
+                { name: 'Silvia',        role: 'Aprobador',  color: 'from-[var(--accent)] to-[var(--accent-2)]' },
+                { name: 'Ramón',         role: 'Editor',     color: 'from-[var(--amber)] to-[var(--red)]' },
               ].map(u => (
                 <div
                   key={u.name}
-                  className="flex items-center gap-3 p-2.5 rounded-md"
+                  className="flex items-center gap-3 p-2.5 rounded-lg"
                   style={{
-                    background: 'var(--surface)',
+                    background: 'var(--surface-2)',
                     border: '1px solid var(--border)',
+                    transition: 'border-color 0.15s ease',
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 >
                   <div
-                    className={cn('w-8 h-8 rounded-full bg-gradient-to-br flex items-center justify-center text-[12px] font-semibold text-white', u.color)}
+                    className={cn('w-8 h-8 rounded-full bg-gradient-to-br flex items-center justify-center text-[12px] font-semibold', u.color)}
+                    style={{ color: '#ffffff' }}
                   >
                     {u.name[0]}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium" style={{ color: 'var(--text)' }}>
+                    <div className="text-[13px] font-medium" style={{ color: 'var(--ink)' }}>
                       {u.name}
                     </div>
                   </div>
-                  <span
-                    className="text-[11px] font-medium px-2 py-0.5 rounded"
-                    style={{ background: 'var(--surface3)', color: 'var(--text2)', border: '1px solid var(--border2)' }}
-                  >
+                  <span className="badge badge-muted">
                     {u.role}
                   </span>
                 </div>

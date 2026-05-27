@@ -57,34 +57,42 @@ function ImageMenu({
     <div ref={ref} className="relative">
       <button
         onClick={e => { e.stopPropagation(); setOpen(v => !v) }}
-        className="p-1.5 rounded-full hover:bg-[rgba(234,88,12,0.08)] transition-colors opacity-0 group-hover:opacity-100"
+        className="p-1.5 rounded-md transition-colors"
+        style={{ color: 'var(--ink-3)', background: 'transparent' }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)'; e.currentTarget.style.color = 'var(--ink)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-3)' }}
       >
-        <MoreHorizontal size={12} className="text-[var(--muted)] hover:text-[var(--orange3)]" />
+        <MoreHorizontal size={12} />
       </button>
 
       {open && (
         <div
-          className="absolute right-0 bottom-full mb-1 z-50 shadow-2xl overflow-hidden py-1"
+          className="absolute right-0 bottom-full mb-1 z-50 overflow-hidden py-1"
           style={{
-            background: 'var(--surface3)',
-            border: '1px solid var(--border2)',
-            borderRadius: 'var(--radius)',
+            background: 'var(--surface-3)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
             minWidth: 160,
             boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
           }}
         >
           <button
             onClick={() => { onToggleApprove(img.id); setOpen(false) }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[12px] text-left transition-colors hover:bg-[var(--surface2)]"
-            style={{ color: 'var(--text)' }}
+            className="flex items-center gap-2 w-full px-3 py-2 text-[12px] text-left transition-colors"
+            style={{ color: 'var(--ink)', background: 'transparent' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
           >
-            <Check size={12} className="text-emerald-400" />
+            <Check size={12} style={{ color: 'var(--green-2)' }} />
             {img.approved ? 'Desaprobar' : 'Aprobar'}
           </button>
           <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
           <button
             onClick={() => { onDelete(img.id); setOpen(false) }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[12px] text-left transition-colors hover:bg-rose-500/10 text-rose-400"
+            className="flex items-center gap-2 w-full px-3 py-2 text-[12px] text-left transition-colors"
+            style={{ color: 'var(--red-2)', background: 'transparent' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-soft)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
           >
             Eliminar
           </button>
@@ -154,59 +162,44 @@ export default function ImagesPage() {
     showToast('Imagen generada correctamente', 'success')
   }
 
-  const inputStyle = {
-    background: 'var(--surface2)',
-    border: '1px solid var(--border)',
-    color: 'var(--text)',
-  }
-
   return (
     <div className="flex flex-col h-screen">
       {/* Topbar */}
       <div className="flex items-center justify-between px-6 h-[60px] shrink-0 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-5 min-w-0">
           <div className="shrink-0">
-            <h1 className="text-[16px] font-semibold tracking-tight leading-none" style={{ color: 'var(--text)' }}>
+            <h1 className="page-title">
               Imágenes
             </h1>
-            <p className="text-[11.5px] mt-1 leading-none" style={{ color: 'var(--muted)' }}>
+            <p className="section-label mt-1">
               Banco visual generado con IA
             </p>
           </div>
           <div className="hidden md:flex items-center gap-2">
-            <div
-              className="flex items-baseline gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium tabular-nums"
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border2)' }}
-            >
-              <span className="font-semibold text-[12.5px]" style={{ color: 'var(--text)' }}>{totalImages}</span>
-              <span style={{ color: 'var(--text2)', opacity: 0.85 }}>activos</span>
-            </div>
-            <div
-              className="flex items-baseline gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium tabular-nums"
-              style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)' }}
-            >
-              <span className="font-semibold text-[12.5px]" style={{ color: 'var(--success)' }}>{approvedImages}</span>
-              <span style={{ color: 'var(--success)', opacity: 0.85 }}>aprobadas</span>
-            </div>
-            <div
-              className="flex items-baseline gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium tabular-nums"
-              style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)' }}
-            >
-              <span className="font-semibold text-[12.5px]" style={{ color: 'var(--warning)' }}>{pendingImages}</span>
-              <span style={{ color: 'var(--warning)', opacity: 0.85 }}>pendientes</span>
-            </div>
+            <span className="badge badge-muted tabular-nums">
+              <span style={{ color: 'var(--ink)' }}>{totalImages}</span>
+              <span style={{ color: 'var(--ink-2)' }}>activos</span>
+            </span>
+            <span className="badge badge-green tabular-nums">
+              <span>{approvedImages}</span>
+              <span style={{ opacity: 0.85 }}>aprobadas</span>
+            </span>
+            <span className="badge badge-amber tabular-nums">
+              <span>{pendingImages}</span>
+              <span style={{ opacity: 0.85 }}>pendientes</span>
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => showToast('Próximamente: sube tus propios activos visuales', 'info')}
-            className="btn-ghost flex items-center gap-1.5"
+            className="btn-secondary"
           >
             <Plus size={13} /> Subir imagen
           </button>
           <button
             onClick={() => { setGeneratePrompt(''); setGenerateModal({ open: true }) }}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary"
           >
             <Sparkles size={13} /> Generar imagen
           </button>
@@ -219,36 +212,56 @@ export default function ImagesPage() {
           {images.map(img => (
             <div
               key={img.id}
-              className="group relative overflow-hidden transition-colors duration-150 rounded-lg"
+              className="group relative overflow-hidden"
               style={{
-                background: 'var(--surface2)',
+                background: 'var(--surface)',
                 border: '1px solid var(--border)',
+                borderRadius: 10,
+                transition: 'border-color 0.15s ease',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border2)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
             >
               {/* Placeholder image */}
-              <div className="aspect-square bg-gradient-to-br from-[var(--surface3)] to-[var(--surface2)] flex items-center justify-center">
-                <ImageIcon size={32} className="text-[var(--muted)] opacity-30" />
+              <div
+                className="aspect-square flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, var(--surface-3), var(--surface-2))' }}
+              >
+                <ImageIcon size={32} style={{ color: 'var(--ink-3)', opacity: 0.4 }} />
               </div>
               {/* Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end pointer-events-none">
-                <p className="text-[11px] text-white leading-snug line-clamp-2">{img.prompt}</p>
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 p-3 flex flex-col justify-end pointer-events-none"
+                style={{
+                  background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent 60%)',
+                  transition: 'opacity 0.15s ease',
+                }}
+              >
+                <p className="text-[11px] leading-snug line-clamp-2" style={{ color: 'var(--ink)' }}>
+                  {img.prompt}
+                </p>
               </div>
               {/* Badges */}
               <div className="absolute top-2 right-2 flex gap-1">
                 {img.approved && (
                   <span
                     className="w-5 h-5 rounded-full flex items-center justify-center"
-                    style={{ background: 'var(--success)', boxShadow: '0 0 12px rgba(52,211,153,0.55)' }}
+                    style={{ background: 'var(--green)' }}
                   >
-                    <Check size={10} className="text-white" strokeWidth={3} />
+                    <Check size={10} style={{ color: '#ffffff' }} strokeWidth={3} />
                   </span>
                 )}
               </div>
               {/* Footer */}
-              <div className="p-2.5 flex items-center justify-between" style={{ borderTop: '1px solid var(--border)' }}>
-                <span className="text-[10px] tabular-nums" style={{ color: 'var(--muted)' }}>{img.date}</span>
+              <div
+                className="flex items-center justify-between"
+                style={{
+                  padding: '12px',
+                  background: 'var(--surface)',
+                  borderTop: '1px solid var(--border)',
+                }}
+              >
+                <span className="text-[11px] tabular-nums" style={{ color: 'var(--ink-2)' }}>{img.date}</span>
                 <ImageMenu img={img} onToggleApprove={handleToggleApprove} onDelete={handleDelete} />
               </div>
             </div>
@@ -265,12 +278,12 @@ export default function ImagesPage() {
       >
         {generateLoading ? (
           <div className="flex flex-col items-center justify-center py-8 gap-4">
-            <Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent2)' }} />
+            <Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent-2)' }} />
             <div className="text-center">
-              <p className="text-[14px] font-semibold" style={{ color: 'var(--text)' }}>
-                Generando con IA...
+              <p className="text-[14px] font-semibold" style={{ color: 'var(--ink)' }}>
+                Generando con IA…
               </p>
-              <p className="text-[12px] mt-1" style={{ color: 'var(--muted)' }}>
+              <p className="text-[12px] mt-1" style={{ color: 'var(--ink-2)' }}>
                 Esto puede tardar unos segundos
               </p>
             </div>
@@ -278,10 +291,7 @@ export default function ImagesPage() {
         ) : (
           <div className="flex flex-col gap-4">
             <div>
-              <span
-                className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5"
-                style={{ color: 'var(--muted)' }}
-              >
+              <span className="section-label block mb-1.5">
                 Descripción
               </span>
               <textarea
@@ -289,24 +299,21 @@ export default function ImagesPage() {
                 rows={3}
                 value={generatePrompt}
                 onChange={e => setGeneratePrompt(e.target.value)}
-                placeholder="Describe la imagen que necesitas..."
-                className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none transition-colors resize-none"
-                style={inputStyle}
-                onFocus={e => { e.currentTarget.style.borderColor = 'var(--orange)' }}
-                onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+                placeholder="Describe la imagen que necesitas…"
+                className="input"
               />
             </div>
             <div className="flex gap-2 pt-1">
               <button
                 onClick={() => setGenerateModal({ open: false })}
-                className="btn-ghost flex-1"
+                className="btn-secondary flex-1"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleGenerate}
                 disabled={!generatePrompt.trim()}
-                className="btn-primary flex-1 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="btn-primary flex-1 disabled:opacity-50"
               >
                 <Sparkles size={13} />
                 Generar imagen

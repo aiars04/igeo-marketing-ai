@@ -66,13 +66,22 @@ const CHANNEL_TEXT: Record<Channel, string> = {
   newsletter: 'text-violet-400',
 }
 const CHANNEL_BG: Record<Channel, string> = {
-  linkedin:   'rgba(59,130,246,0.08)',
-  instagram:  'rgba(236,72,153,0.08)',
-  facebook:   'rgba(147,197,253,0.08)',
-  x:          'rgba(148,163,184,0.08)',
-  blog:       'rgba(52,211,153,0.08)',
-  email:      'rgba(251,191,36,0.08)',
-  newsletter: 'rgba(167,139,250,0.08)',
+  linkedin:   'rgba(59,130,246,0.10)',
+  instagram:  'rgba(236,72,153,0.10)',
+  facebook:   'rgba(147,197,253,0.10)',
+  x:          'rgba(148,163,184,0.10)',
+  blog:       'rgba(52,211,153,0.10)',
+  email:      'rgba(251,191,36,0.10)',
+  newsletter: 'rgba(167,139,250,0.10)',
+}
+const CHANNEL_BORDER: Record<Channel, string> = {
+  linkedin:   'rgba(59,130,246,0.25)',
+  instagram:  'rgba(236,72,153,0.25)',
+  facebook:   'rgba(147,197,253,0.25)',
+  x:          'rgba(148,163,184,0.25)',
+  blog:       'rgba(52,211,153,0.25)',
+  email:      'rgba(251,191,36,0.25)',
+  newsletter: 'rgba(167,139,250,0.25)',
 }
 
 const CHANNELS: Channel[] = ['linkedin','instagram','facebook','x','blog','email','newsletter']
@@ -93,11 +102,11 @@ function EventChip({ ev }: { ev: CalEvent }) {
   if (ev.kind === 'acontecimiento') {
     return (
       <div
-        className="flex items-center gap-1.5 px-1.5 py-1 rounded-full"
-        style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(251,191,36,0.20)' }}
+        className="flex items-center gap-1.5 px-1.5 py-1 rounded-md"
+        style={{ background: 'var(--amber-soft)', border: '1px solid rgba(245,158,11,0.25)' }}
       >
-        <Flame size={8} className="shrink-0 text-amber-400" />
-        <span className="text-[9.5px] font-semibold truncate leading-none text-amber-300">
+        <Flame size={8} className="shrink-0" style={{ color: 'var(--amber-2)' }} />
+        <span className="text-[9.5px] font-semibold truncate leading-none" style={{ color: 'var(--amber-2)' }}>
           {ev.title}
         </span>
       </div>
@@ -106,15 +115,14 @@ function EventChip({ ev }: { ev: CalEvent }) {
   const ch = ev.channel!
   return (
     <div
-      className="flex items-center gap-1.5 px-1.5 py-1 rounded-full"
-      style={{ background: CHANNEL_BG[ch], border: `1px solid ${CHANNEL_BG[ch].replace('0.08', '0.22')}` }}
+      className="flex items-center gap-1.5 px-1.5 py-1 rounded-md"
+      style={{ background: CHANNEL_BG[ch], border: `1px solid ${CHANNEL_BORDER[ch]}` }}
     >
       <span
         className={cn('w-1.5 h-1.5 rounded-full shrink-0', CHANNEL_DOT[ch])}
-        style={{ boxShadow: '0 0 6px currentColor' }}
       />
       {ev.frecuencia && ev.frecuencia !== 'once' && (
-        <RefreshCw size={7} className="shrink-0 text-[var(--muted)]" />
+        <RefreshCw size={7} className="shrink-0" style={{ color: 'var(--ink-3)' }} />
       )}
       <span className={cn('text-[9.5px] font-semibold truncate leading-none', CHANNEL_TEXT[ch])}>
         {ev.title}
@@ -237,10 +245,10 @@ export default function CalendarPage() {
       <div className="flex items-center justify-between px-6 h-[60px] shrink-0 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-5 min-w-0">
           <div className="shrink-0">
-            <h1 className="text-[16px] font-semibold tracking-tight leading-none capitalize" style={{ color: 'var(--text)' }}>
+            <h1 className="page-title capitalize">
               {format(firstDay, 'MMMM yyyy', { locale: es })}
             </h1>
-            <p className="text-[11.5px] mt-1 leading-none" style={{ color: 'var(--muted)' }}>
+            <p className="section-label mt-1">
               Planificación de contenido
             </p>
           </div>
@@ -249,14 +257,14 @@ export default function CalendarPage() {
         <div className="flex items-center gap-2 shrink-0">
           <div
             className="flex items-center overflow-hidden rounded-lg"
-            style={{ border: '1px solid var(--border2)' }}
+            style={{ border: '1px solid var(--border)' }}
           >
             <button
               onClick={() => setCurrentMonth(format(add(firstDay, { months: -1 }), 'MMM-yyyy'))}
               className="p-1.5 transition-colors"
-              style={{ color: 'var(--text2)' }}
-              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--surface2)' }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = 'transparent' }}
+              style={{ color: 'var(--ink-2)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--ink)'; e.currentTarget.style.background = 'var(--surface-2)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--ink-2)'; e.currentTarget.style.background = 'transparent' }}
               aria-label="Mes anterior"
             >
               <ChevronLeft size={14} />
@@ -264,18 +272,18 @@ export default function CalendarPage() {
             <button
               onClick={() => { setCurrentMonth(format(today, 'MMM-yyyy')); setSelectedDay(today) }}
               className="px-3 py-1 text-[12px] font-medium transition-colors"
-              style={{ color: 'var(--text2)', borderLeft: '1px solid var(--border2)', borderRight: '1px solid var(--border2)' }}
-              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--surface2)' }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = 'transparent' }}
+              style={{ color: 'var(--ink-2)', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--ink)'; e.currentTarget.style.background = 'var(--surface-2)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--ink-2)'; e.currentTarget.style.background = 'transparent' }}
             >
               Hoy
             </button>
             <button
               onClick={() => setCurrentMonth(format(add(firstDay, { months: 1 }), 'MMM-yyyy'))}
               className="p-1.5 transition-colors"
-              style={{ color: 'var(--text2)' }}
-              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--surface2)' }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = 'transparent' }}
+              style={{ color: 'var(--ink-2)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--ink)'; e.currentTarget.style.background = 'var(--surface-2)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--ink-2)'; e.currentTarget.style.background = 'transparent' }}
               aria-label="Mes siguiente"
             >
               <ChevronRight size={14} />
@@ -290,13 +298,13 @@ export default function CalendarPage() {
       {/* ─── Week day headers ─── */}
       <div
         className="grid grid-cols-7 shrink-0"
-        style={{ borderBottom: '1px solid var(--border)', background: 'rgba(7, 7, 13, 0.45)', backdropFilter: 'blur(10px)' }}
+        style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}
       >
         {WEEKDAYS.map((d, i) => (
           <div
             key={d}
-            className="text-center py-2.5 text-[10px] font-bold uppercase tracking-[0.16em]"
-            style={{ color: 'var(--muted)', borderRight: i < 6 ? '1px solid var(--border)' : undefined }}
+            className="text-center py-2.5 text-[11px] font-bold uppercase tracking-[0.08em]"
+            style={{ color: 'var(--ink-3)', borderRight: i < 6 ? '1px solid var(--border)' : undefined }}
           >
             {d}
           </div>
@@ -312,37 +320,53 @@ export default function CalendarPage() {
             const isSelectedDay = isSameDay(day, selectedDay)
             const isTodayDay    = isToday(day)
             const isLastCol     = idx % 7 === 6
+
+            const baseBg = !inMonth
+              ? 'var(--bg)'
+              : isSelectedDay
+                ? 'var(--accent-soft)'
+                : 'var(--surface)'
+
             return (
               <div
                 key={day.toISOString()}
-                className="group relative flex flex-col cursor-pointer transition-colors duration-100"
+                className="group relative flex flex-col cursor-pointer"
                 style={{
                   borderRight:  isLastCol ? 'none' : '1px solid var(--border)',
                   borderBottom: '1px solid var(--border)',
-                  background: !inMonth ? 'rgba(12,12,22,0.4)' : isSelectedDay ? 'rgba(234,88,12,0.06)' : 'transparent',
+                  background: baseBg,
+                  transition: 'background 0.15s ease, border-color 0.15s ease',
                 }}
                 onClick={() => setSelectedDay(day)}
-                onMouseEnter={e => { if (!isSelectedDay) e.currentTarget.style.background = 'rgba(255,246,235,0.025)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = !inMonth ? 'rgba(12,12,22,0.4)' : isSelectedDay ? 'rgba(234,88,12,0.06)' : 'transparent' }}
+                onMouseEnter={e => { if (!isSelectedDay && inMonth) e.currentTarget.style.background = 'var(--surface-2)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = baseBg }}
               >
                 <header className="flex items-center justify-between px-2 pt-2 pb-1 shrink-0">
                   <button
                     type="button"
                     onClick={e => { e.stopPropagation(); setSelectedDay(day); openAdd(day) }}
-                    className="flex h-6 w-6 items-center justify-center rounded-full font-display text-[11.5px] font-bold transition-all tabular-nums"
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-[11.5px] font-bold tabular-nums"
                     style={{
-                      color: isTodayDay || isSelectedDay ? 'white' : inMonth ? 'var(--text)' : 'var(--muted)',
+                      color: isTodayDay ? '#ffffff' : isSelectedDay ? 'var(--ink)' : inMonth ? 'var(--ink)' : 'var(--ink-3)',
                       background: isTodayDay
-                        ? 'linear-gradient(135deg, var(--orange2), var(--orange))'
+                        ? 'var(--orange)'
                         : isSelectedDay
-                          ? 'rgba(234,88,12,0.35)'
+                          ? 'var(--accent)'
                           : 'transparent',
-                      boxShadow: isTodayDay ? '0 0 12px rgba(234,88,12,0.45)' : 'none',
+                      transition: 'all 0.15s ease',
                     }}
                   >
                     {format(day, 'd')}
                   </button>
-                  <button type="button" onClick={e => { e.stopPropagation(); setSelectedDay(day); openAdd(day) }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all hover:bg-[var(--surface3)]" style={{ color: 'var(--muted)' }} aria-label="Añadir evento">
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); setSelectedDay(day); openAdd(day) }}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all"
+                    style={{ color: 'var(--ink-3)', background: 'transparent' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)'; e.currentTarget.style.color = 'var(--ink)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-3)' }}
+                    aria-label="Añadir evento"
+                  >
                     <Plus size={10} />
                   </button>
                 </header>
@@ -351,7 +375,7 @@ export default function CalendarPage() {
                   <div className="flex-1 px-1.5 pb-1.5 space-y-1 overflow-hidden">
                     {dayEvents.slice(0, 2).map(ev => <EventChip key={ev.id} ev={ev} />)}
                     {dayEvents.length > 2 && (
-                      <p className="text-[9px] font-medium px-1" style={{ color: 'var(--muted)' }}>+{dayEvents.length - 2} más</p>
+                      <p className="text-[9px] font-medium px-1" style={{ color: 'var(--ink-3)' }}>+{dayEvents.length - 2} más</p>
                     )}
                   </div>
                 ) : (
@@ -376,50 +400,50 @@ export default function CalendarPage() {
         {modalStep === 'kind-select' && (
           <div className="space-y-4">
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Fecha</span>
-              <input type="date" className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} value={modalDate} onChange={e => setModalDate(e.target.value)} />
+              <span className="section-label block mb-1.5">Fecha</span>
+              <input type="date" className="input" value={modalDate} onChange={e => setModalDate(e.target.value)} />
             </div>
 
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wide block mb-2.5" style={{ color: 'var(--muted)' }}>Tipo de evento</span>
+              <span className="section-label block mb-2.5">Tipo de evento</span>
               <div className="grid grid-cols-2 gap-3">
                 {/* Acontecimiento */}
                 <button
                   onClick={() => selectKind('acontecimiento')}
-                  className="flex flex-col items-center gap-3 rounded-2xl py-5 px-3 text-left transition-all duration-150 hover:scale-[1.02]"
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(251,191,36,0.4)'; e.currentTarget.style.background = 'rgba(245,158,11,0.07)' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--surface2)' }}
+                  className="flex flex-col items-center gap-3 rounded-xl py-5 px-3 text-left"
+                  style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', transition: 'border-color 0.15s ease, background 0.15s ease' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(245,158,11,0.4)'; e.currentTarget.style.background = 'var(--amber-soft)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--surface-2)' }}
                 >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-xl" style={{ background: 'rgba(245,158,11,0.15)' }}>
-                    <Flame size={20} className="text-amber-400" />
+                  <div className="flex items-center justify-center w-10 h-10 rounded-xl" style={{ background: 'var(--amber-soft)' }}>
+                    <Flame size={20} style={{ color: 'var(--amber-2)' }} />
                   </div>
                   <div className="text-center">
-                    <p className="font-display text-[13px] font-bold tracking-[-0.02em] text-white">Acontecimiento</p>
-                    <p className="text-[10px] mt-1 leading-relaxed" style={{ color: 'var(--muted)' }}>Feria, lanzamiento, ponencia, visita…</p>
+                    <p className="text-[13px] font-bold" style={{ color: 'var(--ink)', letterSpacing: '-0.01em' }}>Acontecimiento</p>
+                    <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--ink-2)' }}>Feria, lanzamiento, ponencia, visita…</p>
                   </div>
                 </button>
 
                 {/* Contenido programado */}
                 <button
                   onClick={() => selectKind('contenido')}
-                  className="flex flex-col items-center gap-3 rounded-2xl py-5 px-3 text-left transition-all duration-150 hover:scale-[1.02]"
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-warm)'; e.currentTarget.style.background = 'rgba(234,88,12,0.07)' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--surface2)' }}
+                  className="flex flex-col items-center gap-3 rounded-xl py-5 px-3 text-left"
+                  style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', transition: 'border-color 0.15s ease, background 0.15s ease' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)'; e.currentTarget.style.background = 'var(--accent-soft)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--surface-2)' }}
                 >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-xl" style={{ background: 'rgba(234,88,12,0.15)' }}>
-                    <RefreshCw size={20} style={{ color: 'var(--orange3)' }} />
+                  <div className="flex items-center justify-center w-10 h-10 rounded-xl" style={{ background: 'var(--accent-soft)' }}>
+                    <RefreshCw size={20} style={{ color: 'var(--accent-2)' }} />
                   </div>
                   <div className="text-center">
-                    <p className="font-display text-[13px] font-bold tracking-[-0.02em] text-white">Contenido programado</p>
-                    <p className="text-[10px] mt-1 leading-relaxed" style={{ color: 'var(--muted)' }}>Publicación recurrente planificada</p>
+                    <p className="text-[13px] font-bold" style={{ color: 'var(--ink)', letterSpacing: '-0.01em' }}>Contenido programado</p>
+                    <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--ink-2)' }}>Publicación recurrente planificada</p>
                   </div>
                 </button>
               </div>
             </div>
 
-            <button className="btn-ghost w-full" onClick={() => setModalOpen(false)}>Cancelar</button>
+            <button className="btn-secondary w-full" onClick={() => setModalOpen(false)}>Cancelar</button>
           </div>
         )}
 
@@ -428,17 +452,17 @@ export default function CalendarPage() {
           <div className="space-y-4">
             {/* Back + badge */}
             <div className="flex items-center gap-2">
-              <button onClick={() => setModalStep('kind-select')} className="p-1 rounded-lg transition-colors hover:bg-[var(--surface2)]" style={{ color: 'var(--muted)' }} aria-label="Volver">
+              <button
+                onClick={() => setModalStep('kind-select')}
+                className="p-1 rounded-md transition-colors"
+                style={{ color: 'var(--ink-2)', background: 'transparent' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--ink)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-2)' }}
+                aria-label="Volver"
+              >
                 <ArrowLeft size={15} />
               </button>
-              <span
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.1em]"
-                style={{
-                  background: formKind === 'acontecimiento' ? 'rgba(251,191,36,0.12)' : 'rgba(234,88,12,0.14)',
-                  border: `1px solid ${formKind === 'acontecimiento' ? 'rgba(251,191,36,0.28)' : 'rgba(234,88,12,0.30)'}`,
-                  color: formKind === 'acontecimiento' ? 'var(--warning)' : 'var(--orange3)',
-                }}
-              >
+              <span className={cn('badge', formKind === 'acontecimiento' ? 'badge-amber' : 'badge-accent')}>
                 {formKind === 'acontecimiento' ? <Flame size={11} /> : <RefreshCw size={11} />}
                 {formKind === 'acontecimiento' ? 'Acontecimiento' : 'Contenido programado'}
               </span>
@@ -446,60 +470,48 @@ export default function CalendarPage() {
 
             {/* Fecha */}
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Fecha</span>
-              <input type="date" className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} value={modalDate} onChange={e => setModalDate(e.target.value)} />
+              <span className="section-label block mb-1.5">Fecha</span>
+              <input type="date" className="input" value={modalDate} onChange={e => setModalDate(e.target.value)} />
             </div>
 
             {/* ── ACONTECIMIENTO ── */}
             {formKind === 'acontecimiento' && (<>
               <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Nombre del evento</span>
+                <span className="section-label block mb-1.5">Nombre del evento</span>
                 <input
                   autoFocus
-                  className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none"
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  className="input"
                   placeholder="Ej: Feria TECNA Madrid 2026"
                   value={formTitle}
                   onChange={e => setFormTitle(e.target.value)}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#f59e0b' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 />
               </div>
               <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Punto de dolor que ataca <span className="font-normal opacity-60">(opcional)</span></span>
+                <span className="section-label block mb-1.5">Punto de dolor que ataca <span className="font-normal normal-case tracking-normal opacity-60">(opcional)</span></span>
                 <textarea
                   rows={2}
-                  className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none resize-none"
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  className="input"
                   placeholder="¿Qué problema del cliente resuelve o comunica este evento?"
                   value={formDolor}
                   onChange={e => setFormDolor(e.target.value)}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#f59e0b' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 />
               </div>
               <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Cómo se comunica <span className="font-normal opacity-60">(opcional)</span></span>
+                <span className="section-label block mb-1.5">Cómo se comunica <span className="font-normal normal-case tracking-normal opacity-60">(opcional)</span></span>
                 <input
-                  className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none"
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  className="input"
                   placeholder="Ej: Post LinkedIn + reels en vivo"
                   value={formComunicacion}
                   onChange={e => setFormComunicacion(e.target.value)}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#f59e0b' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 />
               </div>
               <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Estilo de comunicación <span className="font-normal opacity-60">(opcional)</span></span>
+                <span className="section-label block mb-1.5">Estilo de comunicación <span className="font-normal normal-case tracking-normal opacity-60">(opcional)</span></span>
                 <input
-                  className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none"
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  className="input"
                   placeholder="Ej: Dinámico, cercano y visual"
                   value={formEstilo}
                   onChange={e => setFormEstilo(e.target.value)}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#f59e0b' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 />
               </div>
             </>)}
@@ -507,11 +519,10 @@ export default function CalendarPage() {
             {/* ── CONTENIDO PROGRAMADO ── */}
             {formKind === 'contenido' && (<>
               <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Tipo de contenido</span>
+                <span className="section-label block mb-1.5">Tipo de contenido</span>
                 {activeTypes.length > 0 ? (
                   <select
-                    className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none"
-                    style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                    className="input"
                     value={formContentTypeId}
                     onChange={e => setFormContentTypeId(e.target.value)}
                   >
@@ -520,19 +531,18 @@ export default function CalendarPage() {
                     ))}
                   </select>
                 ) : (
-                  <p className="text-[12px] px-3 py-2" style={{ color: 'var(--muted)' }}>
+                  <p className="text-[12px] px-3 py-2" style={{ color: 'var(--ink-2)' }}>
                     No hay tipos activos. Crea uno en{' '}
-                    <a href="/admin" className="underline" style={{ color: 'var(--accent2)' }}>Admin</a>.
+                    <a href="/admin" className="underline" style={{ color: 'var(--accent-2)' }}>Admin</a>.
                   </p>
                 )}
               </div>
 
               {/* Canal — auto de tipo de contenido, pero editable */}
               <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Canal</span>
+                <span className="section-label block mb-1.5">Canal</span>
                 <select
-                  className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none"
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  className="input"
                   value={formChannel}
                   onChange={e => setFormChannel(e.target.value as Channel)}
                 >
@@ -541,25 +551,21 @@ export default function CalendarPage() {
               </div>
 
               <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Título / Tema</span>
+                <span className="section-label block mb-1.5">Título / Tema</span>
                 <input
                   autoFocus
-                  className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none"
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  className="input"
                   placeholder="Describe el contenido a publicar…"
                   value={formTitle}
                   onChange={e => setFormTitle(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--orange)' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 />
               </div>
 
               <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Frecuencia</span>
+                <span className="section-label block mb-1.5">Frecuencia</span>
                 <select
-                  className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none"
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  className="input"
                   value={formFrecuencia}
                   onChange={e => setFormFrecuencia(e.target.value as typeof formFrecuencia)}
                 >
@@ -570,12 +576,9 @@ export default function CalendarPage() {
               {formFrecuencia === 'weekly' && (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Días de la semana</span>
+                    <span className="section-label">Días de la semana</span>
                     {formFrecuenciaDias.length > 0 && (
-                      <span
-                        className="text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(234,88,12,0.14)', border: '1px solid rgba(234,88,12,0.30)', color: 'var(--orange3)' }}
-                      >
+                      <span className="badge badge-accent">
                         {formFrecuenciaDias.length} {formFrecuenciaDias.length === 1 ? 'día' : 'días'}
                       </span>
                     )}
@@ -590,16 +593,17 @@ export default function CalendarPage() {
                           onClick={() => setFormFrecuenciaDias(prev =>
                             active ? prev.filter(x => x !== d) : [...prev, d]
                           )}
-                          className="py-1.5 rounded-full text-[11px] font-semibold capitalize transition-all"
+                          className="py-1.5 rounded-md text-[11px] font-semibold capitalize"
                           style={active ? {
-                            background: 'linear-gradient(135deg, var(--orange2), var(--orange))',
-                            color: 'white',
-                            border: '1px solid rgba(253,186,116,0.4)',
-                            boxShadow: '0 4px 12px rgba(234,88,12,0.3)',
+                            background: 'var(--accent)',
+                            color: '#ffffff',
+                            border: '1px solid var(--accent)',
+                            transition: 'all 0.15s ease',
                           } : {
-                            background: 'rgba(255,246,235,0.025)',
-                            color: 'var(--text2)',
-                            border: '1px solid var(--border2)',
+                            background: 'var(--surface-2)',
+                            color: 'var(--ink-2)',
+                            border: '1px solid var(--border)',
+                            transition: 'all 0.15s ease',
                           }}
                         >
                           {d.slice(0, d === 'miércoles' ? 3 : 3)}
@@ -608,7 +612,7 @@ export default function CalendarPage() {
                     })}
                   </div>
                   {formFrecuenciaDias.length === 0 && (
-                    <p className="text-[11px] mt-1.5" style={{ color: 'var(--danger)' }}>Selecciona al menos un día</p>
+                    <p className="text-[11px] mt-1.5" style={{ color: 'var(--red)' }}>Selecciona al menos un día</p>
                   )}
                 </div>
               )}
@@ -619,15 +623,11 @@ export default function CalendarPage() {
                 (formKind !== 'contenido' || formFrecuencia !== 'weekly' || formFrecuenciaDias.length > 0)
               return (
                 <div className="flex gap-2 pt-1">
-                  <button className="btn-ghost flex-1" onClick={() => setModalOpen(false)}>Cancelar</button>
+                  <button className="btn-secondary flex-1" onClick={() => setModalOpen(false)}>Cancelar</button>
                   <button
                     className="btn-primary flex-1"
                     onClick={handleAdd}
                     disabled={!canSubmit}
-                    style={{
-                      opacity: canSubmit ? 1 : 0.5,
-                      ...(formKind === 'acontecimiento' ? { background: 'linear-gradient(135deg, #d97706, #f59e0b)', boxShadow: '0 0 20px rgba(245,158,11,0.2)' } : {}),
-                    }}
                   >
                     <Plus size={13} /> Añadir
                   </button>

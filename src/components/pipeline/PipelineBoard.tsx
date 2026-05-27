@@ -664,22 +664,22 @@ function Card({
     <article
       className="group animate-fade-up cursor-pointer transition-all duration-150 flex flex-col"
       style={{
-        background: 'var(--surface2)',
-        border: '1px solid var(--line2)',
+        background: 'var(--surface-2)',
+        border: '1px solid var(--border)',
         borderRadius: 10,
-        padding: 16,                      // ← 16px todos los lados
-        gap: 10,                          // ← gap consistente entre secciones
-        minHeight: 156,                   // ← uniformidad visual entre cards
-        boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+        padding: 16,
+        gap: 10,
+        minHeight: 156,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.30)',
       }}
       onClick={() => onSelect(item)}
       onMouseEnter={e => {
-        e.currentTarget.style.borderColor = `${cfg.accentHex}66`
-        e.currentTarget.style.background = 'var(--surface3)'
+        e.currentTarget.style.borderColor = 'var(--border-hover)'
+        e.currentTarget.style.background = 'var(--surface-3)'
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.borderColor = 'var(--line2)'
-        e.currentTarget.style.background = 'var(--surface2)'
+        e.currentTarget.style.borderColor = 'var(--border)'
+        e.currentTarget.style.background = 'var(--surface-2)'
       }}
     >
       {/* ── Fila superior: badge canal + ES + menu ── */}
@@ -901,9 +901,9 @@ function Column({
         maxWidth: 320,
         width: 'clamp(280px, 22vw, 320px)',
         background: 'var(--surface)',
-        border: '1px solid var(--line)',
+        border: '1px solid var(--border)',
         borderRadius: 12,
-        padding: 12,                       // ← padding interno columna 12px
+        padding: 14,
         animationDelay: `${index * 50}ms`,
       }}
     >
@@ -924,7 +924,7 @@ function Column({
             style={{
               fontSize: 16,
               fontWeight: 700,
-              color: 'var(--text)',
+              color: 'var(--ink)',
               letterSpacing: '-0.01em',
             }}
           >
@@ -938,9 +938,9 @@ function Column({
               fontWeight: 700,
               padding: '2px 7px',
               borderRadius: 4,
-              color: cfg.accentHex,
-              background: `${cfg.accentHex}18`,
-              border: `1px solid ${cfg.accentHex}35`,
+              color: 'var(--accent-3)',
+              background: 'var(--accent-soft)',
+              border: '1px solid rgba(99,102,241,0.30)',
             }}
           >
             {filtered.length}
@@ -966,7 +966,7 @@ function Column({
         <p
           style={{
             fontSize: 12,
-            color: '#9ca3af',
+            color: 'var(--ink-2)',
             lineHeight: 1.4,
             marginLeft: 32,
           }}

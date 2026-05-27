@@ -23,14 +23,14 @@ const CHANNEL_LABELS: Record<Channel, string> = {
   linkedin:'LinkedIn', instagram:'Instagram', facebook:'Facebook',
   x:'X (Twitter)', blog:'Blog', email:'Email', newsletter:'Newsletter',
 }
-const CHANNEL_COLOR: Record<Channel, { bg: string; text: string; dot: string }> = {
-  linkedin:   { bg: 'rgba(59,130,246,0.12)',  text: '#60a5fa',  dot: '#3b82f6' },
-  instagram:  { bg: 'rgba(236,72,153,0.12)',  text: '#f472b6',  dot: '#ec4899' },
-  facebook:   { bg: 'rgba(147,197,253,0.12)', text: '#93c5fd',  dot: '#93c5fd' },
-  x:          { bg: 'rgba(148,163,184,0.12)', text: '#94a3b8',  dot: '#94a3b8' },
-  blog:       { bg: 'rgba(52,211,153,0.12)',  text: '#34d399',  dot: '#34d399' },
-  email:      { bg: 'rgba(251,191,36,0.12)',  text: '#fbbf24',  dot: '#fbbf24' },
-  newsletter: { bg: 'rgba(167,139,250,0.12)', text: '#a78bfa',  dot: '#a78bfa' },
+const CHANNEL_COLOR: Record<Channel, { bg: string; text: string; dot: string; border: string }> = {
+  linkedin:   { bg: 'rgba(59,130,246,0.12)',  text: 'var(--blue-2)',    dot: '#3b82f6', border: 'rgba(59,130,246,0.30)'  },
+  instagram:  { bg: 'rgba(236,72,153,0.12)',  text: '#f472b6',          dot: '#ec4899', border: 'rgba(236,72,153,0.30)'  },
+  facebook:   { bg: 'rgba(147,197,253,0.12)', text: '#93c5fd',          dot: '#93c5fd', border: 'rgba(147,197,253,0.30)' },
+  x:          { bg: 'rgba(148,163,184,0.12)', text: '#94a3b8',          dot: '#94a3b8', border: 'rgba(148,163,184,0.30)' },
+  blog:       { bg: 'var(--green-soft)',      text: 'var(--green-2)',   dot: '#10b981', border: 'rgba(16,185,129,0.30)'  },
+  email:      { bg: 'var(--amber-soft)',      text: 'var(--amber-2)',   dot: '#f59e0b', border: 'rgba(245,158,11,0.30)'  },
+  newsletter: { bg: 'rgba(167,139,250,0.12)', text: '#a78bfa',          dot: '#a78bfa', border: 'rgba(167,139,250,0.30)' },
 }
 
 const ACCEPTED_TYPES = [
@@ -50,12 +50,12 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
 function FileIcon({ mimeType, size = 20 }: { mimeType: string; size?: number }) {
   const cat = fileCategory(mimeType)
   const props = { size, strokeWidth: 1.8 }
-  if (cat === 'pdf')   return <FileText   {...props} className="text-red-400" />
-  if (cat === 'image') return <FileImage  {...props} className="text-blue-400" />
-  if (cat === 'word')  return <FileText   {...props} className="text-blue-500" />
-  if (cat === 'ppt')   return <Presentation {...props} className="text-orange-400" />
-  if (cat === 'excel') return <Sheet      {...props} className="text-emerald-400" />
-  return <File {...props} className="text-slate-400" />
+  if (cat === 'pdf')   return <FileText      {...props} style={{ color: 'var(--red-2)' }} />
+  if (cat === 'image') return <FileImage     {...props} style={{ color: 'var(--blue-2)' }} />
+  if (cat === 'word')  return <FileText      {...props} style={{ color: 'var(--blue)' }} />
+  if (cat === 'ppt')   return <Presentation  {...props} style={{ color: 'var(--orange-2)' }} />
+  if (cat === 'excel') return <Sheet         {...props} style={{ color: 'var(--green-2)' }} />
+  return <File {...props} style={{ color: 'var(--ink-2)' }} />
 }
 
 /* ─── Documents Modal ─── */
@@ -147,38 +147,50 @@ function DocumentsModal({
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} />
+        <div
+          className="absolute inset-0"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+          onClick={onClose}
+        />
 
         <div
-          className="relative w-full flex flex-col rounded-2xl overflow-hidden"
+          className="relative w-full flex flex-col overflow-hidden"
           style={{
             maxWidth: 720,
             maxHeight: 'calc(100vh - 48px)',
             background: 'var(--surface)',
             border: '1px solid var(--border)',
+            borderRadius: 12,
+            boxShadow: '0 24px 64px rgba(0,0,0,0.55)',
           }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="flex items-center justify-between shrink-0" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
             <div className="flex items-center gap-3">
               <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: colors.bg, border: `1px solid ${colors.dot}40` }}
+                className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: colors.bg, border: `1px solid ${colors.border}` }}
               >
                 <FolderOpen size={17} style={{ color: colors.text }} />
               </div>
               <div>
-                <h2 className="font-display text-[15px] font-bold tracking-[-0.02em] leading-none" style={{ color: 'var(--text)' }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
                   Documentos de referencia
                 </h2>
-                <p className="text-[11px] mt-1" style={{ color: 'var(--muted)' }}>
+                <p className="text-[12px] mt-1" style={{ color: 'var(--ink-2)' }}>
                   <span style={{ color: colors.text }}>{ct.name}</span>
                   {' · '}manuales, plantillas y ejemplos visuales
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-[rgba(234,88,12,0.08)] transition-colors">
-              <X size={15} style={{ color: 'var(--muted)' }} />
+            <button
+              onClick={onClose}
+              className="rounded-md flex items-center justify-center"
+              style={{ width: 32, height: 32, color: 'var(--ink-2)', background: 'transparent', transition: 'all 0.15s ease' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)'; e.currentTarget.style.color = 'var(--ink)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-2)' }}
+            >
+              <X size={15} />
             </button>
           </div>
 
@@ -188,10 +200,12 @@ function DocumentsModal({
             {/* Upload zone */}
             <div
               ref={dropRef}
-              className="relative rounded-2xl transition-all duration-150 cursor-pointer"
+              className="relative cursor-pointer"
               style={{
-                border: `2px dashed ${dragging ? colors.dot : 'var(--border)'}`,
-                background: dragging ? `${colors.bg}` : 'var(--surface2)',
+                border: `2px dashed ${dragging ? colors.dot : 'var(--border-hover)'}`,
+                background: dragging ? colors.bg : 'var(--surface-2)',
+                borderRadius: 12,
+                transition: 'all 0.15s ease',
               }}
               onDragOver={e => { e.preventDefault(); setDragging(true) }}
               onDragLeave={e => { if (!dropRef.current?.contains(e.relatedTarget as Node)) setDragging(false) }}
@@ -211,18 +225,18 @@ function DocumentsModal({
                 {uploading ? (
                   <>
                     <Loader2 size={28} className="animate-spin" style={{ color: colors.text }} />
-                    <p className="text-[13px] font-medium" style={{ color: 'var(--muted)' }}>Subiendo…</p>
+                    <p className="text-[13px] font-medium" style={{ color: 'var(--ink-2)' }}>Subiendo…</p>
                   </>
                 ) : (
                   <>
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: colors.bg }}>
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: colors.bg }}>
                       <Upload size={22} style={{ color: colors.text }} />
                     </div>
                     <div className="text-center">
-                      <p className="text-[13px] font-semibold text-white">
+                      <p className="text-[13px] font-semibold" style={{ color: 'var(--ink)' }}>
                         {dragging ? 'Suelta los archivos aquí' : 'Arrastra archivos o haz clic para subir'}
                       </p>
-                      <p className="text-[11px] mt-1" style={{ color: 'var(--muted)' }}>
+                      <p className="text-[11px] mt-1" style={{ color: 'var(--ink-2)' }}>
                         PDF, Word, PowerPoint, Excel, imágenes · Máx. 50 MB por archivo
                       </p>
                     </div>
@@ -233,33 +247,38 @@ function DocumentsModal({
 
             {/* Error */}
             {uploadError && (
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                <AlertCircle size={14} className="text-red-400 shrink-0" />
-                <p className="text-[12px] text-red-400">{uploadError}</p>
-                <button className="ml-auto" onClick={() => setUploadError(null)}><X size={12} className="text-red-400/60" /></button>
+              <div
+                className="flex items-center gap-2 px-3 py-2.5 rounded-lg"
+                style={{ background: 'var(--red-soft)', border: '1px solid rgba(239,68,68,0.25)' }}
+              >
+                <AlertCircle size={14} style={{ color: 'var(--red-2)', flexShrink: 0 }} />
+                <p className="text-[12px]" style={{ color: 'var(--red-2)' }}>{uploadError}</p>
+                <button className="ml-auto" onClick={() => setUploadError(null)}>
+                  <X size={12} style={{ color: 'var(--red-2)', opacity: 0.6 }} />
+                </button>
               </div>
             )}
 
             {/* Document list */}
             {loading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 size={20} className="animate-spin" style={{ color: 'var(--muted)' }} />
+                <Loader2 size={20} className="animate-spin" style={{ color: 'var(--ink-3)' }} />
               </div>
             ) : docs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'var(--surface3)' }}>
-                  <FileText size={26} style={{ color: 'var(--muted)' }} />
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ background: 'var(--surface-3)' }}>
+                  <FileText size={26} style={{ color: 'var(--ink-3)' }} />
                 </div>
                 <div>
-                  <p className="text-[13px] font-semibold text-white">Sin documentos aún</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--muted)' }}>
+                  <p className="text-[13px] font-semibold" style={{ color: 'var(--ink)' }}>Sin documentos aún</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: 'var(--ink-2)' }}>
                     Sube plantillas, guías de estilo o ejemplos de referencia
                   </p>
                 </div>
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
+                <p className="section-label">
                   {docs.length} {docs.length === 1 ? 'documento' : 'documentos'}
                 </p>
                 {docs.map(doc => {
@@ -268,18 +287,20 @@ function DocumentsModal({
                   return (
                     <div
                       key={doc.id}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors"
-                      style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg"
+                      style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', transition: 'border-color 0.15s ease' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                     >
                       {/* Icon */}
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--surface3)' }}>
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--surface-3)' }}>
                         <FileIcon mimeType={doc.mimeType} size={22} />
                       </div>
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium text-white truncate leading-snug">{doc.name}</p>
-                        <p className="text-[11px] mt-0.5" style={{ color: 'var(--muted)' }}>
+                        <p className="text-[14px] font-medium truncate leading-snug" style={{ color: 'var(--ink)' }}>{doc.name}</p>
+                        <p className="text-[11px] mt-0.5" style={{ color: 'var(--ink-2)' }}>
                           {formatFileSize(doc.size)} · {doc.uploadedAt}
                         </p>
                       </div>
@@ -288,8 +309,10 @@ function DocumentsModal({
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           onClick={() => handlePreview(doc)}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors hover:bg-[var(--surface3)]"
-                          style={{ color: 'var(--muted)' }}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium"
+                          style={{ color: 'var(--ink-2)', background: 'transparent', transition: 'all 0.15s ease' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)'; e.currentTarget.style.color = 'var(--ink)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-2)' }}
                           title={canPreview ? 'Vista previa' : 'Descargar'}
                         >
                           {canPreview ? <Eye size={13} /> : <Download size={13} />}
@@ -297,10 +320,13 @@ function DocumentsModal({
                         </button>
                         <button
                           onClick={() => setDeleteConfirm(doc.id)}
-                          className="p-1.5 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.10)]"
+                          className="p-1.5 rounded-md"
+                          style={{ background: 'transparent', transition: 'background 0.15s ease' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-soft)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                           title="Eliminar"
                         >
-                          <Trash2 size={13} className="text-red-400/50 hover:text-red-400 transition-colors" />
+                          <Trash2 size={13} style={{ color: 'var(--red-2)', opacity: 0.7 }} />
                         </button>
                       </div>
                     </div>
@@ -315,38 +341,47 @@ function DocumentsModal({
       {/* ─── Preview modal ─── */}
       {preview && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => { URL.revokeObjectURL(preview.url); setPreview(null) }} />
           <div
-            className="relative flex flex-col rounded-2xl overflow-hidden"
-            style={{ width: '90vw', maxWidth: 960, height: '90vh', background: 'var(--surface)', border: '1px solid var(--border)' }}
+            className="absolute inset-0"
+            style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}
+            onClick={() => { URL.revokeObjectURL(preview.url); setPreview(null) }}
+          />
+          <div
+            className="relative flex flex-col overflow-hidden"
+            style={{ width: '90vw', maxWidth: 960, height: '90vh', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}
           >
             {/* Preview header */}
             <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
               <div className="flex items-center gap-2 min-w-0">
                 <FileIcon mimeType={preview.doc.mimeType} size={16} />
-                <span className="text-[13px] font-medium text-white truncate">{preview.doc.name}</span>
-                <span className="text-[11px] shrink-0" style={{ color: 'var(--muted)' }}>{formatFileSize(preview.doc.size)}</span>
+                <span className="text-[13px] font-medium truncate" style={{ color: 'var(--ink)' }}>{preview.doc.name}</span>
+                <span className="text-[11px] shrink-0" style={{ color: 'var(--ink-2)' }}>{formatFileSize(preview.doc.size)}</span>
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-3">
                 <a
                   href={preview.url}
                   download={preview.doc.name}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-[var(--surface2)]"
-                  style={{ color: 'var(--muted)' }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium"
+                  style={{ color: 'var(--ink-2)', background: 'transparent', transition: 'all 0.15s ease' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--ink)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-2)' }}
                 >
                   <Download size={13} /> Descargar
                 </a>
                 <button
                   onClick={() => { URL.revokeObjectURL(preview.url); setPreview(null) }}
-                  className="p-1.5 rounded-lg hover:bg-[var(--surface2)] transition-colors"
+                  className="p-1.5 rounded-md"
+                  style={{ background: 'transparent', color: 'var(--ink-2)', transition: 'all 0.15s ease' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--ink)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-2)' }}
                 >
-                  <X size={15} style={{ color: 'var(--muted)' }} />
+                  <X size={15} />
                 </button>
               </div>
             </div>
 
             {/* Preview content */}
-            <div className="flex-1 overflow-hidden bg-[#111]">
+            <div className="flex-1 overflow-hidden" style={{ background: 'var(--bg)' }}>
               {fileCategory(preview.doc.mimeType) === 'image' ? (
                 <div className="w-full h-full flex items-center justify-center p-4">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -367,22 +402,40 @@ function DocumentsModal({
       {/* ─── Delete confirm ─── */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative w-full max-w-xs rounded-2xl p-5 space-y-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div
+            className="absolute inset-0"
+            style={{ background: 'rgba(0,0,0,0.6)' }}
+            onClick={() => setDeleteConfirm(null)}
+          />
+          <div
+            className="relative w-full max-w-xs p-5 space-y-4"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}
+          >
             <div className="text-center space-y-2">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto" style={{ background: 'rgba(239,68,68,0.10)' }}>
-                <Trash2 size={18} className="text-red-400" />
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto"
+                style={{ background: 'var(--red-soft)' }}
+              >
+                <Trash2 size={18} style={{ color: 'var(--red-2)' }} />
               </div>
-              <h3 className="text-[14px] font-bold text-white">¿Eliminar documento?</h3>
-              <p className="text-[12px]" style={{ color: 'var(--muted)' }}>
+              <h3 className="text-[14px] font-bold" style={{ color: 'var(--ink)' }}>¿Eliminar documento?</h3>
+              <p className="text-[12px]" style={{ color: 'var(--ink-2)' }}>
                 {docs.find(d => d.id === deleteConfirm)?.name}
               </p>
             </div>
             <div className="flex gap-2">
-              <button className="btn-ghost flex-1 text-[12px]" onClick={() => setDeleteConfirm(null)}>Cancelar</button>
+              <button className="btn-secondary flex-1" onClick={() => setDeleteConfirm(null)}>Cancelar</button>
               <button
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-semibold text-white"
-                style={{ background: 'rgba(239,68,68,0.75)' }}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-[13px] font-semibold"
+                style={{
+                  background: 'var(--red)',
+                  color: '#ffffff',
+                  border: '1px solid var(--red)',
+                  height: 36,
+                  transition: 'filter 0.15s ease',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.1)' }}
+                onMouseLeave={e => { e.currentTarget.style.filter = 'none' }}
                 onClick={() => handleDelete(deleteConfirm)}
               >
                 <Trash2 size={12} /> Eliminar
@@ -416,13 +469,15 @@ function ContentTypeCard({
 
   return (
     <div
-      className="overflow-hidden transition-colors duration-150 flex flex-col rounded-lg"
+      className="overflow-hidden flex flex-col"
       style={{
-        background: 'var(--surface2)',
-        border: `1px solid ${ct.active ? 'var(--border)' : 'rgba(255,255,255,0.04)'}`,
+        background: 'var(--surface)',
+        border: `1px solid ${ct.active ? 'var(--border)' : 'var(--border-soft)'}`,
+        borderRadius: 12,
         opacity: ct.active ? 1 : 0.55,
+        transition: 'border-color 0.15s ease',
       }}
-      onMouseEnter={e => { if (ct.active) e.currentTarget.style.borderColor = 'var(--border2)' }}
+      onMouseEnter={e => { if (ct.active) e.currentTarget.style.borderColor = 'var(--border-hover)' }}
       onMouseLeave={e => { if (ct.active) e.currentTarget.style.borderColor = 'var(--border)' }}
     >
       {/* Header */}
@@ -433,27 +488,48 @@ function ContentTypeCard({
         />
         <div className="flex-1 min-w-0">
           <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium mb-1.5"
-            style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.dot}30` }}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold mb-1.5"
+            style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}
           >
             {CHANNEL_LABELS[ct.channel]}
           </span>
-          <h3 className="text-[14px] font-semibold leading-snug" style={{ color: 'var(--text)' }}>
+          <h3 className="text-[14px] font-semibold leading-snug" style={{ color: 'var(--ink)' }}>
             {ct.name}
           </h3>
-          <p className="text-[12px] mt-1.5 leading-relaxed line-clamp-2" style={{ color: 'var(--muted)' }}>
+          <p className="text-[12px] mt-1.5 leading-relaxed line-clamp-2" style={{ color: 'var(--ink-2)' }}>
             {ct.description}
           </p>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
-          <button onClick={() => onToggle(ct.id)} className="p-1.5 rounded-md transition-colors hover:bg-[var(--surface3)]" title={ct.active ? 'Desactivar' : 'Activar'}>
-            {ct.active ? <ToggleRight size={16} style={{ color: 'var(--orange3)' }} /> : <ToggleLeft size={16} style={{ color: 'var(--muted)' }} />}
+          <button
+            onClick={() => onToggle(ct.id)}
+            className="p-1.5 rounded-md"
+            style={{ background: 'transparent', transition: 'background 0.15s ease' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            title={ct.active ? 'Desactivar' : 'Activar'}
+          >
+            {ct.active ? <ToggleRight size={16} style={{ color: 'var(--orange-2)' }} /> : <ToggleLeft size={16} style={{ color: 'var(--ink-3)' }} />}
           </button>
-          <button onClick={() => onEdit(ct)} className="p-1.5 rounded-md transition-colors hover:bg-[var(--surface3)]" title="Editar">
-            <Pencil size={13} style={{ color: 'var(--muted)' }} />
+          <button
+            onClick={() => onEdit(ct)}
+            className="p-1.5 rounded-md"
+            style={{ background: 'transparent', transition: 'background 0.15s ease' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            title="Editar"
+          >
+            <Pencil size={13} style={{ color: 'var(--ink-2)' }} />
           </button>
-          <button onClick={() => onDelete(ct.id)} className="p-1.5 rounded-md transition-colors hover:bg-[rgba(239,68,68,0.1)]" title="Eliminar">
-            <Trash2 size={13} className="text-red-400/60 hover:text-red-400 transition-colors" />
+          <button
+            onClick={() => onDelete(ct.id)}
+            className="p-1.5 rounded-md"
+            style={{ background: 'transparent', transition: 'background 0.15s ease' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-soft)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            title="Eliminar"
+          >
+            <Trash2 size={13} style={{ color: 'var(--red-2)', opacity: 0.7 }} />
           </button>
         </div>
       </div>
@@ -463,28 +539,28 @@ function ContentTypeCard({
         <div
           className="overflow-hidden rounded-md"
           style={{
-            background: 'var(--surface)',
+            background: 'var(--surface-2)',
             border: '1px solid var(--border)',
           }}
         >
           <button className="w-full flex items-center justify-between px-3 py-2 text-left" onClick={() => setExpanded(p => !p)}>
             <div className="flex items-center gap-2">
-              <Bot size={12} style={{ color: 'var(--text2)' }} />
-              <span className="text-[11px] font-medium" style={{ color: 'var(--text2)' }}>
+              <Bot size={12} style={{ color: 'var(--ink-2)' }} />
+              <span className="text-[11px] font-medium" style={{ color: 'var(--ink-2)' }}>
                 Instrucciones para la IA
               </span>
             </div>
-            {expanded ? <ChevronUp size={12} style={{ color: 'var(--muted)' }} /> : <ChevronDown size={12} style={{ color: 'var(--muted)' }} />}
+            {expanded ? <ChevronUp size={12} style={{ color: 'var(--ink-3)' }} /> : <ChevronDown size={12} style={{ color: 'var(--ink-3)' }} />}
           </button>
           {expanded && (
-            <div className="px-3 pb-3 space-y-3 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div className="px-3 pb-3 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
               <div className="pt-2.5">
-                <span className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Proceso</span>
-                <p className="text-[12px] leading-relaxed" style={{ color: 'var(--text2)' }}>{ct.process}</p>
+                <span className="section-label block mb-1">Proceso</span>
+                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>{ct.process}</p>
               </div>
               <div>
-                <span className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Estilo iGEO</span>
-                <p className="text-[12px] leading-relaxed" style={{ color: 'var(--text2)' }}>{ct.style}</p>
+                <span className="section-label block mb-1">Estilo iGEO</span>
+                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>{ct.style}</p>
               </div>
             </div>
           )}
@@ -492,15 +568,19 @@ function ContentTypeCard({
       </div>
 
       {/* Footer — docs button */}
-      <div className="px-4 py-3 mt-auto flex items-center justify-between" style={{ borderTop: '1px solid var(--border)' }}>
-        <span className="text-[11px] tabular-nums" style={{ color: 'var(--muted)' }}>Creado {ct.createdAt}</span>
+      <div
+        className="px-4 py-3 mt-auto flex items-center justify-between"
+        style={{ borderTop: '1px solid var(--border)' }}
+      >
+        <span className="text-[11px] tabular-nums" style={{ color: 'var(--ink-3)' }}>Creado {ct.createdAt}</span>
         <button
           onClick={() => onOpenDocs(ct)}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold"
           style={{
-            background: docCount > 0 ? colors.bg : 'var(--surface3)',
-            color:      docCount > 0 ? colors.text : 'var(--text2)',
-            border:     `1px solid ${docCount > 0 ? `${colors.dot}30` : 'var(--border2)'}`,
+            background: docCount > 0 ? colors.bg : 'var(--surface-3)',
+            color:      docCount > 0 ? colors.text : 'var(--ink-2)',
+            border:     `1px solid ${docCount > 0 ? colors.border : 'var(--border)'}`,
+            transition: 'all 0.15s ease',
           }}
         >
           <FolderOpen size={11} />
@@ -533,78 +613,128 @@ function ContentTypeModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-2xl overflow-hidden flex flex-col" style={{ background: 'var(--surface)', border: '1px solid var(--border)', maxHeight: 'calc(100vh - 48px)' }}>
+      <div
+        className="absolute inset-0"
+        style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+        onClick={onClose}
+      />
+      <div
+        className="relative w-full max-w-lg overflow-hidden flex flex-col"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, maxHeight: 'calc(100vh - 48px)', boxShadow: '0 24px 64px rgba(0,0,0,0.55)' }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
+        <div
+          className="flex items-center justify-between shrink-0"
+          style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}
+        >
           <div className="flex items-center gap-3">
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{ background: 'rgba(234,88,12,0.10)', border: '1px solid var(--border-warm)' }}
+              className="w-9 h-9 rounded-lg flex items-center justify-center"
+              style={{ background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.25)' }}
             >
-              <BookOpen size={16} style={{ color: 'var(--orange3)' }} />
+              <BookOpen size={16} style={{ color: 'var(--orange-2)' }} />
             </div>
             <div>
-              <h2 className="font-display text-[15px] font-bold tracking-[-0.02em] leading-none" style={{ color: 'var(--text)' }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
                 {isEdit ? 'Editar tipo de contenido' : 'Nuevo tipo de contenido'}
               </h2>
-              <p className="text-[11px] mt-1" style={{ color: 'var(--muted)' }}>La IA usará estas instrucciones para generar contenido</p>
+              <p className="text-[12px] mt-1" style={{ color: 'var(--ink-2)' }}>La IA usará estas instrucciones para generar contenido</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-[rgba(234,88,12,0.08)] transition-colors">
-            <X size={15} style={{ color: 'var(--muted)' }} />
+          <button
+            onClick={onClose}
+            className="rounded-md flex items-center justify-center"
+            style={{ width: 32, height: 32, color: 'var(--ink-2)', background: 'transparent', transition: 'all 0.15s ease' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)'; e.currentTarget.style.color = 'var(--ink)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-2)' }}
+          >
+            <X size={15} />
           </button>
         </div>
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Nombre</label>
-            <input className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} placeholder="Ej: Post LinkedIn iGEO" value={form.name} onChange={e => set('name', e.target.value)} onFocus={e => { e.currentTarget.style.borderColor = 'var(--orange)' }} onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }} />
+            <label className="section-label block mb-1.5">Nombre</label>
+            <input
+              className="input"
+              placeholder="Ej: Post LinkedIn iGEO"
+              value={form.name}
+              onChange={e => set('name', e.target.value)}
+            />
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Canal</label>
-            <select className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} value={form.channel} onChange={e => set('channel', e.target.value)}>
+            <label className="section-label block mb-1.5">Canal</label>
+            <select
+              className="input"
+              value={form.channel}
+              onChange={e => set('channel', e.target.value)}
+            >
               {CHANNELS.map(c => <option key={c} value={c}>{CHANNEL_LABELS[c]}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Descripción</label>
-            <p className="text-[11px] mb-1.5" style={{ color: 'var(--muted)' }}>Qué produce este tipo de contenido y para qué sirve.</p>
-            <textarea rows={2} className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none resize-none" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} placeholder="Publicación profesional en LinkedIn para posicionar iGEO como…" value={form.description} onChange={e => set('description', e.target.value)} onFocus={e => { e.currentTarget.style.borderColor = 'var(--orange)' }} onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }} />
+            <label className="section-label block mb-1.5">Descripción</label>
+            <p className="text-[11px] mb-1.5" style={{ color: 'var(--ink-2)' }}>Qué produce este tipo de contenido y para qué sirve.</p>
+            <textarea
+              rows={2}
+              className="input"
+              placeholder="Publicación profesional en LinkedIn para posicionar iGEO como…"
+              value={form.description}
+              onChange={e => set('description', e.target.value)}
+            />
           </div>
           <div
             className="p-4 space-y-3"
             style={{
-              background: 'rgba(234,88,12,0.05)',
-              border: '1px solid var(--border-warm)',
-              borderRadius: 'var(--radius-lg)',
+              background: 'var(--accent-soft)',
+              border: '1px solid rgba(99,102,241,0.25)',
+              borderRadius: 12,
             }}
           >
             <div className="flex items-center gap-2 mb-1">
-              <Bot size={14} style={{ color: 'var(--orange3)' }} />
-              <span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--orange3)' }}>
+              <Bot size={14} style={{ color: 'var(--accent-2)' }} />
+              <span className="section-label" style={{ color: 'var(--accent-2)' }}>
                 Instrucciones para la IA
               </span>
-              <Sparkles size={11} style={{ color: 'var(--orange3)' }} />
+              <Sparkles size={11} style={{ color: 'var(--accent-2)' }} />
             </div>
             <div>
-              <label className="text-[10px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Proceso de creación</label>
-              <p className="text-[11px] mb-1.5" style={{ color: 'var(--muted)' }}>Pasos que seguirá la IA para generar el contenido.</p>
-              <textarea rows={3} className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none resize-none" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} placeholder="Ej: Identifica un pain point del sector → conecta con funcionalidad iGEO → CTA al demo." value={form.process} onChange={e => set('process', e.target.value)} onFocus={e => { e.currentTarget.style.borderColor = 'var(--orange)' }} onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }} />
+              <label className="section-label block mb-1.5">Proceso de creación</label>
+              <p className="text-[11px] mb-1.5" style={{ color: 'var(--ink-2)' }}>Pasos que seguirá la IA para generar el contenido.</p>
+              <textarea
+                rows={3}
+                className="input"
+                placeholder="Ej: Identifica un pain point del sector → conecta con funcionalidad iGEO → CTA al demo."
+                value={form.process}
+                onChange={e => set('process', e.target.value)}
+              />
             </div>
             <div>
-              <label className="text-[10px] font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--muted)' }}>Estilo iGEO</label>
-              <p className="text-[11px] mb-1.5" style={{ color: 'var(--muted)' }}>Tono, formato, longitud y reglas de estilo de la marca.</p>
-              <textarea rows={3} className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none resize-none" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} placeholder="Ej: Tono profesional pero cercano. Emojis moderados. 150-300 palabras." value={form.style} onChange={e => set('style', e.target.value)} onFocus={e => { e.currentTarget.style.borderColor = 'var(--orange)' }} onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }} />
+              <label className="section-label block mb-1.5">Estilo iGEO</label>
+              <p className="text-[11px] mb-1.5" style={{ color: 'var(--ink-2)' }}>Tono, formato, longitud y reglas de estilo de la marca.</p>
+              <textarea
+                rows={3}
+                className="input"
+                placeholder="Ej: Tono profesional pero cercano. Emojis moderados. 150-300 palabras."
+                value={form.style}
+                onChange={e => set('style', e.target.value)}
+              />
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2 px-5 py-4 border-t shrink-0" style={{ borderColor: 'var(--border)' }}>
-          <button className="btn-ghost flex-1" onClick={onClose}>Cancelar</button>
-          <button className="btn-primary flex-1" disabled={!canSave} style={{ opacity: canSave ? 1 : 0.5 }} onClick={() => { onSave(form); onClose() }}>
+        <div
+          className="flex gap-2 shrink-0"
+          style={{ padding: '16px 24px', borderTop: '1px solid var(--border)' }}
+        >
+          <button className="btn-secondary flex-1" onClick={onClose}>Cancelar</button>
+          <button
+            className="btn-primary flex-1"
+            disabled={!canSave}
+            onClick={() => { onSave(form); onClose() }}
+          >
             <Plus size={13} /> {isEdit ? 'Guardar cambios' : 'Crear tipo'}
           </button>
         </div>
@@ -663,10 +793,10 @@ export default function AdminPage() {
       <div className="flex items-center justify-between px-6 h-[60px] shrink-0 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-5 min-w-0">
           <div className="shrink-0">
-            <h1 className="text-[16px] font-semibold tracking-tight leading-none" style={{ color: 'var(--text)' }}>
+            <h1 className="page-title">
               Admin
             </h1>
-            <p className="text-[11.5px] mt-1 leading-none" style={{ color: 'var(--muted)' }}>
+            <p className="section-label mt-1">
               Tipos de contenido y documentos de referencia
             </p>
           </div>
@@ -680,15 +810,15 @@ export default function AdminPage() {
         style={{ borderBottom: '1px solid var(--border)' }}
       >
         {[
-          { label: 'Total tipos', value: types.length,   color: 'var(--text)' },
-          { label: 'Activos',     value: activeCount,    color: 'var(--success)' },
-          { label: 'Inactivos',   value: inactiveCount,  color: 'var(--muted)' },
-          { label: 'Documentos',  value: Object.values(docCounts).reduce((a, b) => a + b, 0), color: 'var(--text)' },
+          { label: 'Total tipos', value: types.length,   color: 'var(--ink)' },
+          { label: 'Activos',     value: activeCount,    color: 'var(--green-2)' },
+          { label: 'Inactivos',   value: inactiveCount,  color: 'var(--ink-3)' },
+          { label: 'Documentos',  value: Object.values(docCounts).reduce((a, b) => a + b, 0), color: 'var(--ink)' },
         ].map(s => (
           <div
             key={s.label}
             className="flex items-baseline gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium tabular-nums"
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border2)' }}
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
           >
             <span
               className="font-semibold text-[12.5px]"
@@ -696,15 +826,15 @@ export default function AdminPage() {
             >
               {s.value}
             </span>
-            <span style={{ color: 'var(--text2)', opacity: 0.85 }}>{s.label}</span>
+            <span style={{ color: 'var(--ink-2)' }}>{s.label}</span>
           </div>
         ))}
         <div
           className="ml-auto flex items-center gap-2 px-2.5 py-1 rounded-md"
-          style={{ background: 'var(--surface2)', border: '1px solid var(--border2)' }}
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
         >
-          <Bot size={11} style={{ color: 'var(--text2)' }} />
-          <span className="text-[11px]" style={{ color: 'var(--text2)' }}>
+          <Bot size={11} style={{ color: 'var(--ink-2)' }} />
+          <span className="text-[11px]" style={{ color: 'var(--ink-2)' }}>
             Solo los tipos activos están disponibles en el calendario y la IA
           </span>
         </div>
@@ -715,14 +845,14 @@ export default function AdminPage() {
         {types.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center animate-fade-up">
             <div
-              className="w-12 h-12 rounded-lg flex items-center justify-center"
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
+              className="w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
             >
-              <BookOpen size={22} style={{ color: 'var(--muted)' }} />
+              <BookOpen size={22} style={{ color: 'var(--ink-3)' }} />
             </div>
             <div>
-              <p className="text-[14px] font-semibold" style={{ color: 'var(--text)' }}>Sin tipos de contenido</p>
-              <p className="text-[12px] mt-1" style={{ color: 'var(--muted)' }}>Crea el primero para empezar a planificar contenido con IA</p>
+              <p className="text-[14px] font-semibold" style={{ color: 'var(--ink)' }}>Sin tipos de contenido</p>
+              <p className="text-[12px] mt-1" style={{ color: 'var(--ink-2)' }}>Crea el primero para empezar a planificar contenido con IA</p>
             </div>
             <button className="btn-primary" onClick={openCreate}><Plus size={13} /> Crear tipo</button>
           </div>
@@ -761,20 +891,42 @@ export default function AdminPage() {
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl p-6 space-y-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div
+            className="absolute inset-0"
+            style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+            onClick={() => setDeleteConfirm(null)}
+          />
+          <div
+            className="relative w-full max-w-sm p-6 space-y-4"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 24px 64px rgba(0,0,0,0.55)' }}
+          >
             <div className="text-center space-y-2">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto" style={{ background: 'rgba(239,68,68,0.10)' }}>
-                <Trash2 size={22} className="text-red-400" />
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto"
+                style={{ background: 'var(--red-soft)' }}
+              >
+                <Trash2 size={22} style={{ color: 'var(--red-2)' }} />
               </div>
-              <h3 className="text-[15px] font-bold text-white">¿Eliminar tipo?</h3>
-              <p className="text-[12px]" style={{ color: 'var(--muted)' }}>
-                Se eliminará <strong className="text-white">{types.find(t => t.id === deleteConfirm)?.name}</strong>. Los eventos del calendario que referencien este tipo quedarán sin tipo asignado.
+              <h3 className="text-[15px] font-bold" style={{ color: 'var(--ink)' }}>¿Eliminar tipo?</h3>
+              <p className="text-[12px]" style={{ color: 'var(--ink-2)' }}>
+                Se eliminará <strong style={{ color: 'var(--ink)' }}>{types.find(t => t.id === deleteConfirm)?.name}</strong>. Los eventos del calendario que referencien este tipo quedarán sin tipo asignado.
               </p>
             </div>
             <div className="flex gap-2">
-              <button className="btn-ghost flex-1" onClick={() => setDeleteConfirm(null)}>Cancelar</button>
-              <button className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-semibold text-white" style={{ background: 'rgba(239,68,68,0.80)', border: '1px solid rgba(239,68,68,0.3)' }} onClick={() => handleDelete(deleteConfirm)}>
+              <button className="btn-secondary flex-1" onClick={() => setDeleteConfirm(null)}>Cancelar</button>
+              <button
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-[13px] font-semibold"
+                style={{
+                  background: 'var(--red)',
+                  color: '#ffffff',
+                  border: '1px solid var(--red)',
+                  height: 36,
+                  transition: 'filter 0.15s ease',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.1)' }}
+                onMouseLeave={e => { e.currentTarget.style.filter = 'none' }}
+                onClick={() => handleDelete(deleteConfirm)}
+              >
                 <Trash2 size={13} /> Eliminar
               </button>
             </div>
