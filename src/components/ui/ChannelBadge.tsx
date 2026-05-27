@@ -21,7 +21,7 @@ export function ChannelBadge({ channel, className }: ChannelBadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center text-[11px] font-semibold px-2.5 py-1 rounded-md border',
+        'inline-flex items-center text-[11.5px] font-semibold px-2.5 py-1 rounded-md border',
         className
       )}
       style={{

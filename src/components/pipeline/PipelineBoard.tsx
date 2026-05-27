@@ -526,12 +526,12 @@ function ContentCard({
       }}
     >
       {/* Body — generous padding */}
-      <div className="p-4">
+      <div className="p-5">
         {/* Header row — channel + market + status + menu */}
-        <div className="flex items-center justify-between mb-3 gap-2">
+        <div className="flex items-center justify-between mb-4 gap-2">
           <ChannelBadge channel={item.channel as Channel} />
           <div className="flex items-center gap-2 shrink-0">
-            <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>ES</span>
+            <span className="font-mono text-[10.5px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>ES</span>
             <StatusDot status={item.status} />
             <div onClick={e => e.stopPropagation()}>
               <CardMenu item={item} onMove={onMove} />
@@ -541,8 +541,8 @@ function ContentCard({
 
         {/* Title */}
         <p
-          className="text-[13.5px] font-semibold leading-[1.45] break-words mb-3"
-          style={{ color: 'var(--text)', letterSpacing: '-0.005em' }}
+          className="text-[15px] font-semibold leading-[1.45] break-words mb-4"
+          style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}
         >
           {item.title}
         </p>
@@ -552,7 +552,7 @@ function ContentCard({
           <div className="flex items-center gap-1.5 flex-wrap">
             {item.ai_generated && (
               <span
-                className="inline-flex items-center gap-1 font-mono text-[10px] font-medium px-2 py-1 rounded uppercase tracking-wider"
+                className="inline-flex items-center gap-1 font-mono text-[10.5px] font-medium px-2 py-1 rounded uppercase tracking-wider"
                 style={{
                   color: 'var(--blue-3)',
                   background: 'rgba(37,99,235,0.10)',
@@ -564,7 +564,7 @@ function ContentCard({
             )}
             {item.clarity_pass === true && (
               <span
-                className="inline-flex items-center font-mono text-[10px] font-medium px-2 py-1 rounded uppercase tracking-wider"
+                className="inline-flex items-center font-mono text-[10.5px] font-medium px-2 py-1 rounded uppercase tracking-wider"
                 style={{
                   color: 'var(--success-2)',
                   background: 'rgba(16,185,129,0.10)',
@@ -576,7 +576,7 @@ function ContentCard({
             )}
             {item.clarity_pass === false && (
               <span
-                className="inline-flex items-center font-mono text-[10px] font-medium px-2 py-1 rounded uppercase tracking-wider"
+                className="inline-flex items-center font-mono text-[10.5px] font-medium px-2 py-1 rounded uppercase tracking-wider"
                 style={{
                   color: 'var(--warning-2)',
                   background: 'rgba(245,158,11,0.10)',
@@ -588,7 +588,7 @@ function ContentCard({
             )}
             {item.human_approved && item.approved_by && (
               <span
-                className="inline-flex items-center gap-1 font-mono text-[10px] font-medium px-2 py-1 rounded uppercase tracking-wider"
+                className="inline-flex items-center gap-1 font-mono text-[10.5px] font-medium px-2 py-1 rounded uppercase tracking-wider"
                 style={{
                   color: 'var(--success-2)',
                   background: 'rgba(16,185,129,0.08)',
@@ -619,7 +619,7 @@ function ContentCard({
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[12px] font-semibold transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-[12.5px] font-semibold transition-colors"
           style={{
             background: 'rgba(16,185,129,0.08)',
             borderTop: '1px solid rgba(16,185,129,0.22)',
@@ -628,7 +628,7 @@ function ContentCard({
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.18)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.08)' }}
         >
-          <CheckCircle2 size={14} />
+          <CheckCircle2 size={15} />
           Aprobar y avanzar
         </button>
       )}
@@ -669,8 +669,8 @@ function Column({
     <div
       className="flex flex-col shrink-0 h-full rounded-xl animate-fade-up overflow-hidden relative"
       style={{
-        width: 288,
-        background: 'rgba(255, 235, 215, 0.015)',
+        width: 328,
+        background: 'rgba(255, 235, 215, 0.018)',
         border: '1px solid var(--line)',
         animationDelay: `${index * 60}ms`,
       }}
@@ -685,32 +685,32 @@ function Column({
 
       {/* ── Column header inside container ── */}
       <div
-        className="px-4 pt-4 pb-3.5 shrink-0"
+        className="px-5 pt-5 pb-4 shrink-0"
         style={{ borderBottom: '1px solid var(--line)' }}
       >
         {/* Title row */}
-        <div className="flex items-center gap-2.5 mb-1.5">
+        <div className="flex items-center gap-3 mb-2">
           <div
-            className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
             style={{
-              background: `${cfg.accentHex}18`,
-              border: `1px solid ${cfg.accentHex}38`,
+              background: `${cfg.accentHex}1a`,
+              border: `1px solid ${cfg.accentHex}40`,
             }}
           >
-            <Icon size={14} style={{ color: cfg.accentHex }} />
+            <Icon size={15} style={{ color: cfg.accentHex }} />
           </div>
           <h3
-            className="font-mono text-[12px] font-bold uppercase tracking-[0.05em] flex-1 truncate"
+            className="font-mono text-[12.5px] font-bold uppercase tracking-[0.05em] flex-1 truncate"
             style={{ color: 'var(--text)' }}
           >
             {cfg.label}
           </h3>
           <span
-            className="font-mono text-[12px] font-bold tabular-nums leading-none w-7 h-6 flex items-center justify-center rounded shrink-0"
+            className="font-mono text-[13px] font-bold tabular-nums leading-none w-8 h-7 flex items-center justify-center rounded shrink-0"
             style={{
               color: cfg.accentHex,
-              background: `${cfg.accentHex}18`,
-              border: `1px solid ${cfg.accentHex}35`,
+              background: `${cfg.accentHex}1a`,
+              border: `1px solid ${cfg.accentHex}38`,
             }}
           >
             {filteredItems.length}
@@ -718,13 +718,13 @@ function Column({
         </div>
 
         {/* Subtitle */}
-        <p className="text-[11.5px] leading-snug ml-10.5" style={{ color: 'var(--muted)', marginLeft: 42 }}>
+        <p className="text-[12px] leading-snug" style={{ color: 'var(--muted)', marginLeft: 48 }}>
           {cfg.subtitle}
         </p>
 
         {/* Auto badge */}
         {cfg.automatic && (
-          <div className="mt-2.5" style={{ marginLeft: 42 }}>
+          <div className="mt-2.5" style={{ marginLeft: 48 }}>
             <span className="badge badge-amber">
               <Zap size={9} /> Auto
             </span>
@@ -733,7 +733,7 @@ function Column({
       </div>
 
       {/* ── Cards stack ── */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 stagger">
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-3 stagger">
         {filteredItems.map(item => (
           <ContentCard
             key={item.id}
