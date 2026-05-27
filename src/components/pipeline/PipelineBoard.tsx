@@ -526,9 +526,9 @@ function ContentCard({
       }}
     >
       {/* Body — generous padding */}
-      <div className="p-5">
+      <div className="p-4">
         {/* Header row — channel + market + status + menu */}
-        <div className="flex items-center justify-between mb-4 gap-2">
+        <div className="flex items-center justify-between mb-3 gap-2">
           <ChannelBadge channel={item.channel as Channel} />
           <div className="flex items-center gap-2 shrink-0">
             <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>ES</span>
@@ -541,7 +541,7 @@ function ContentCard({
 
         {/* Title */}
         <p
-          className="text-[14.5px] font-semibold leading-[1.45] break-words mb-4"
+          className="text-[13.5px] font-semibold leading-[1.45] break-words mb-3"
           style={{ color: 'var(--text)', letterSpacing: '-0.005em' }}
         >
           {item.title}
@@ -666,73 +666,74 @@ function Column({
     : items.filter(i => filterChannels.includes(i.channel as Channel))
 
   return (
-    <div className="flex flex-col w-[340px] shrink-0 h-full">
-
-      {/* ── Column header — caja con accent bar y mucho aire ── */}
+    <div
+      className="flex flex-col shrink-0 h-full rounded-xl animate-fade-up overflow-hidden relative"
+      style={{
+        width: 288,
+        background: 'rgba(255, 235, 215, 0.015)',
+        border: '1px solid var(--line)',
+        animationDelay: `${index * 60}ms`,
+      }}
+    >
+      {/* Top accent strip */}
       <div
-        className="mb-4 animate-fade-up rounded-xl overflow-hidden relative"
+        className="absolute top-0 left-0 right-0 h-[3px] z-10"
         style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--line2)',
-          animationDelay: `${index * 60}ms`,
+          background: `linear-gradient(90deg, ${cfg.accentHex} 0%, ${cfg.accentHex}aa 50%, transparent 100%)`,
         }}
-      >
-        {/* Top accent strip */}
-        <div
-          className="absolute top-0 left-0 right-0 h-[3px]"
-          style={{
-            background: `linear-gradient(90deg, ${cfg.accentHex} 0%, ${cfg.accentHex}aa 60%, transparent 100%)`,
-          }}
-        />
+      />
 
-        <div className="px-5 pt-5 pb-4">
-          {/* Title row — icon + label + counter */}
-          <div className="flex items-center gap-3 mb-2">
-            <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-              style={{
-                background: `${cfg.accentHex}18`,
-                border: `1px solid ${cfg.accentHex}40`,
-              }}
-            >
-              <Icon size={16} style={{ color: cfg.accentHex }} />
-            </div>
-            <h3
-              className="font-mono text-[13px] font-bold uppercase tracking-[0.04em] flex-1"
-              style={{ color: 'var(--text)' }}
-            >
-              {cfg.label}
-            </h3>
-            <span
-              className="font-mono text-[13px] font-bold tabular-nums leading-none w-7 h-7 flex items-center justify-center rounded"
-              style={{
-                color: cfg.accentHex,
-                background: `${cfg.accentHex}18`,
-                border: `1px solid ${cfg.accentHex}35`,
-              }}
-            >
-              {filteredItems.length}
+      {/* ── Column header inside container ── */}
+      <div
+        className="px-4 pt-4 pb-3.5 shrink-0"
+        style={{ borderBottom: '1px solid var(--line)' }}
+      >
+        {/* Title row */}
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <div
+            className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+            style={{
+              background: `${cfg.accentHex}18`,
+              border: `1px solid ${cfg.accentHex}38`,
+            }}
+          >
+            <Icon size={14} style={{ color: cfg.accentHex }} />
+          </div>
+          <h3
+            className="font-mono text-[12px] font-bold uppercase tracking-[0.05em] flex-1 truncate"
+            style={{ color: 'var(--text)' }}
+          >
+            {cfg.label}
+          </h3>
+          <span
+            className="font-mono text-[12px] font-bold tabular-nums leading-none w-7 h-6 flex items-center justify-center rounded shrink-0"
+            style={{
+              color: cfg.accentHex,
+              background: `${cfg.accentHex}18`,
+              border: `1px solid ${cfg.accentHex}35`,
+            }}
+          >
+            {filteredItems.length}
+          </span>
+        </div>
+
+        {/* Subtitle */}
+        <p className="text-[11.5px] leading-snug ml-10.5" style={{ color: 'var(--muted)', marginLeft: 42 }}>
+          {cfg.subtitle}
+        </p>
+
+        {/* Auto badge */}
+        {cfg.automatic && (
+          <div className="mt-2.5" style={{ marginLeft: 42 }}>
+            <span className="badge badge-amber">
+              <Zap size={9} /> Auto
             </span>
           </div>
-
-          {/* Subtitle */}
-          <p className="text-[12px] leading-snug ml-12" style={{ color: 'var(--muted)' }}>
-            {cfg.subtitle}
-          </p>
-
-          {/* Auto badge */}
-          {cfg.automatic && (
-            <div className="mt-3 ml-12">
-              <span className="badge badge-amber">
-                <Zap size={9} /> Auto
-              </span>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* ── Cards stack ── */}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1 stagger">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 stagger">
         {filteredItems.map(item => (
           <ContentCard
             key={item.id}
@@ -745,10 +746,10 @@ function Column({
 
         {cfg.automatic ? (
           <div
-            className="w-full flex items-center justify-center gap-2 px-4 py-4 rounded-xl text-[12px] font-medium font-mono uppercase tracking-wider"
-            style={{ border: '1px dashed var(--line2)', color: 'var(--muted)', opacity: 0.7 }}
+            className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-md text-[11px] font-medium font-mono uppercase tracking-wider"
+            style={{ border: '1px dashed var(--line2)', color: 'var(--muted)', opacity: 0.6 }}
           >
-            <Zap size={13} /> PostiZ programa automáticamente
+            <Zap size={11} /> PostiZ automático
           </div>
         ) : showAddForm ? (
           <AddForm
@@ -759,7 +760,7 @@ function Column({
         ) : (
           <button
             onClick={() => setShowAddForm(true)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl text-[12.5px] font-medium transition-all"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-[12px] font-medium transition-all"
             style={{ border: '1px dashed var(--line2)', color: 'var(--muted)' }}
             onMouseEnter={e => {
               e.currentTarget.style.color       = cfg.accentHex
@@ -772,7 +773,7 @@ function Column({
               e.currentTarget.style.background  = 'transparent'
             }}
           >
-            <Plus size={14} /> Añadir tarjeta
+            <Plus size={13} /> Añadir tarjeta
           </button>
         )}
       </div>
@@ -799,7 +800,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
 
   return (
     <>
-      <div className="flex gap-5 h-full overflow-x-auto pb-6 px-6 pt-6 pipeline-scroll">
+      <div className="flex gap-3.5 h-full overflow-x-auto pb-5 px-5 pt-5 pipeline-scroll">
         {STAGES.map((stage, idx) => (
           <Column
             key={stage}
