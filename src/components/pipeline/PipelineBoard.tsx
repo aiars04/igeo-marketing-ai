@@ -503,123 +503,125 @@ function ContentCard({
   const stageCfg    = STAGE_CONFIG[item.stage as Stage]
   const needsApproval = APPROVAL_STAGES.includes(item.stage as Stage) && !item.human_approved
 
+  // Avatar initials
+  const initials = item.approved_by
+    ? item.approved_by.slice(0, 2).toUpperCase()
+    : item.ai_generated ? 'AI' : '··'
+
   return (
     <div
-      className="group animate-fade-up relative cursor-pointer rounded-xl overflow-hidden transition-all duration-200"
+      className="group animate-fade-up relative cursor-pointer rounded-lg overflow-hidden transition-all duration-150"
       style={{
         background: 'var(--surface)',
         border: '1px solid var(--line2)',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.20)',
       }}
       onClick={() => onSelect(item)}
       onMouseEnter={e => {
-        e.currentTarget.style.borderColor = `${stageCfg.accentHex}66`
-        e.currentTarget.style.background = 'var(--surface2)'
-        e.currentTarget.style.boxShadow = `0 8px 24px rgba(0,0,0,0.45), 0 0 0 1px ${stageCfg.accentHex}33`
-        e.currentTarget.style.transform = 'translateY(-1px)'
+        e.currentTarget.style.borderColor = `${stageCfg.accentHex}55`
+        e.currentTarget.style.boxShadow = `0 4px 16px rgba(0,0,0,0.30), 0 0 0 1px ${stageCfg.accentHex}22`
       }}
       onMouseLeave={e => {
         e.currentTarget.style.borderColor = 'var(--line2)'
-        e.currentTarget.style.background = 'var(--surface)'
-        e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)'
-        e.currentTarget.style.transform = 'translateY(0)'
+        e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.20)'
       }}
     >
-      {/* Body — generous padding */}
-      <div className="p-5">
-        {/* Header row — channel + market + status + menu */}
-        <div className="flex items-center justify-between mb-4 gap-2">
-          <ChannelBadge channel={item.channel as Channel} />
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="font-mono text-[10.5px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>ES</span>
-            <StatusDot status={item.status} />
-            <div onClick={e => e.stopPropagation()}>
-              <CardMenu item={item} onMove={onMove} />
-            </div>
+      {/* ── Header row: channel left, market + menu right ── */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-3.5 gap-2">
+        <ChannelBadge channel={item.channel as Channel} />
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="font-mono text-[10.5px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>ES</span>
+          <StatusDot status={item.status} />
+          <div onClick={e => e.stopPropagation()}>
+            <CardMenu item={item} onMove={onMove} />
           </div>
         </div>
+      </div>
 
-        {/* Title */}
+      {/* ── Title — main focus ── */}
+      <div className="px-4 pb-4">
         <p
-          className="text-[15px] font-semibold leading-[1.45] break-words mb-4"
+          className="text-[15px] font-semibold leading-[1.4] break-words"
           style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}
         >
           {item.title}
         </p>
 
-        {/* Metadata badges row */}
-        {(item.ai_generated || item.clarity_pass !== null || item.human_approved) && (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {item.ai_generated && (
-              <span
-                className="inline-flex items-center gap-1 font-mono text-[10.5px] font-medium px-2 py-1 rounded uppercase tracking-wider"
-                style={{
-                  color: 'var(--blue-3)',
-                  background: 'rgba(37,99,235,0.10)',
-                  border: '1px solid rgba(37,99,235,0.25)',
-                }}
-              >
-                <Sparkles size={9} /> IA
-              </span>
-            )}
-            {item.clarity_pass === true && (
-              <span
-                className="inline-flex items-center font-mono text-[10.5px] font-medium px-2 py-1 rounded uppercase tracking-wider"
-                style={{
-                  color: 'var(--success-2)',
-                  background: 'rgba(16,185,129,0.10)',
-                  border: '1px solid rgba(16,185,129,0.25)',
-                }}
-              >
-                Clarity ✓
-              </span>
-            )}
-            {item.clarity_pass === false && (
-              <span
-                className="inline-flex items-center font-mono text-[10.5px] font-medium px-2 py-1 rounded uppercase tracking-wider"
-                style={{
-                  color: 'var(--warning-2)',
-                  background: 'rgba(245,158,11,0.10)',
-                  border: '1px solid rgba(245,158,11,0.25)',
-                }}
-              >
-                Revisar
-              </span>
-            )}
-            {item.human_approved && item.approved_by && (
-              <span
-                className="inline-flex items-center gap-1 font-mono text-[10.5px] font-medium px-2 py-1 rounded uppercase tracking-wider"
-                style={{
-                  color: 'var(--success-2)',
-                  background: 'rgba(16,185,129,0.08)',
-                  border: '1px solid rgba(16,185,129,0.22)',
-                }}
-              >
-                <CheckCheck size={10} /> {item.approved_by}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Scheduled date */}
-        {item.scheduled_at && (
-          <div
-            className="mt-3.5 pt-3.5 flex items-center gap-2 font-mono text-[11.5px] font-medium tabular-nums"
-            style={{ borderTop: '1px solid var(--line)', color: 'var(--warning-2)' }}
+        {/* Campaign subtitle (cliente equivalent — blue link style) */}
+        {item.campaign && (
+          <p
+            className="text-[12.5px] font-medium mt-2"
+            style={{ color: 'var(--blue-3)' }}
           >
-            <Calendar size={12} className="shrink-0" />
-            {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
-              day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-            })}
-          </div>
+            {item.campaign}
+          </p>
         )}
       </div>
 
-      {/* Quick approve — full width footer bar */}
+      {/* ── Footer: avatar + status text + tags ── */}
+      <div
+        className="flex items-center gap-2.5 px-4 py-3"
+        style={{ borderTop: '1px solid var(--line)' }}
+      >
+        {/* Avatar circle */}
+        <div
+          className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center font-mono text-[10px] font-bold uppercase tracking-wider"
+          style={{
+            background: item.human_approved
+              ? 'rgba(16,185,129,0.18)'
+              : item.ai_generated
+              ? 'rgba(37,99,235,0.18)'
+              : 'var(--surface3)',
+            color: item.human_approved
+              ? 'var(--success-2)'
+              : item.ai_generated
+              ? 'var(--blue-3)'
+              : 'var(--muted)',
+            border: `1px solid ${item.human_approved ? 'rgba(16,185,129,0.35)' : item.ai_generated ? 'rgba(37,99,235,0.35)' : 'var(--line2)'}`,
+          }}
+        >
+          {initials}
+        </div>
+
+        {/* Status label */}
+        <span
+          className="text-[12px] font-medium truncate flex-1"
+          style={{ color: 'var(--muted)' }}
+        >
+          {item.scheduled_at ? (
+            <span className="flex items-center gap-1.5 font-mono tabular-nums" style={{ color: 'var(--warning-2)' }}>
+              <Calendar size={11} />
+              {new Date(item.scheduled_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            </span>
+          ) : item.human_approved && item.approved_by ? (
+            <span style={{ color: 'var(--success-2)' }}>Aprobado por {item.approved_by}</span>
+          ) : item.ai_generated ? (
+            'Generado por IA'
+          ) : (
+            'Pendiente de revisar'
+          )}
+        </span>
+
+        {/* Compact badges right */}
+        {item.clarity_pass !== null && (
+          <span
+            className="shrink-0 inline-flex items-center font-mono text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
+            style={
+              item.clarity_pass
+                ? { color: 'var(--success-2)', background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.25)' }
+                : { color: 'var(--warning-2)', background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.25)' }
+            }
+          >
+            {item.clarity_pass ? '✓' : '!'}
+          </span>
+        )}
+      </div>
+
+      {/* ── Quick approve — full width footer bar ── */}
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-[12.5px] font-semibold transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[12.5px] font-semibold transition-colors"
           style={{
             background: 'rgba(16,185,129,0.08)',
             borderTop: '1px solid rgba(16,185,129,0.22)',
@@ -628,7 +630,7 @@ function ContentCard({
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.18)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.08)' }}
         >
-          <CheckCircle2 size={15} />
+          <CheckCircle2 size={14} />
           Aprobar y avanzar
         </button>
       )}
@@ -667,73 +669,59 @@ function Column({
 
   return (
     <div
-      className="flex flex-col shrink-0 h-full rounded-xl animate-fade-up overflow-hidden relative"
+      className="flex flex-col shrink-0 h-full animate-fade-up"
       style={{
-        width: 328,
-        background: 'rgba(255, 235, 215, 0.018)',
-        border: '1px solid var(--line)',
+        width: 308,
         animationDelay: `${index * 60}ms`,
       }}
     >
-      {/* Top accent strip */}
+      {/* ── Column header — simple, no container ── */}
       <div
-        className="absolute top-0 left-0 right-0 h-[3px] z-10"
-        style={{
-          background: `linear-gradient(90deg, ${cfg.accentHex} 0%, ${cfg.accentHex}aa 50%, transparent 100%)`,
-        }}
-      />
-
-      {/* ── Column header inside container ── */}
-      <div
-        className="px-5 pt-5 pb-4 shrink-0"
-        style={{ borderBottom: '1px solid var(--line)' }}
+        className="shrink-0 px-1 pb-4 mb-4 relative"
+        style={{ borderBottom: '1px solid var(--line2)' }}
       >
+        {/* Marker dot at separator */}
+        <div
+          className="absolute -bottom-[5px] left-0 w-2.5 h-2.5 rounded-full"
+          style={{
+            background: cfg.accentHex,
+            boxShadow: `0 0 0 3px var(--bg), 0 0 12px ${cfg.accentHex}88`,
+          }}
+        />
+
         {/* Title row */}
-        <div className="flex items-center gap-3 mb-2">
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-            style={{
-              background: `${cfg.accentHex}1a`,
-              border: `1px solid ${cfg.accentHex}40`,
-            }}
-          >
-            <Icon size={15} style={{ color: cfg.accentHex }} />
-          </div>
+        <div className="flex items-center gap-2.5 mb-2">
+          <Icon size={15} style={{ color: cfg.accentHex }} strokeWidth={2.2} />
           <h3
-            className="font-mono text-[12.5px] font-bold uppercase tracking-[0.05em] flex-1 truncate"
+            className="text-[15px] font-semibold tracking-tight flex-1 truncate"
             style={{ color: 'var(--text)' }}
           >
             {cfg.label}
           </h3>
           <span
-            className="font-mono text-[13px] font-bold tabular-nums leading-none w-8 h-7 flex items-center justify-center rounded shrink-0"
-            style={{
-              color: cfg.accentHex,
-              background: `${cfg.accentHex}1a`,
-              border: `1px solid ${cfg.accentHex}38`,
-            }}
+            className="font-mono text-[13px] font-bold tabular-nums"
+            style={{ color: cfg.accentHex }}
           >
             {filteredItems.length}
           </span>
         </div>
 
         {/* Subtitle */}
-        <p className="text-[12px] leading-snug" style={{ color: 'var(--muted)', marginLeft: 48 }}>
+        <p className="text-[12px] leading-snug" style={{ color: 'var(--muted)' }}>
           {cfg.subtitle}
-        </p>
-
-        {/* Auto badge */}
-        {cfg.automatic && (
-          <div className="mt-2.5" style={{ marginLeft: 48 }}>
-            <span className="badge badge-amber">
-              <Zap size={9} /> Auto
+          {cfg.automatic && (
+            <span
+              className="ml-2 inline-flex items-center gap-1 font-mono text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded align-middle"
+              style={{ color: 'var(--warning-2)', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)' }}
+            >
+              <Zap size={8} /> Auto
             </span>
-          </div>
-        )}
+          )}
+        </p>
       </div>
 
       {/* ── Cards stack ── */}
-      <div className="flex-1 overflow-y-auto p-3.5 space-y-3 stagger">
+      <div className="flex-1 overflow-y-auto pr-1 space-y-3 stagger">
         {filteredItems.map(item => (
           <ContentCard
             key={item.id}
