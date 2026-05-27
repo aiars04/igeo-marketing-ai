@@ -1,15 +1,15 @@
 import { cn } from '@/lib/utils'
 import type { Channel } from '@/types/database'
 
-// Colores específicos por canal (specs del producto)
+// Colores oficiales por canal
 const CHANNEL_STYLES: Record<Channel, { label: string; color: string }> = {
-  linkedin:   { label: 'LinkedIn',   color: '#0A66C2' },  // Azul LinkedIn oficial
-  instagram:  { label: 'Instagram',  color: '#C13584' },  // Púrpura-rosa Instagram
-  facebook:   { label: 'Facebook',   color: '#1877F2' },  // Azul Facebook
-  x:          { label: 'X',          color: '#71767B' },  // Gris X/Twitter
-  blog:       { label: 'Blog',       color: '#E65100' },  // Naranja blog
-  email:      { label: 'Email',      color: '#FFA000' },  // Ámbar email
-  newsletter: { label: 'Newsletter', color: '#2E7D32' },  // Verde newsletter
+  linkedin:   { label: 'LinkedIn',   color: '#0A66C2' },
+  instagram:  { label: 'Instagram',  color: '#C13584' },
+  facebook:   { label: 'Facebook',   color: '#1877F2' },
+  x:          { label: 'X',          color: '#71767B' },
+  blog:       { label: 'Blog',       color: '#E65100' },
+  email:      { label: 'Email',      color: '#FFA000' },
+  newsletter: { label: 'Newsletter', color: '#2E7D32' },
 }
 
 interface ChannelBadgeProps {
@@ -21,18 +21,18 @@ export function ChannelBadge({ channel, className }: ChannelBadgeProps) {
   const s = CHANNEL_STYLES[channel]
   return (
     <span
-      className={cn(
-        'inline-flex items-center uppercase tracking-wide',
-        className
-      )}
+      className={cn('inline-flex items-center uppercase shrink-0', className)}
       style={{
-        fontSize: 10,
+        height: 22,
+        padding: '0 10px',
+        fontSize: 11,
         fontWeight: 700,
-        padding: '2px 8px',
-        borderRadius: 4,
+        letterSpacing: '0.04em',
         color: '#ffffff',
         background: s.color,
-        letterSpacing: '0.04em',
+        borderRadius: 4,
+        lineHeight: 1,
+        whiteSpace: 'nowrap',
       }}
     >
       {s.label}

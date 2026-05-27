@@ -399,12 +399,14 @@ function Card({
 
   return (
     <article
-      className="group animate-fade-up cursor-pointer transition-all duration-150"
+      className="group animate-fade-up cursor-pointer transition-all duration-150 flex flex-col"
       style={{
-        background: 'var(--surface2)',                       // Más claro que la columna
+        background: 'var(--surface2)',
         border: '1px solid var(--line2)',
         borderRadius: 10,
-        padding: '14px 16px',
+        padding: 16,                      // ← 16px todos los lados
+        gap: 10,                          // ← gap consistente entre secciones
+        minHeight: 156,                   // ← uniformidad visual entre cards
         boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
       }}
       onClick={() => onSelect(item)}
@@ -418,21 +420,22 @@ function Card({
       }}
     >
       {/* ── Fila superior: badge canal + ES + menu ── */}
-      <div className="flex items-center justify-between gap-2 mb-3">
+      <div className="flex items-center justify-between gap-2">
         <ChannelBadge channel={item.channel as Channel} />
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Badge idioma */}
           <span
             className="inline-flex items-center"
             style={{
+              height: 22,
+              padding: '0 8px',
               fontSize: 10,
               fontWeight: 700,
-              padding: '2px 6px',
               borderRadius: 4,
               color: 'var(--text2)',
               background: 'var(--surface3)',
               border: '1px solid var(--line2)',
               letterSpacing: '0.04em',
+              lineHeight: 1,
             }}
           >
             {MARKET_LABEL[item.market] ?? item.market.toUpperCase()}
@@ -452,17 +455,19 @@ function Card({
           fontWeight: 600,
           lineHeight: 1.4,
           color: '#f5f6fa',
-          marginBottom: 12,
           letterSpacing: '-0.005em',
         }}
       >
         {item.title}
       </h3>
 
-      {/* ── Fila inferior: avatar/nombre + estado ── */}
-      <div className="flex items-center justify-between gap-2">
-        {/* Avatar/nombre del responsable */}
-        <div className="flex items-center gap-1.5 min-w-0">
+      {/* ── Fila inferior: meta — pegada al bottom con mt-auto ── */}
+      <div
+        className="flex items-center justify-between gap-3"
+        style={{ marginTop: 'auto' }}     // ← empuja al bottom
+      >
+        {/* Avatar/nombre del responsable — nombre COMPLETO sin truncate */}
+        <div className="flex items-center gap-2 min-w-0">
           {initials ? (
             <>
               <div
@@ -477,64 +482,70 @@ function Card({
               >
                 {initials}
               </div>
-              <span
-                className="truncate"
-                style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)' }}
-              >
+              <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)' }}>
                 {item.approved_by}
               </span>
             </>
           ) : item.ai_generated ? (
             <div
-              className="inline-flex items-center gap-1"
+              className="inline-flex items-center"
               style={{
+                gap: 4,                   // ← gap 4px entre icono y texto
+                height: 22,
+                padding: '0 10px',
                 fontSize: 11,
                 fontWeight: 600,
-                padding: '3px 8px',
                 borderRadius: 4,
                 color: '#94a3b8',
                 background: 'rgba(148,163,184,0.10)',
                 border: '1px solid rgba(148,163,184,0.25)',
+                lineHeight: 1,
               }}
             >
-              <Sparkles size={10} /> IA
+              <Sparkles size={11} /> IA
             </div>
           ) : (
             <span style={{ fontSize: 11, color: 'var(--muted)' }}>—</span>
           )}
         </div>
 
-        {/* Estado a la derecha */}
+        {/* Estado a la derecha — padding-x mín 10px */}
         <div className="shrink-0">
           {item.human_approved && item.approved_by ? (
             <span
-              className="inline-flex items-center gap-1"
+              className="inline-flex items-center"
               style={{
+                gap: 4,
+                height: 22,
+                padding: '0 10px',         // ← padding horizontal 10px
                 fontSize: 11,
                 fontWeight: 600,
-                padding: '3px 8px',
                 borderRadius: 4,
                 color: 'var(--success-2)',
                 background: 'rgba(16,185,129,0.12)',
                 border: '1px solid rgba(16,185,129,0.30)',
+                lineHeight: 1,
               }}
             >
               <CheckCheck size={11} /> Aprobado
             </span>
           ) : item.ai_generated ? (
             <span
-              className="inline-flex items-center gap-1"
+              className="inline-flex items-center"
               style={{
+                gap: 4,                   // ← gap 4px ✨ texto
+                height: 22,
+                padding: '0 10px',         // ← padding horizontal 10px
                 fontSize: 11,
                 fontWeight: 600,
-                padding: '3px 8px',
                 borderRadius: 4,
                 color: '#94a3b8',
                 background: 'rgba(148,163,184,0.10)',
                 border: '1px solid rgba(148,163,184,0.25)',
+                lineHeight: 1,
               }}
             >
-              <Sparkles size={10} /> Generado IA
+              <Sparkles size={11} /> Generado IA
             </span>
           ) : (
             <span style={{ fontSize: 11, color: 'var(--muted)' }}>
@@ -544,18 +555,21 @@ function Card({
         </div>
       </div>
 
-      {/* ── Fecha programada (chip separado debajo) ── */}
+      {/* ── Fecha programada (chip debajo de meta) ── */}
       {item.scheduled_at && (
         <div
-          className="mt-3 inline-flex items-center gap-1.5"
+          className="inline-flex items-center self-start"
           style={{
+            gap: 6,
+            height: 22,
+            padding: '0 10px',
             fontSize: 11,
             fontWeight: 600,
-            padding: '4px 8px',
             borderRadius: 4,
             color: 'var(--warning-2)',
             background: 'rgba(245,158,11,0.10)',
             border: '1px solid rgba(245,158,11,0.28)',
+            lineHeight: 1,
           }}
         >
           <Calendar size={11} />
@@ -565,16 +579,17 @@ function Card({
         </div>
       )}
 
-      {/* ── Botón Aprobar y avanzar — prominente full-width naranja ── */}
+      {/* ── Botón Aprobar y avanzar — height 34, font 13, radius 6 ── */}
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full mt-3 flex items-center justify-center gap-1.5 transition-all"
+          className="w-full flex items-center justify-center transition-all"
           style={{
-            fontSize: 12,
+            gap: 6,
+            height: 34,                   // ← height 34px
+            fontSize: 13,                  // ← font 13px
             fontWeight: 600,
-            padding: '8px 12px',
-            borderRadius: 6,
+            borderRadius: 6,               // ← radius 6px
             color: '#ffffff',
             background: 'var(--orange)',
             border: '1px solid var(--orange-deep)',
@@ -583,7 +598,7 @@ function Card({
           onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-2)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'var(--orange)' }}
         >
-          <CheckCircle2 size={13} />
+          <CheckCircle2 size={14} />
           Aprobar y avanzar
         </button>
       )}
@@ -619,13 +634,13 @@ function Column({
     <section
       className="flex flex-col h-full shrink-0 animate-fade-up"
       style={{
-        minWidth: 280,                     // Min ancho columna
-        maxWidth: 320,                     // Max ancho columna
+        minWidth: 280,
+        maxWidth: 320,
         width: 'clamp(280px, 22vw, 320px)',
-        background: 'var(--surface)',      // Fondo diferenciado del general
+        background: 'var(--surface)',
         border: '1px solid var(--line)',
         borderRadius: 12,
-        padding: 14,
+        padding: 12,                       // ← padding interno columna 12px
         animationDelay: `${index * 50}ms`,
       }}
     >
@@ -770,7 +785,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
       <div
         className="flex h-full overflow-x-auto pipeline-scroll"
         style={{
-          gap: 16,                        // Separador entre columnas: 16px
+          gap: 20,                        // ← gap entre columnas 20px
           padding: '20px 20px 24px',
         }}
       >
