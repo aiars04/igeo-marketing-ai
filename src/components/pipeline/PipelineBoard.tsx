@@ -510,8 +510,9 @@ function ContentCard({
 
   return (
     <div
-      className="group animate-fade-up relative cursor-pointer rounded-lg overflow-hidden transition-all duration-150"
+      className="group animate-fade-up relative cursor-pointer rounded-lg overflow-hidden transition-all duration-150 flex flex-col"
       style={{
+        aspectRatio: '9 / 16',
         background: 'var(--surface)',
         border: '1px solid var(--line2)',
         boxShadow: '0 1px 2px rgba(0,0,0,0.20)',
@@ -527,7 +528,7 @@ function ContentCard({
       }}
     >
       {/* ── Header row: channel left, market + menu right ── */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3.5 gap-2">
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 gap-2 shrink-0">
         <ChannelBadge channel={item.channel as Channel} />
         <div className="flex items-center gap-2 shrink-0">
           <span className="font-mono text-[10.5px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>ES</span>
@@ -538,8 +539,8 @@ function ContentCard({
         </div>
       </div>
 
-      {/* ── Title — main focus ── */}
-      <div className="px-4 pb-4">
+      {/* ── Title — main focus, flex-grow to fill ── */}
+      <div className="px-4 pb-4 flex-1 overflow-hidden">
         <p
           className="text-[15px] font-semibold leading-[1.4] break-words"
           style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}
@@ -547,10 +548,10 @@ function ContentCard({
           {item.title}
         </p>
 
-        {/* Campaign subtitle (cliente equivalent — blue link style) */}
+        {/* Campaign subtitle */}
         {item.campaign && (
           <p
-            className="text-[12.5px] font-medium mt-2"
+            className="text-[12.5px] font-medium mt-2.5"
             style={{ color: 'var(--blue-3)' }}
           >
             {item.campaign}
@@ -560,7 +561,7 @@ function ContentCard({
 
       {/* ── Footer: avatar + status text + tags ── */}
       <div
-        className="flex items-center gap-2.5 px-4 py-3"
+        className="flex items-center gap-2.5 px-4 py-3 shrink-0"
         style={{ borderTop: '1px solid var(--line)' }}
       >
         {/* Avatar circle */}
@@ -602,7 +603,7 @@ function ContentCard({
           )}
         </span>
 
-        {/* Compact badges right */}
+        {/* Compact badge right */}
         {item.clarity_pass !== null && (
           <span
             className="shrink-0 inline-flex items-center font-mono text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
@@ -621,7 +622,7 @@ function ContentCard({
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[12.5px] font-semibold transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[12.5px] font-semibold transition-colors shrink-0"
           style={{
             background: 'rgba(16,185,129,0.08)',
             borderTop: '1px solid rgba(16,185,129,0.22)',
