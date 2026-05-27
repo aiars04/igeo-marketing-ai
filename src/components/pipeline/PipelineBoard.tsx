@@ -512,7 +512,7 @@ function ContentCard({
     <div
       className="group animate-fade-up relative cursor-pointer rounded-lg overflow-hidden transition-all duration-150 flex flex-col"
       style={{
-        aspectRatio: '9 / 16',
+        aspectRatio: '1 / 1',
         background: 'var(--surface)',
         border: '1px solid var(--line2)',
         boxShadow: '0 1px 2px rgba(0,0,0,0.20)',
@@ -528,7 +528,7 @@ function ContentCard({
       }}
     >
       {/* ── Header row: channel left, market + menu right ── */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3 gap-2 shrink-0">
+      <div className="flex items-center justify-between px-5 pt-5 pb-4 gap-2 shrink-0">
         <ChannelBadge channel={item.channel as Channel} />
         <div className="flex items-center gap-2 shrink-0">
           <span className="font-mono text-[10.5px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>ES</span>
@@ -540,10 +540,10 @@ function ContentCard({
       </div>
 
       {/* ── Title — main focus, flex-grow to fill ── */}
-      <div className="px-4 pb-4 flex-1 overflow-hidden">
+      <div className="px-5 pb-5 flex-1 overflow-hidden">
         <p
-          className="text-[15px] font-semibold leading-[1.4] break-words"
-          style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}
+          className="text-[14.5px] font-semibold leading-[1.5] break-words"
+          style={{ color: 'var(--text)', letterSpacing: '-0.005em' }}
         >
           {item.title}
         </p>
@@ -551,7 +551,7 @@ function ContentCard({
         {/* Campaign subtitle */}
         {item.campaign && (
           <p
-            className="text-[12.5px] font-medium mt-2.5"
+            className="text-[12px] font-medium mt-3"
             style={{ color: 'var(--blue-3)' }}
           >
             {item.campaign}
@@ -561,7 +561,7 @@ function ContentCard({
 
       {/* ── Footer: avatar + status text + tags ── */}
       <div
-        className="flex items-center gap-2.5 px-4 py-3 shrink-0"
+        className="flex items-center gap-3 px-5 py-4 shrink-0"
         style={{ borderTop: '1px solid var(--line)' }}
       >
         {/* Avatar circle */}
@@ -586,7 +586,7 @@ function ContentCard({
 
         {/* Status label */}
         <span
-          className="text-[12px] font-medium truncate flex-1"
+          className="text-[11.5px] font-medium truncate flex-1"
           style={{ color: 'var(--muted)' }}
         >
           {item.scheduled_at ? (
@@ -595,11 +595,11 @@ function ContentCard({
               {new Date(item.scheduled_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
             </span>
           ) : item.human_approved && item.approved_by ? (
-            <span style={{ color: 'var(--success-2)' }}>Aprobado por {item.approved_by}</span>
+            <span style={{ color: 'var(--success-2)' }}>{item.approved_by}</span>
           ) : item.ai_generated ? (
-            'Generado por IA'
+            'Generado IA'
           ) : (
-            'Pendiente de revisar'
+            'Pendiente'
           )}
         </span>
 
@@ -622,7 +622,7 @@ function ContentCard({
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[12.5px] font-semibold transition-colors shrink-0"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[12px] font-semibold transition-colors shrink-0"
           style={{
             background: 'rgba(16,185,129,0.08)',
             borderTop: '1px solid rgba(16,185,129,0.22)',
@@ -631,7 +631,7 @@ function ContentCard({
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.18)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.08)' }}
         >
-          <CheckCircle2 size={14} />
+          <CheckCircle2 size={13} />
           Aprobar y avanzar
         </button>
       )}
