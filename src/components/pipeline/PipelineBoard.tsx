@@ -505,55 +505,66 @@ function ContentCard({
 
   return (
     <div
-      className="pcard group animate-fade-up"
+      className="group animate-fade-up relative cursor-pointer rounded-xl overflow-hidden transition-all duration-200"
       style={{
-        ['--accent-color' as string]: `${stageCfg.accentHex}66`,
+        background: 'var(--surface)',
+        border: '1px solid var(--line2)',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
       }}
       onClick={() => onSelect(item)}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = `${stageCfg.accentHex}66`
+        e.currentTarget.style.background = 'var(--surface2)'
+        e.currentTarget.style.boxShadow = `0 8px 24px rgba(0,0,0,0.45), 0 0 0 1px ${stageCfg.accentHex}33`
+        e.currentTarget.style.transform = 'translateY(-1px)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = 'var(--line2)'
+        e.currentTarget.style.background = 'var(--surface)'
+        e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)'
+        e.currentTarget.style.transform = 'translateY(0)'
+      }}
     >
-      {/* Header strip — channel + status + menu */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3 gap-2">
-        <ChannelBadge channel={item.channel as Channel} />
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[11px] leading-none">{MARKET_FLAG[item.market] ?? ''}</span>
-          <StatusDot status={item.status} />
-          <div onClick={e => e.stopPropagation()}>
-            <CardMenu item={item} onMove={onMove} />
+      {/* Body — generous padding */}
+      <div className="p-5">
+        {/* Header row — channel + market + status + menu */}
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <ChannelBadge channel={item.channel as Channel} />
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>ES</span>
+            <StatusDot status={item.status} />
+            <div onClick={e => e.stopPropagation()}>
+              <CardMenu item={item} onMove={onMove} />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Body — title with serif accent if applicable */}
-      <div className="px-4 pb-4">
+        {/* Title */}
         <p
-          className="text-[14px] font-medium leading-[1.5] break-words"
-          style={{ color: 'var(--text)' }}
+          className="text-[14.5px] font-semibold leading-[1.45] break-words mb-4"
+          style={{ color: 'var(--text)', letterSpacing: '-0.005em' }}
         >
           {item.title}
         </p>
-      </div>
 
-      {/* Hairline + metadata footer (only if there's something to show) */}
-      {(item.ai_generated || item.clarity_pass !== null || item.human_approved || item.scheduled_at) && (
-        <>
-          <div className="hairline mx-4" />
-
-          <div className="px-4 py-3 flex items-center gap-1.5 flex-wrap">
+        {/* Metadata badges row */}
+        {(item.ai_generated || item.clarity_pass !== null || item.human_approved) && (
+          <div className="flex items-center gap-1.5 flex-wrap">
             {item.ai_generated && (
               <span
-                className="inline-flex items-center gap-1 font-mono text-[9.5px] font-medium px-1.5 py-0.5 rounded-sm uppercase tracking-wider"
+                className="inline-flex items-center gap-1 font-mono text-[10px] font-medium px-2 py-1 rounded uppercase tracking-wider"
                 style={{
                   color: 'var(--blue-3)',
                   background: 'rgba(37,99,235,0.10)',
                   border: '1px solid rgba(37,99,235,0.25)',
                 }}
               >
-                <Sparkles size={8} /> IA
+                <Sparkles size={9} /> IA
               </span>
             )}
             {item.clarity_pass === true && (
               <span
-                className="inline-flex items-center font-mono text-[9.5px] font-medium px-1.5 py-0.5 rounded-sm uppercase tracking-wider"
+                className="inline-flex items-center font-mono text-[10px] font-medium px-2 py-1 rounded uppercase tracking-wider"
                 style={{
                   color: 'var(--success-2)',
                   background: 'rgba(16,185,129,0.10)',
@@ -565,7 +576,7 @@ function ContentCard({
             )}
             {item.clarity_pass === false && (
               <span
-                className="inline-flex items-center font-mono text-[9.5px] font-medium px-1.5 py-0.5 rounded-sm uppercase tracking-wider"
+                className="inline-flex items-center font-mono text-[10px] font-medium px-2 py-1 rounded uppercase tracking-wider"
                 style={{
                   color: 'var(--warning-2)',
                   background: 'rgba(245,158,11,0.10)',
@@ -577,37 +588,38 @@ function ContentCard({
             )}
             {item.human_approved && item.approved_by && (
               <span
-                className="inline-flex items-center gap-1 font-mono text-[9.5px] font-medium px-1.5 py-0.5 rounded-sm uppercase tracking-wider"
+                className="inline-flex items-center gap-1 font-mono text-[10px] font-medium px-2 py-1 rounded uppercase tracking-wider"
                 style={{
                   color: 'var(--success-2)',
                   background: 'rgba(16,185,129,0.08)',
                   border: '1px solid rgba(16,185,129,0.22)',
                 }}
               >
-                <CheckCheck size={9} /> {item.approved_by}
-              </span>
-            )}
-
-            {item.scheduled_at && (
-              <span
-                className="ml-auto flex items-center gap-1.5 font-mono text-[10.5px] font-medium tabular-nums"
-                style={{ color: 'var(--warning-2)' }}
-              >
-                <Calendar size={10} className="shrink-0" />
-                {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
-                  day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-                })}
+                <CheckCheck size={10} /> {item.approved_by}
               </span>
             )}
           </div>
-        </>
-      )}
+        )}
 
-      {/* Quick approve — full width action footer */}
+        {/* Scheduled date */}
+        {item.scheduled_at && (
+          <div
+            className="mt-3.5 pt-3.5 flex items-center gap-2 font-mono text-[11.5px] font-medium tabular-nums"
+            style={{ borderTop: '1px solid var(--line)', color: 'var(--warning-2)' }}
+          >
+            <Calendar size={12} className="shrink-0" />
+            {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
+              day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Quick approve — full width footer bar */}
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-[11.5px] font-semibold transition-colors uppercase tracking-wider font-mono"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[12px] font-semibold transition-colors"
           style={{
             background: 'rgba(16,185,129,0.08)',
             borderTop: '1px solid rgba(16,185,129,0.22)',
@@ -616,7 +628,7 @@ function ContentCard({
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.18)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.08)' }}
         >
-          <CheckCircle2 size={13} />
+          <CheckCircle2 size={14} />
           Aprobar y avanzar
         </button>
       )}
@@ -654,66 +666,73 @@ function Column({
     : items.filter(i => filterChannels.includes(i.channel as Channel))
 
   return (
-    <div className="flex flex-col w-[320px] shrink-0 h-full">
+    <div className="flex flex-col w-[340px] shrink-0 h-full">
 
-      {/* ── Column header — precision panel ── */}
+      {/* ── Column header — caja con accent bar y mucho aire ── */}
       <div
-        className="col-panel mb-3 animate-fade-up"
+        className="mb-4 animate-fade-up rounded-xl overflow-hidden relative"
         style={{
-          ['--accent' as string]: cfg.accentHex,
+          background: 'var(--surface)',
+          border: '1px solid var(--line2)',
           animationDelay: `${index * 60}ms`,
         }}
       >
-        <div className="px-4 pt-4 pb-3.5">
-          {/* Step + auto */}
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-mono text-[9.5px] font-medium tracking-[0.18em] uppercase" style={{ color: 'var(--muted)' }}>
-              <span style={{ color: cfg.accentHex }}>STEP {String(index + 1).padStart(2, '0')}</span>
-              <span className="mx-1.5">·</span>
-              <span>{stage}</span>
-            </span>
-            {cfg.automatic && (
-              <span className="badge badge-amber">
-                <Zap size={8} /> Auto
-              </span>
-            )}
-          </div>
+        {/* Top accent strip */}
+        <div
+          className="absolute top-0 left-0 right-0 h-[3px]"
+          style={{
+            background: `linear-gradient(90deg, ${cfg.accentHex} 0%, ${cfg.accentHex}aa 60%, transparent 100%)`,
+          }}
+        />
 
-          {/* Title + count */}
-          <div className="flex items-center gap-2.5">
+        <div className="px-5 pt-5 pb-4">
+          {/* Title row — icon + label + counter */}
+          <div className="flex items-center gap-3 mb-2">
             <div
-              className="w-8 h-8 rounded flex items-center justify-center shrink-0"
+              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
               style={{
                 background: `${cfg.accentHex}18`,
                 border: `1px solid ${cfg.accentHex}40`,
               }}
             >
-              <Icon size={14} style={{ color: cfg.accentHex }} />
+              <Icon size={16} style={{ color: cfg.accentHex }} />
             </div>
-            <h3 className="text-[14px] font-semibold tracking-tight flex-1" style={{ color: 'var(--text)' }}>
+            <h3
+              className="font-mono text-[13px] font-bold uppercase tracking-[0.04em] flex-1"
+              style={{ color: 'var(--text)' }}
+            >
               {cfg.label}
             </h3>
             <span
-              className="font-mono text-[13px] font-bold tabular-nums px-2 py-0.5 rounded leading-none"
+              className="font-mono text-[13px] font-bold tabular-nums leading-none w-7 h-7 flex items-center justify-center rounded"
               style={{
                 color: cfg.accentHex,
                 background: `${cfg.accentHex}18`,
                 border: `1px solid ${cfg.accentHex}35`,
               }}
             >
-              {String(filteredItems.length).padStart(2, '0')}
+              {filteredItems.length}
             </span>
           </div>
 
           {/* Subtitle */}
-          <p className="text-[11.5px] leading-snug mt-2.5 ml-10" style={{ color: 'var(--muted)' }}>
+          <p className="text-[12px] leading-snug ml-12" style={{ color: 'var(--muted)' }}>
             {cfg.subtitle}
           </p>
+
+          {/* Auto badge */}
+          {cfg.automatic && (
+            <div className="mt-3 ml-12">
+              <span className="badge badge-amber">
+                <Zap size={9} /> Auto
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* ── Cards stack ── */}
-      <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 stagger">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 stagger">
         {filteredItems.map(item => (
           <ContentCard
             key={item.id}
@@ -726,10 +745,10 @@ function Column({
 
         {cfg.automatic ? (
           <div
-            className="w-full flex items-center justify-center gap-2 px-3 py-3.5 rounded-md text-[11.5px] font-medium font-mono uppercase tracking-wider"
+            className="w-full flex items-center justify-center gap-2 px-4 py-4 rounded-xl text-[12px] font-medium font-mono uppercase tracking-wider"
             style={{ border: '1px dashed var(--line2)', color: 'var(--muted)', opacity: 0.7 }}
           >
-            <Zap size={12} /> PostiZ Auto
+            <Zap size={13} /> PostiZ programa automáticamente
           </div>
         ) : showAddForm ? (
           <AddForm
@@ -740,7 +759,7 @@ function Column({
         ) : (
           <button
             onClick={() => setShowAddForm(true)}
-            className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-md text-[12px] font-medium transition-all"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl text-[12.5px] font-medium transition-all"
             style={{ border: '1px dashed var(--line2)', color: 'var(--muted)' }}
             onMouseEnter={e => {
               e.currentTarget.style.color       = cfg.accentHex
@@ -753,7 +772,7 @@ function Column({
               e.currentTarget.style.background  = 'transparent'
             }}
           >
-            <Plus size={13} /> Añadir tarjeta
+            <Plus size={14} /> Añadir tarjeta
           </button>
         )}
       </div>
