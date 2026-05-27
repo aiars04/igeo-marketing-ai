@@ -669,9 +669,11 @@ function Column({
 
   return (
     <div
-      className="flex flex-col shrink-0 h-full animate-fade-up"
+      className="flex flex-col h-full animate-fade-up"
       style={{
-        width: 308,
+        flex: '1 1 0',
+        minWidth: 244,
+        maxWidth: 360,
         animationDelay: `${index * 60}ms`,
       }}
     >
@@ -788,7 +790,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
 
   return (
     <>
-      <div className="flex gap-3.5 h-full overflow-x-auto pb-5 px-5 pt-5 pipeline-scroll">
+      <div className="flex gap-3 h-full overflow-x-auto pb-5 px-4 pt-5 pipeline-scroll">
         {STAGES.map((stage, idx) => (
           <Column
             key={stage}
