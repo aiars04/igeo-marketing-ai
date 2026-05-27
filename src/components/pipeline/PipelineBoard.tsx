@@ -201,21 +201,19 @@ function MetaRow({ label, children }: { label: string; children: React.ReactNode
   )
 }
 
-// Chip uniforme para badges de estado (h 26, gap 8)
+// Chip uniforme para badges de estado (h 26, gap 6, mismo estilo base)
 function StatusChip({
   variant, icon: Icon, children,
 }: {
-  variant: 'stage' | 'ai' | 'user' | 'warning' | 'success'
-  stageColor?: string
+  variant: 'stage' | 'ai' | 'user' | 'warning'
   icon?: LucideIcon
   children: React.ReactNode
 }) {
   const styles: Record<string, { bg: string; color: string; border: string }> = {
-    ai:      { bg: 'rgba(96,165,250,0.12)',  color: '#93c5fd', border: '1px solid rgba(96,165,250,0.30)' },
+    stage:   { bg: 'rgba(99,102,241,0.15)',  color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.40)' },
+    ai:      { bg: 'rgba(168,85,247,0.12)',  color: '#c4b5fd', border: '1px solid rgba(168,85,247,0.35)' },
     user:    { bg: 'rgba(34,197,94,0.12)',   color: '#86efac', border: '1px solid rgba(34,197,94,0.30)' },
     warning: { bg: 'rgba(245,158,11,0.12)',  color: '#fcd34d', border: '1px solid rgba(245,158,11,0.30)' },
-    success: { bg: 'rgba(34,197,94,0.12)',   color: '#86efac', border: '1px solid rgba(34,197,94,0.30)' },
-    stage:   { bg: 'transparent',            color: '#fff',    border: '1px solid transparent' },
   }
   const s = styles[variant]
   return (
@@ -238,6 +236,15 @@ function StatusChip({
       {children}
     </span>
   )
+}
+
+// Limpia markdown crudo al inicio de líneas: #, ##, ###, -, *
+function stripMarkdown(text: string): string {
+  return text
+    .split('\n')
+    .map(line => line.replace(/^\s*(?:#{1,6}|[-*])\s*/, ''))
+    .join('\n')
+    .trim()
 }
 
 function ContentDetailModal({
@@ -271,7 +278,14 @@ function ContentDetailModal({
           return (
             <div key={s} className="flex items-start flex-1 min-w-0">
               {/* Step itself */}
-              <div className="flex flex-col items-center" style={{ flex: '0 0 auto', width: 64 }}>
+              <div
+                className="flex flex-col items-center"
+                style={{
+                  flex: '0 0 auto',
+                  width: 64,
+                  opacity: isCurrent ? 1 : isDone ? 1 : 0.35,   // ← inactivos opacity 0.35
+                }}
+              >
                 <div
                   className="flex items-center justify-center transition-all"
                   style={{
@@ -289,7 +303,7 @@ function ContentDetailModal({
                   <SIcon
                     size={16}
                     style={{
-                      color: isCurrent ? '#ffffff' : isDone ? sCfg.accentHex : 'rgba(255,255,255,0.35)',
+                      color: isCurrent ? '#ffffff' : isDone ? sCfg.accentHex : '#ffffff',
                     }}
                   />
                 </div>
@@ -299,22 +313,23 @@ function ContentDetailModal({
                     marginTop: 8,
                     fontSize: 11,
                     fontWeight: isCurrent ? 700 : 500,
-                    color: isCurrent ? '#ffffff' : isDone ? sCfg.accentHex : 'rgba(255,255,255,0.40)',
+                    color: isCurrent ? '#ffffff' : isDone ? sCfg.accentHex : '#ffffff',
                     lineHeight: 1.3,
+                    opacity: isCurrent ? 1 : isDone ? 1 : 0.4,  // ← label inactivo opacity 0.4
                   }}
                 >
                   {sCfg.label.split(' ')[0]}
                 </span>
               </div>
 
-              {/* Connector line */}
+              {/* Connector line — height 1px */}
               {!isLast && (
                 <div
                   className="flex-1"
                   style={{
-                    height: 2,
-                    background: isDone ? `${sCfg.accentHex}55` : 'rgba(255,255,255,0.06)',
-                    marginTop: 17,                   // centrado con el círculo
+                    height: 1,                                              // ← 1px (era 2)
+                    background: isDone ? `${sCfg.accentHex}55` : 'rgba(255,255,255,0.12)',  // ← inactivo 0.12
+                    marginTop: 17.5,
                     minWidth: 8,
                   }}
                 />
@@ -324,26 +339,9 @@ function ContentDetailModal({
         })}
       </div>
 
-      {/* ── Chips de estado debajo del stepper — h26, gap8 ── */}
+      {/* ── Chips de estado debajo del stepper — h26, gap8, mismo estilo base ── */}
       <div className="flex flex-wrap" style={{ gap: 8, marginBottom: 24 }}>
-        <StatusChip variant="stage" stageColor={stageCfg.accentHex}>
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              color: stageCfg.accentHex,
-            }}
-          >
-            <span
-              style={{
-                width: 6, height: 6, borderRadius: '50%',
-                background: stageCfg.accentHex,
-              }}
-            />
-            {stageCfg.label}
-          </span>
-        </StatusChip>
+        <StatusChip variant="stage">{stageCfg.label}</StatusChip>
         {item.ai_generated && (
           <StatusChip variant="ai" icon={Sparkles}>Generado por IA</StatusChip>
         )}
@@ -411,9 +409,13 @@ function ContentDetailModal({
               lineHeight: 1.6,
               color: '#e8e9ed',
               whiteSpace: 'pre-wrap',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
             }}
           >
-            {item.content}
+            {stripMarkdown(item.content)}
           </p>
         ) : (
           <div>
