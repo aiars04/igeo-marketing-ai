@@ -177,14 +177,66 @@ function AddForm({
   )
 }
 
-// ─── Detail Modal (lógica intacta) ───────────────────────────────────────────
+// ─── Detail Modal — rediseño completo según specs ────────────────────────────
 
 function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--muted)' }}>{label}</p>
-      <div className="text-[13px]" style={{ color: 'var(--text)' }}>{children}</div>
+      <p
+        className="uppercase"
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          color: 'rgba(255,255,255,0.45)',
+          marginBottom: 6,
+        }}
+      >
+        {label}
+      </p>
+      <div style={{ fontSize: 14, fontWeight: 600, color: '#ffffff', lineHeight: 1.4 }}>
+        {children}
+      </div>
     </div>
+  )
+}
+
+// Chip uniforme para badges de estado (h 26, gap 8)
+function StatusChip({
+  variant, icon: Icon, children,
+}: {
+  variant: 'stage' | 'ai' | 'user' | 'warning' | 'success'
+  stageColor?: string
+  icon?: LucideIcon
+  children: React.ReactNode
+}) {
+  const styles: Record<string, { bg: string; color: string; border: string }> = {
+    ai:      { bg: 'rgba(96,165,250,0.12)',  color: '#93c5fd', border: '1px solid rgba(96,165,250,0.30)' },
+    user:    { bg: 'rgba(34,197,94,0.12)',   color: '#86efac', border: '1px solid rgba(34,197,94,0.30)' },
+    warning: { bg: 'rgba(245,158,11,0.12)',  color: '#fcd34d', border: '1px solid rgba(245,158,11,0.30)' },
+    success: { bg: 'rgba(34,197,94,0.12)',   color: '#86efac', border: '1px solid rgba(34,197,94,0.30)' },
+    stage:   { bg: 'transparent',            color: '#fff',    border: '1px solid transparent' },
+  }
+  const s = styles[variant]
+  return (
+    <span
+      className="inline-flex items-center"
+      style={{
+        height: 26,
+        padding: '0 12px',
+        gap: 6,
+        background: s.bg,
+        color: s.color,
+        border: s.border,
+        borderRadius: 6,
+        fontSize: 12,
+        fontWeight: 600,
+        lineHeight: 1,
+      }}
+    >
+      {Icon && <Icon size={12} />}
+      {children}
+    </span>
   )
 }
 
@@ -206,84 +258,180 @@ function ContentDetailModal({
 
   return (
     <Modal open onClose={onClose} title={item.title} size="lg">
-      {/* Stage progress */}
-      <div className="flex items-center gap-1 mb-6">
+
+      {/* ── Stepper — fases uniformes con icono + label ── */}
+      <div className="flex items-start" style={{ marginBottom: 24 }}>
         {STAGES.map((s, i) => {
           const sCfg = STAGE_CONFIG[s]
           const SIcon = STAGE_ICONS[s]
           const isCurrent = s === item.stage
           const isDone = i < idx
+          const isLast = i === STAGES.length - 1
+
           return (
-            <div key={s} className="flex items-center gap-1 flex-1 min-w-0">
-              <div className="flex flex-col items-center gap-1.5 shrink-0">
+            <div key={s} className="flex items-start flex-1 min-w-0">
+              {/* Step itself */}
+              <div className="flex flex-col items-center" style={{ flex: '0 0 auto', width: 64 }}>
                 <div
-                  className="w-8 h-8 rounded-md flex items-center justify-center"
+                  className="flex items-center justify-center transition-all"
                   style={{
-                    background: isCurrent ? `${sCfg.accentHex}22` : isDone ? `${sCfg.accentHex}10` : 'var(--surface2)',
-                    border: `1px solid ${isCurrent ? sCfg.accentHex : isDone ? `${sCfg.accentHex}40` : 'var(--line)'}`,
+                    width: 36, height: 36,
+                    borderRadius: 8,
+                    background: isCurrent
+                      ? sCfg.accentHex
+                      : isDone
+                      ? `${sCfg.accentHex}28`
+                      : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${isCurrent ? sCfg.accentHex : isDone ? `${sCfg.accentHex}55` : 'rgba(255,255,255,0.08)'}`,
+                    boxShadow: isCurrent ? `0 0 0 3px ${sCfg.accentHex}22` : 'none',
                   }}
                 >
-                  <SIcon size={13} style={{ color: isCurrent ? sCfg.accentHex : isDone ? `${sCfg.accentHex}cc` : 'var(--muted)' }} />
+                  <SIcon
+                    size={16}
+                    style={{
+                      color: isCurrent ? '#ffffff' : isDone ? sCfg.accentHex : 'rgba(255,255,255,0.35)',
+                    }}
+                  />
                 </div>
-                <span className="text-[10px] font-semibold text-center" style={{ color: isCurrent ? sCfg.accentHex : 'var(--muted)' }}>
+                <span
+                  className="text-center"
+                  style={{
+                    marginTop: 8,
+                    fontSize: 11,
+                    fontWeight: isCurrent ? 700 : 500,
+                    color: isCurrent ? '#ffffff' : isDone ? sCfg.accentHex : 'rgba(255,255,255,0.40)',
+                    lineHeight: 1.3,
+                  }}
+                >
                   {sCfg.label.split(' ')[0]}
                 </span>
               </div>
-              {i < STAGES.length - 1 && (
-                <div className="flex-1 h-px mb-4" style={{ background: isDone ? `${sCfg.accentHex}55` : 'var(--line)' }} />
+
+              {/* Connector line */}
+              {!isLast && (
+                <div
+                  className="flex-1"
+                  style={{
+                    height: 2,
+                    background: isDone ? `${sCfg.accentHex}55` : 'rgba(255,255,255,0.06)',
+                    marginTop: 17,                   // centrado con el círculo
+                    minWidth: 8,
+                  }}
+                />
               )}
             </div>
           )
         })}
       </div>
 
-      {/* Badges */}
-      <div className="flex items-center gap-2 mb-5 flex-wrap">
-        <span
-          className="badge"
-          style={{ color: stageCfg.accentHex, background: `${stageCfg.accentHex}18`, border: `1px solid ${stageCfg.accentHex}35` }}
-        >
-          {stageCfg.label}
-        </span>
-        {item.ai_generated && <span className="badge badge-blue"><Sparkles size={10} /> Generado por IA</span>}
-        {item.human_approved && item.approved_by && <span className="badge badge-green"><CheckCheck size={10} /> {item.approved_by}</span>}
+      {/* ── Chips de estado debajo del stepper — h26, gap8 ── */}
+      <div className="flex flex-wrap" style={{ gap: 8, marginBottom: 24 }}>
+        <StatusChip variant="stage" stageColor={stageCfg.accentHex}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              color: stageCfg.accentHex,
+            }}
+          >
+            <span
+              style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: stageCfg.accentHex,
+              }}
+            />
+            {stageCfg.label}
+          </span>
+        </StatusChip>
+        {item.ai_generated && (
+          <StatusChip variant="ai" icon={Sparkles}>Generado por IA</StatusChip>
+        )}
+        {item.human_approved && item.approved_by && (
+          <StatusChip variant="user" icon={CheckCheck}>{item.approved_by}</StatusChip>
+        )}
       </div>
 
-      {/* Meta */}
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-5 p-4 rounded-lg" style={{ background: 'var(--surface2)', border: '1px solid var(--line)' }}>
+      {/* ── Grid metadatos — 2 cols, gap 16x32 ── */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          rowGap: 16,
+          columnGap: 32,
+          padding: 20,
+          marginBottom: 20,
+          background: 'rgba(255,255,255,0.025)',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 10,
+        }}
+      >
         <MetaRow label="Canal"><ChannelBadge channel={item.channel as Channel} /></MetaRow>
         <MetaRow label="Mercado">{MARKET_LABEL[item.market] ?? item.market}</MetaRow>
         <MetaRow label="Estado">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <StatusDot status={item.status} />
-            {STATUS_LABELS[item.status] ?? item.status}
+            <span>{STATUS_LABELS[item.status] ?? item.status}</span>
           </div>
         </MetaRow>
         {item.campaign && <MetaRow label="Campaña">{item.campaign}</MetaRow>}
         <MetaRow label="Creado">
-          <span style={{ color: 'var(--text2)' }}>
-            {new Date(item.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </span>
+          {new Date(item.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
         </MetaRow>
         <MetaRow label="Actualizado">
-          <span style={{ color: 'var(--text2)' }}>
-            {new Date(item.updated_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </span>
+          {new Date(item.updated_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
         </MetaRow>
       </div>
 
-      <div className="mb-5 p-4 rounded-lg" style={{ background: 'var(--surface2)', border: '1px solid var(--line)' }}>
-        <p className="text-[11px] font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--muted)' }}>
+      {/* ── Sección Contenido — bg #252535 padding 12 radius 8 ── */}
+      <div
+        style={{
+          background: '#252535',
+          padding: 16,
+          borderRadius: 8,
+          marginBottom: 16,
+        }}
+      >
+        <p
+          className="uppercase"
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            color: 'rgba(255,255,255,0.45)',
+            marginBottom: 10,
+          }}
+        >
           {item.content ? 'Contenido' : 'Propuesta'}
         </p>
         {item.content ? (
-          <p className="text-[14px] leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text)' }}>{item.content}</p>
+          <p
+            style={{
+              fontSize: 14,
+              lineHeight: 1.6,
+              color: '#e8e9ed',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {item.content}
+          </p>
         ) : (
           <div>
-            <p className="text-[14px] font-medium leading-snug mb-3" style={{ color: 'var(--text)' }}>{item.title}</p>
+            <p style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5, color: '#e8e9ed', marginBottom: 12 }}>
+              {item.title}
+            </p>
             <div
-              className="flex items-center gap-2 text-[12px] font-medium px-3 py-2.5 rounded"
-              style={{ background: `${stageCfg.accentHex}10`, border: `1px solid ${stageCfg.accentHex}28`, color: stageCfg.accentHex }}
+              className="inline-flex items-center"
+              style={{
+                gap: 6,
+                padding: '8px 12px',
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                background: `${stageCfg.accentHex}15`,
+                border: `1px solid ${stageCfg.accentHex}35`,
+                color: stageCfg.accentHex,
+              }}
             >
               <Sparkles size={12} />
               {item.stage === 'ideas' ? 'Pendiente de aprobar y pasar a redacción'
@@ -296,35 +444,68 @@ function ContentDetailModal({
         )}
       </div>
 
+      {/* ── Clarity — chip verde según specs ── */}
       {item.clarity_pass !== null && (
         <div
-          className="flex items-start gap-3 mb-4 p-3.5 rounded-lg"
+          className="flex items-center"
           style={{
-            background: item.clarity_pass ? 'rgba(16,185,129,0.06)' : 'rgba(245,158,11,0.06)',
-            border: `1px solid ${item.clarity_pass ? 'rgba(16,185,129,0.22)' : 'rgba(245,158,11,0.22)'}`,
+            gap: 10,
+            padding: '12px 14px',
+            marginBottom: 16,
+            background: item.clarity_pass ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)',
+            border: `1px solid ${item.clarity_pass ? 'rgba(34,197,94,0.30)' : 'rgba(245,158,11,0.30)'}`,
+            borderRadius: 8,
           }}
         >
-          <span style={{ color: item.clarity_pass ? 'var(--success-2)' : 'var(--warning-2)' }}>
-            {item.clarity_pass ? '✓' : '⚠'}
-          </span>
-          <div>
-            <p className="text-[13px] font-semibold" style={{ color: item.clarity_pass ? 'var(--success-2)' : 'var(--warning-2)' }}>
+          <div
+            className="flex items-center justify-center shrink-0"
+            style={{
+              width: 22, height: 22,
+              borderRadius: '50%',
+              background: item.clarity_pass ? 'rgba(34,197,94,0.25)' : 'rgba(245,158,11,0.25)',
+            }}
+          >
+            <CheckCircle2 size={13} style={{ color: item.clarity_pass ? '#86efac' : '#fcd34d' }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: item.clarity_pass ? '#86efac' : '#fcd34d',
+                lineHeight: 1.3,
+              }}
+            >
               Clarity {item.clarity_pass ? 'OK' : 'requiere revisión'}
             </p>
-            {item.clarity_summary && <p className="text-[12px] mt-1" style={{ color: 'var(--muted)' }}>{item.clarity_summary}</p>}
+            {item.clarity_summary && (
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 2, lineHeight: 1.4 }}>
+                {item.clarity_summary}
+              </p>
+            )}
           </div>
         </div>
       )}
 
+      {/* ── Scheduled ── */}
       {item.scheduled_at && (
         <div
-          className="flex items-center gap-3 mb-4 p-3.5 rounded-lg"
-          style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.22)' }}
+          className="flex items-center"
+          style={{
+            gap: 10,
+            padding: '12px 14px',
+            marginBottom: 16,
+            background: 'rgba(245,158,11,0.10)',
+            border: '1px solid rgba(245,158,11,0.28)',
+            borderRadius: 8,
+          }}
         >
-          <Calendar size={15} className="shrink-0" style={{ color: 'var(--warning-2)' }} />
+          <Calendar size={16} className="shrink-0" style={{ color: '#fcd34d' }} />
           <div>
-            <p className="text-[13px] font-semibold" style={{ color: 'var(--warning-2)' }}>Programado vía PostiZ</p>
-            <p className="text-[12px] mt-0.5" style={{ color: 'var(--muted)' }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#fcd34d', lineHeight: 1.3 }}>
+              Programado vía PostiZ
+            </p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
               {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
                 day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
               })}
@@ -333,43 +514,123 @@ function ContentDetailModal({
         </div>
       )}
 
-      <div className="flex items-center gap-2 pt-4 mt-2" style={{ borderTop: '1px solid var(--line)' }}>
+      {/* ── Footer — border-top, Eliminar outline izq + Mover CTA der ── */}
+      <div
+        className="flex items-center"
+        style={{
+          gap: 10,
+          paddingTop: 16,
+          marginTop: 8,
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
         {confirmDelete ? (
           <>
-            <p className="text-[12px] flex-1" style={{ color: 'var(--muted)' }}>¿Eliminar definitivamente?</p>
+            <p style={{ fontSize: 13, flex: 1, color: 'rgba(255,255,255,0.55)' }}>
+              ¿Eliminar definitivamente?
+            </p>
             <button
               onClick={() => { onDelete(item.id); onClose() }}
-              className="px-3 py-1.5 rounded text-[12px] font-semibold text-white"
-              style={{ background: 'rgba(239,68,68,0.75)' }}
+              className="transition-colors"
+              style={{
+                height: 36,
+                padding: '0 14px',
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#ffffff',
+                background: '#ef4444',
+                borderRadius: 6,
+                border: 'none',
+              }}
             >
               Sí, eliminar
             </button>
-            <button onClick={() => setConfirmDelete(false)} className="btn-ghost text-[12px]">Cancelar</button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="transition-colors"
+              style={{
+                height: 36,
+                padding: '0 14px',
+                fontSize: 13,
+                fontWeight: 500,
+                color: 'rgba(255,255,255,0.65)',
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 6,
+              }}
+            >
+              Cancelar
+            </button>
           </>
         ) : (
           <>
+            {/* Eliminar — rojo outline izquierda */}
             <button
               onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded text-[12px] font-medium hover:bg-rose-500/10"
-              style={{ border: '1px solid rgba(239,68,68,0.22)', color: 'var(--danger-2)' }}
+              className="inline-flex items-center transition-colors"
+              style={{
+                gap: 6,
+                height: 36,
+                padding: '0 14px',
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#f87171',
+                background: 'transparent',
+                border: '1px solid rgba(239,68,68,0.40)',
+                borderRadius: 6,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.10)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
             >
-              <Trash2 size={12} /> Eliminar
+              <Trash2 size={13} /> Eliminar
             </button>
-            <div className="flex-1" />
-            {next && nextCfg && (
-              <button onClick={() => { onMove(item.id, next); onClose() }} className="btn-ghost flex items-center gap-1.5 text-[12px]">
-                <ArrowRight size={12} style={{ color: nextCfg.accentHex }} /> Mover a {nextCfg.label}
-              </button>
-            )}
-            {needsApproval && (
+
+            <div style={{ flex: 1 }} />
+
+            {/* Mover a X — CTA primario derecha */}
+            {needsApproval ? (
               <button
                 onClick={() => { onApprove(item.id, item.stage as Stage); onClose() }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded text-[12px] font-semibold"
-                style={{ background: 'rgba(16,185,129,0.18)', border: '1px solid rgba(16,185,129,0.4)', color: 'var(--success-2)' }}
+                className="inline-flex items-center transition-colors"
+                style={{
+                  gap: 6,
+                  height: 36,
+                  padding: '0 16px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#ffffff',
+                  background: 'var(--orange)',
+                  border: '1px solid var(--orange-deep)',
+                  borderRadius: 6,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-2)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--orange)' }}
               >
-                <CheckCircle2 size={13} /> Aprobar y avanzar
+                <CheckCircle2 size={14} /> Aprobar y avanzar
               </button>
-            )}
+            ) : next && nextCfg ? (
+              <button
+                onClick={() => { onMove(item.id, next); onClose() }}
+                className="inline-flex items-center transition-colors"
+                style={{
+                  gap: 6,
+                  height: 36,
+                  padding: '0 16px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#ffffff',
+                  background: 'var(--orange)',
+                  border: '1px solid var(--orange-deep)',
+                  borderRadius: 6,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-2)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--orange)' }}
+              >
+                Mover a {nextCfg.label} <ArrowRight size={13} />
+              </button>
+            ) : null}
           </>
         )}
       </div>

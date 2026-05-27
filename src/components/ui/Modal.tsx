@@ -12,7 +12,7 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
-  const maxWidth = size === 'sm' ? 420 : size === 'lg' ? 680 : size === 'xl' ? 880 : 540
+  const maxWidth = size === 'sm' ? 440 : size === 'lg' ? 720 : size === 'xl' ? 880 : 560
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -34,37 +34,64 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     >
       <div
         ref={panelRef}
-        className="animate-scale-in w-full relative overflow-hidden"
+        className="animate-scale-in w-full relative overflow-hidden flex flex-col"
         style={{
           maxWidth,
-          background: 'var(--surface)',
-          border: '1px solid var(--line2)',
-          borderRadius: 'var(--r-xl)',
-          boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+          background: '#1e1e2e',                              // ← specs
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 12,                                   // ← specs
+          boxShadow: '0 24px 64px rgba(0,0,0,0.55)',
+          maxHeight: '88vh',
         }}
         onMouseDown={e => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* Header — título 18px bold + close con hover */}
         <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: '1px solid var(--line)' }}
+          className="flex items-center justify-between shrink-0"
+          style={{
+            padding: '20px 28px',                              // ← 28px horizontal
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+          }}
         >
-          <h2 className="text-[14px] font-semibold tracking-tight truncate pr-3" style={{ color: 'var(--text)' }}>
+          <h2
+            className="truncate pr-3"
+            style={{
+              fontSize: 18,                                    // ← specs
+              fontWeight: 700,                                 // ← bold
+              color: '#ffffff',
+              letterSpacing: '-0.01em',
+              lineHeight: 1.3,
+            }}
+          >
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="rounded p-1.5 transition-colors shrink-0"
-            style={{ color: 'var(--muted)' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'var(--text)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--muted)' }}
+            className="rounded-md transition-colors shrink-0 flex items-center justify-center"
+            style={{
+              width: 32, height: 32,
+              color: 'rgba(255,255,255,0.55)',
+              background: 'transparent',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
+              e.currentTarget.style.color = '#ffffff'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
+            }}
+            aria-label="Cerrar"
           >
-            <X size={15} />
+            <X size={17} />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="px-5 py-5 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 64px)' }}>
+        {/* Body — padding 28px */}
+        <div
+          className="overflow-y-auto flex-1"
+          style={{ padding: 28 }}                              // ← specs
+        >
           {children}
         </div>
       </div>
