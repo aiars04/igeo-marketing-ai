@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import {
   Plus, Sparkles, MoreHorizontal, ChevronRight, Calendar,
   Lightbulb, PenLine, Layers, Zap, BarChart2, Trash2,
-  CheckCircle2, CheckCheck, ArrowRight,
+  CheckCircle2, CheckCheck, ArrowRight, Globe2,
 } from 'lucide-react'
 import { cn, STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
@@ -50,16 +50,16 @@ interface BoardProps {
 
 function StatusDot({ status }: { status: string }) {
   const map: Record<string, string> = {
-    pending:     '#6b7280',
-    in_progress: '#fbbf24',
-    approved:    '#34d399',
-    rejected:    '#f87171',
+    pending:     '#6b6058',
+    in_progress: '#f59e0b',
+    approved:    '#10b981',
+    rejected:    '#ef4444',
   }
-  const color = map[status] ?? '#6b7280'
+  const color = map[status] ?? '#6b6058'
   return (
     <span
       className={cn('inline-block w-1.5 h-1.5 rounded-full shrink-0', status === 'in_progress' && 'animate-pulse-dot')}
-      style={{ background: color }}
+      style={{ background: color, boxShadow: status !== 'pending' ? `0 0 6px ${color}80` : 'none' }}
     />
   )
 }
@@ -68,14 +68,14 @@ function StatusDot({ status }: { status: string }) {
 
 function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--muted)' }}>{label}</p>
-      {children}
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="mono-label" style={{ color: 'var(--muted)' }}>{label}</span>
+      <div className="text-[12.5px] text-right truncate" style={{ color: 'var(--text)' }}>{children}</div>
     </div>
   )
 }
 
-// ─── CardMenu ────────────────────────────────────────────────────────────────
+// ─── CardMenu — portal dropdown ──────────────────────────────────────────────
 
 function CardMenu({
   item,
@@ -102,7 +102,7 @@ function CardMenu({
       setDropPos(null)
     } else {
       const rect = btnRef.current?.getBoundingClientRect()
-      if (rect) setDropPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+      if (rect) setDropPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right })
     }
   }
 
@@ -111,10 +111,10 @@ function CardMenu({
       <button
         ref={btnRef}
         onClick={handleToggle}
-        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/5"
-        aria-label="Mover a siguiente etapa"
+        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-[var(--surface3)]"
+        aria-label="Menú"
       >
-        <MoreHorizontal size={14} style={{ color: 'var(--muted)' }} />
+        <MoreHorizontal size={13} style={{ color: 'var(--muted)' }} />
       </button>
 
       {mounted && dropPos && createPortal(
@@ -124,13 +124,14 @@ function CardMenu({
             onClick={e => { e.stopPropagation(); setDropPos(null) }}
           />
           <div
-            className="fixed z-[9999] rounded-lg shadow-2xl overflow-hidden py-1 animate-scale-in"
+            className="fixed z-[9999] rounded-md overflow-hidden py-1 animate-scale-in"
             style={{
               top: dropPos.top,
               right: dropPos.right,
               background: 'var(--surface3)',
-              border: '1px solid var(--border2)',
-              minWidth: 200,
+              border: '1px solid var(--line3)',
+              minWidth: 210,
+              boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
             }}
           >
             <button
@@ -139,11 +140,11 @@ function CardMenu({
                 onMove(item.id, nextStage)
                 setDropPos(null)
               }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-[12.5px] text-left transition-colors hover:bg-white/5"
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-[12.5px] text-left transition-colors hover:bg-[var(--surface4)]"
               style={{ color: 'var(--text)' }}
             >
               <ChevronRight size={13} style={{ color: nextCfg.accentHex }} />
-              Mover a <span className="font-medium">{nextCfg.label}</span>
+              <span>Mover a <span className="font-medium">{nextCfg.label}</span></span>
             </button>
           </div>
         </>,
@@ -169,12 +170,12 @@ function AddForm({
   const cfg = STAGE_CONFIG[stage]
 
   const submit = () => { if (title.trim()) onAdd(title.trim(), channel) }
-  const base   = { background: 'var(--surface3)', border: '1px solid var(--border2)', color: 'var(--text)' }
+  const base   = { background: 'var(--surface2)', border: '1px solid var(--line2)', color: 'var(--text)' }
 
   return (
     <div
-      className="animate-fade-in rounded-lg p-3 flex flex-col gap-2"
-      style={{ background: 'var(--surface2)', border: '1px solid var(--border2)' }}
+      className="animate-fade-in rounded-md p-3 flex flex-col gap-2"
+      style={{ background: 'var(--surface)', border: `1px solid ${cfg.accentHex}40` }}
     >
       <input
         autoFocus
@@ -183,34 +184,34 @@ function AddForm({
         onChange={e => setTitle(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onCancel() }}
         placeholder="Título del contenido..."
-        className="w-full px-2.5 py-2 rounded-md text-[12.5px] outline-none transition-colors"
+        className="w-full px-2.5 py-2 rounded text-[12.5px] outline-none transition-colors"
         style={base}
         onFocus={e => { e.currentTarget.style.borderColor = 'var(--orange)' }}
-        onBlur={e  => { e.currentTarget.style.borderColor = 'var(--border2)' }}
+        onBlur={e  => { e.currentTarget.style.borderColor = 'var(--line2)' }}
       />
       <select
         value={channel}
         onChange={e => setChannel(e.target.value as Channel)}
-        className="w-full px-2.5 py-2 rounded-md text-[12.5px] outline-none"
+        className="w-full px-2.5 py-2 rounded text-[12.5px] outline-none"
         style={base}
       >
         {(['linkedin','instagram','facebook','x','blog','email','newsletter'] as Channel[]).map(c => (
           <option key={c} value={c}>{c}</option>
         ))}
       </select>
-      <div className="flex gap-1.5">
+      <div className="flex gap-1.5 pt-0.5">
         <button
           onClick={onCancel}
-          className="flex-1 px-2 py-1.5 rounded-md text-[11.5px] transition-colors hover:bg-white/5"
-          style={{ border: '1px solid var(--border2)', color: 'var(--muted)' }}
+          className="flex-1 px-2 py-1.5 rounded text-[11.5px] transition-colors hover:bg-[var(--surface3)]"
+          style={{ border: '1px solid var(--line2)', color: 'var(--muted)' }}
         >
           Cancelar
         </button>
         <button
           onClick={submit}
           disabled={!title.trim()}
-          className="flex-1 px-2 py-1.5 rounded-md text-[11.5px] font-semibold text-white transition-opacity disabled:opacity-40"
-          style={{ background: cfg.accentHex }}
+          className="flex-1 px-2 py-1.5 rounded text-[11.5px] font-semibold text-white transition-opacity disabled:opacity-40"
+          style={{ background: cfg.accentHex, border: `1px solid ${cfg.accentHex}` }}
         >
           Añadir
         </button>
@@ -245,7 +246,7 @@ function ContentDetailModal({
     <Modal open onClose={onClose} title={item.title} size="lg">
 
       {/* Stage progress tracker */}
-      <div className="flex items-center gap-1 mb-5 -mt-1">
+      <div className="flex items-center gap-1 mb-6">
         {STAGES.map((s, idx) => {
           const sCfg    = STAGE_CONFIG[s]
           const SIcon   = STAGE_ICONS[s]
@@ -255,16 +256,16 @@ function ContentDetailModal({
             <div key={s} className="flex items-center gap-1 flex-1 min-w-0">
               <div className="flex flex-col items-center gap-1.5 shrink-0">
                 <div
-                  className="w-7 h-7 rounded-md flex items-center justify-center"
+                  className="w-8 h-8 rounded flex items-center justify-center transition-all"
                   style={{
-                    background: isCurrent ? `${sCfg.accentHex}22` : isDone ? `${sCfg.accentHex}10` : 'var(--surface3)',
-                    border:     `1px solid ${isCurrent ? sCfg.accentHex : isDone ? `${sCfg.accentHex}40` : 'var(--border)'}`,
+                    background: isCurrent ? `${sCfg.accentHex}22` : isDone ? `${sCfg.accentHex}10` : 'var(--surface2)',
+                    border: `1px solid ${isCurrent ? sCfg.accentHex : isDone ? `${sCfg.accentHex}40` : 'var(--line)'}`,
                   }}
                 >
-                  <SIcon size={12} style={{ color: isCurrent ? sCfg.accentHex : isDone ? `${sCfg.accentHex}cc` : 'var(--muted)' }} />
+                  <SIcon size={13} style={{ color: isCurrent ? sCfg.accentHex : isDone ? `${sCfg.accentHex}cc` : 'var(--muted)' }} />
                 </div>
                 <span
-                  className="text-[8.5px] font-semibold text-center leading-none uppercase tracking-wide"
+                  className="font-mono text-[9px] font-medium text-center leading-none uppercase tracking-wider"
                   style={{ color: isCurrent ? sCfg.accentHex : 'var(--muted)' }}
                 >
                   {sCfg.label.split(' ')[0]}
@@ -272,8 +273,8 @@ function ContentDetailModal({
               </div>
               {idx < STAGES.length - 1 && (
                 <div
-                  className="flex-1 h-px"
-                  style={{ background: isDone ? `${sCfg.accentHex}55` : 'var(--border)' }}
+                  className="flex-1 h-px mb-4"
+                  style={{ background: isDone ? `${sCfg.accentHex}55` : 'var(--line)' }}
                 />
               )}
             </div>
@@ -281,27 +282,25 @@ function ContentDetailModal({
         })}
       </div>
 
-      {/* Badges */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
+      {/* Badges row */}
+      <div className="flex items-center gap-1.5 mb-5 flex-wrap">
         <span
-          className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide"
-          style={{ color: stageCfg.accentHex, background: `${stageCfg.accentHex}18`, border: `1px solid ${stageCfg.accentHex}30` }}
+          className="badge"
+          style={{
+            color: stageCfg.accentHex,
+            background: `${stageCfg.accentHex}18`,
+            border: `1px solid ${stageCfg.accentHex}35`,
+          }}
         >
           {stageCfg.label}
         </span>
         {item.ai_generated && (
-          <span
-            className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded"
-            style={{ color: 'var(--accent2)', background: 'rgba(56,189,248,0.10)', border: '1px solid rgba(56,189,248,0.22)' }}
-          >
+          <span className="badge badge-blue">
             <Sparkles size={9} /> IA
           </span>
         )}
         {item.human_approved && item.approved_by && (
-          <span
-            className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded"
-            style={{ color: 'var(--success)', background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.25)' }}
-          >
+          <span className="badge badge-green">
             <CheckCheck size={9} /> {item.approved_by}
           </span>
         )}
@@ -309,53 +308,48 @@ function ContentDetailModal({
 
       {/* Meta grid */}
       <div
-        className="grid grid-cols-2 gap-x-6 gap-y-3 mb-4 p-3.5 rounded-lg"
-        style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
+        className="grid grid-cols-2 gap-x-7 gap-y-2.5 mb-5 p-4 rounded-md"
+        style={{ background: 'var(--surface2)', border: '1px solid var(--line)' }}
       >
         <MetaRow label="Canal"><ChannelBadge channel={item.channel as Channel} /></MetaRow>
         <MetaRow label="Mercado">
-          <span className="text-[12.5px]" style={{ color: 'var(--text)' }}>{MARKET_FLAG[item.market] ?? ''} {item.market}</span>
+          <span>{MARKET_FLAG[item.market] ?? ''} {item.market}</span>
         </MetaRow>
         <MetaRow label="Estado">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center justify-end gap-1.5">
             <StatusDot status={item.status} />
-            <span className="text-[12.5px]" style={{ color: 'var(--text)' }}>{STATUS_LABELS[item.status] ?? item.status}</span>
+            <span>{STATUS_LABELS[item.status] ?? item.status}</span>
           </div>
         </MetaRow>
-        {item.campaign && (
-          <MetaRow label="Campaña">
-            <span className="text-[12.5px]" style={{ color: 'var(--text)' }}>{item.campaign}</span>
-          </MetaRow>
-        )}
+        {item.campaign && <MetaRow label="Campaña">{item.campaign}</MetaRow>}
         <MetaRow label="Creado">
-          <span className="text-[12px]" style={{ color: 'var(--muted)' }}>
-            {new Date(item.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </span>
+          {new Date(item.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
         </MetaRow>
         <MetaRow label="Actualizado">
-          <span className="text-[12px]" style={{ color: 'var(--muted)' }}>
-            {new Date(item.updated_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </span>
+          {new Date(item.updated_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
         </MetaRow>
       </div>
 
       {/* Content */}
-      <div className="mb-4 p-3.5 rounded-lg" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
-        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--muted)' }}>
-          {item.content ? 'Contenido redactado' : 'Propuesta'}
-        </p>
+      <div className="mb-5 p-4 rounded-md" style={{ background: 'var(--surface2)', border: '1px solid var(--line)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="mono-label" style={{ color: 'var(--orange-3)' }}>
+            {item.content ? '— Contenido' : '— Propuesta'}
+          </span>
+          <div className="flex-1 h-px" style={{ background: 'var(--line2)' }} />
+        </div>
         {item.content ? (
           <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text)' }}>
             {item.content}
           </p>
         ) : (
           <div>
-            <p className="text-[14px] font-semibold leading-snug mb-3" style={{ color: 'var(--text)' }}>
+            <p className="text-[14.5px] font-medium leading-snug mb-3" style={{ color: 'var(--text)' }}>
               {item.title}
             </p>
             <div
-              className="flex items-center gap-2 text-[11.5px] font-medium px-2.5 py-2 rounded-md"
-              style={{ background: `${stageCfg.accentHex}10`, border: `1px solid ${stageCfg.accentHex}28`, color: stageCfg.accentHex }}
+              className="flex items-center gap-2 text-[11.5px] font-medium px-2.5 py-2 rounded"
+              style={{ background: `${stageCfg.accentHex}10`, border: `1px solid ${stageCfg.accentHex}30`, color: stageCfg.accentHex }}
             >
               <Sparkles size={11} />
               {item.stage === 'ideas'
@@ -375,18 +369,18 @@ function ContentDetailModal({
       {/* Clarity */}
       {item.clarity_pass !== null && (
         <div
-          className="flex items-start gap-2.5 mb-4 p-3 rounded-lg"
+          className="flex items-start gap-3 mb-4 p-3.5 rounded-md"
           style={{
-            background: item.clarity_pass ? 'rgba(52,211,153,0.06)' : 'rgba(251,191,36,0.06)',
-            border: `1px solid ${item.clarity_pass ? 'rgba(52,211,153,0.22)' : 'rgba(251,191,36,0.22)'}`,
+            background: item.clarity_pass ? 'rgba(16,185,129,0.06)' : 'rgba(245,158,11,0.06)',
+            border: `1px solid ${item.clarity_pass ? 'rgba(16,185,129,0.22)' : 'rgba(245,158,11,0.22)'}`,
           }}
         >
-          <span className="text-[14px]" style={{ color: item.clarity_pass ? 'var(--success)' : 'var(--warning)' }}>
+          <span className="text-[14px] font-mono" style={{ color: item.clarity_pass ? 'var(--success-2)' : 'var(--warning-2)' }}>
             {item.clarity_pass ? '✓' : '⚠'}
           </span>
           <div>
-            <p className="text-[12.5px] font-semibold" style={{ color: item.clarity_pass ? 'var(--success)' : 'var(--warning)' }}>
-              Clarity {item.clarity_pass ? 'OK' : 'Requiere revisión'}
+            <p className="text-[12.5px] font-semibold" style={{ color: item.clarity_pass ? 'var(--success-2)' : 'var(--warning-2)' }}>
+              Clarity · {item.clarity_pass ? 'OK' : 'Requiere revisión'}
             </p>
             {item.clarity_summary && (
               <p className="text-[12px] mt-1" style={{ color: 'var(--muted)' }}>{item.clarity_summary}</p>
@@ -395,19 +389,19 @@ function ContentDetailModal({
         </div>
       )}
 
-      {/* Approved */}
+      {/* Approval info */}
       {item.human_approved && item.approved_by && (
         <div
-          className="flex items-center gap-2.5 mb-4 p-3 rounded-lg"
-          style={{ background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.22)' }}
+          className="flex items-center gap-3 mb-4 p-3.5 rounded-md"
+          style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.22)' }}
         >
-          <CheckCheck size={15} className="shrink-0" style={{ color: 'var(--success)' }} />
+          <CheckCheck size={15} className="shrink-0" style={{ color: 'var(--success-2)' }} />
           <div>
-            <p className="text-[12.5px] font-semibold" style={{ color: 'var(--success)' }}>
+            <p className="text-[12.5px] font-semibold" style={{ color: 'var(--success-2)' }}>
               Aprobado por {item.approved_by}
             </p>
             {item.approved_at && (
-              <p className="text-[11px] mt-0.5" style={{ color: 'var(--muted)' }}>
+              <p className="text-[11px] mt-0.5 font-mono" style={{ color: 'var(--muted)' }}>
                 {new Date(item.approved_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             )}
@@ -418,13 +412,13 @@ function ContentDetailModal({
       {/* Scheduled */}
       {item.scheduled_at && (
         <div
-          className="flex items-center gap-2.5 mb-4 p-3 rounded-lg"
-          style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.22)' }}
+          className="flex items-center gap-3 mb-4 p-3.5 rounded-md"
+          style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.22)' }}
         >
-          <Calendar size={15} className="shrink-0" style={{ color: 'var(--warning)' }} />
+          <Calendar size={15} className="shrink-0" style={{ color: 'var(--warning-2)' }} />
           <div>
-            <p className="text-[12.5px] font-semibold" style={{ color: 'var(--warning)' }}>Programado via PostiZ</p>
-            <p className="text-[12px] mt-0.5" style={{ color: 'var(--muted)' }}>
+            <p className="text-[12.5px] font-semibold" style={{ color: 'var(--warning-2)' }}>Programado via PostiZ</p>
+            <p className="text-[12px] mt-0.5 font-mono" style={{ color: 'var(--muted)' }}>
               {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
                 day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
               })}
@@ -433,19 +427,19 @@ function ContentDetailModal({
         </div>
       )}
 
-      {/* Footer */}
-      <div className="flex items-center gap-2 pt-4 border-t border-[var(--border)]">
+      {/* Footer actions */}
+      <div className="flex items-center gap-2 pt-4 mt-2" style={{ borderTop: '1px solid var(--line)' }}>
         {confirmDelete ? (
           <>
             <p className="text-[12px] flex-1" style={{ color: 'var(--muted)' }}>¿Eliminar definitivamente?</p>
             <button
               onClick={() => { onDelete(item.id); onClose() }}
-              className="px-3 py-1.5 rounded-md text-[12px] font-semibold text-white transition-all"
-              style={{ background: 'rgba(244,63,94,0.75)', border: '1px solid rgba(244,63,94,0.4)' }}
+              className="px-3 py-1.5 rounded text-[12px] font-semibold text-white transition-all"
+              style={{ background: 'rgba(239,68,68,0.75)', border: '1px solid rgba(239,68,68,0.4)' }}
             >
               Sí, eliminar
             </button>
-            <button onClick={() => setConfirmDelete(false)} className="btn-ghost text-[12px] py-1.5">
+            <button onClick={() => setConfirmDelete(false)} className="btn-ghost text-[12px]">
               Cancelar
             </button>
           </>
@@ -453,8 +447,8 @@ function ContentDetailModal({
           <>
             <button
               onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all hover:bg-rose-500/10"
-              style={{ border: '1px solid rgba(244,63,94,0.22)', color: '#f87171' }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded text-[12px] font-medium transition-all hover:bg-rose-500/10"
+              style={{ border: '1px solid rgba(239,68,68,0.22)', color: 'var(--danger-2)' }}
             >
               <Trash2 size={12} />
               Eliminar
@@ -475,14 +469,14 @@ function ContentDetailModal({
             {needsApproval && (
               <button
                 onClick={() => { onApprove(item.id, item.stage as Stage); onClose() }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all"
+                className="flex items-center gap-1.5 px-4 py-2 rounded text-[12px] font-semibold transition-all"
                 style={{
-                  background: 'rgba(52,211,153,0.15)',
-                  border: '1px solid rgba(52,211,153,0.35)',
-                  color: 'var(--success)',
+                  background: 'rgba(16,185,129,0.18)',
+                  border: '1px solid rgba(16,185,129,0.4)',
+                  color: 'var(--success-2)',
                 }}
               >
-                <CheckCircle2 size={12} />
+                <CheckCircle2 size={13} />
                 Aprobar y avanzar
               </button>
             )}
@@ -493,7 +487,7 @@ function ContentDetailModal({
   )
 }
 
-// ─── ContentCard ─────────────────────────────────────────────────────────────
+// ─── ContentCard — la pieza maestra ──────────────────────────────────────────
 
 function ContentCard({
   item,
@@ -511,116 +505,116 @@ function ContentCard({
 
   return (
     <div
-      className="group relative rounded-xl cursor-pointer transition-all duration-150 animate-fade-in overflow-hidden"
+      className="pcard group animate-fade-up"
       style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border2)',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+        ['--accent-color' as string]: `${stageCfg.accentHex}66`,
       }}
       onClick={() => onSelect(item)}
-      onMouseEnter={e => {
-        e.currentTarget.style.borderColor = `${stageCfg.accentHex}66`
-        e.currentTarget.style.background = 'var(--surface2)'
-        e.currentTarget.style.boxShadow = `0 4px 12px rgba(0,0,0,0.3), 0 0 0 1px ${stageCfg.accentHex}22`
-        e.currentTarget.style.transform = 'translateY(-1px)'
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.borderColor = 'var(--border2)'
-        e.currentTarget.style.background = 'var(--surface)'
-        e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.2)'
-        e.currentTarget.style.transform = 'translateY(0)'
-      }}
     >
-      {/* Main content area */}
-      <div className="p-4">
-        {/* Top row: channel + market + status + menu */}
-        <div className="flex items-center justify-between mb-3.5 gap-2">
-          <ChannelBadge channel={item.channel as Channel} />
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[12px] leading-none">{MARKET_FLAG[item.market] ?? ''}</span>
-            <StatusDot status={item.status} />
-            <div onClick={e => e.stopPropagation()}>
-              <CardMenu item={item} onMove={onMove} />
-            </div>
+      {/* Header strip — channel + status + menu */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 gap-2">
+        <ChannelBadge channel={item.channel as Channel} />
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[11px] leading-none">{MARKET_FLAG[item.market] ?? ''}</span>
+          <StatusDot status={item.status} />
+          <div onClick={e => e.stopPropagation()}>
+            <CardMenu item={item} onMove={onMove} />
           </div>
         </div>
+      </div>
 
-        {/* Title — más grande y con respiro */}
+      {/* Body — title with serif accent if applicable */}
+      <div className="px-4 pb-4">
         <p
-          className="text-[14px] font-medium leading-[1.5] mb-3.5 break-words"
+          className="text-[14px] font-medium leading-[1.5] break-words"
           style={{ color: 'var(--text)' }}
         >
           {item.title}
         </p>
+      </div>
 
-        {/* Footer badges */}
-        {(item.ai_generated || item.clarity_pass !== null || item.human_approved) && (
-          <div className="flex items-center gap-1.5 flex-wrap">
+      {/* Hairline + metadata footer (only if there's something to show) */}
+      {(item.ai_generated || item.clarity_pass !== null || item.human_approved || item.scheduled_at) && (
+        <>
+          <div className="hairline mx-4" />
+
+          <div className="px-4 py-3 flex items-center gap-1.5 flex-wrap">
             {item.ai_generated && (
               <span
-                className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded"
-                style={{ color: 'var(--accent2)', background: 'rgba(56,189,248,0.10)', border: '1px solid rgba(56,189,248,0.22)' }}
+                className="inline-flex items-center gap-1 font-mono text-[9.5px] font-medium px-1.5 py-0.5 rounded-sm uppercase tracking-wider"
+                style={{
+                  color: 'var(--blue-3)',
+                  background: 'rgba(37,99,235,0.10)',
+                  border: '1px solid rgba(37,99,235,0.25)',
+                }}
               >
-                <Sparkles size={9} /> IA
+                <Sparkles size={8} /> IA
               </span>
             )}
             {item.clarity_pass === true && (
               <span
-                className="text-[10px] font-semibold px-2 py-1 rounded"
-                style={{ color: 'var(--success)', background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.22)' }}
+                className="inline-flex items-center font-mono text-[9.5px] font-medium px-1.5 py-0.5 rounded-sm uppercase tracking-wider"
+                style={{
+                  color: 'var(--success-2)',
+                  background: 'rgba(16,185,129,0.10)',
+                  border: '1px solid rgba(16,185,129,0.25)',
+                }}
               >
                 Clarity ✓
               </span>
             )}
             {item.clarity_pass === false && (
               <span
-                className="text-[10px] font-semibold px-2 py-1 rounded"
-                style={{ color: 'var(--warning)', background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.22)' }}
+                className="inline-flex items-center font-mono text-[9.5px] font-medium px-1.5 py-0.5 rounded-sm uppercase tracking-wider"
+                style={{
+                  color: 'var(--warning-2)',
+                  background: 'rgba(245,158,11,0.10)',
+                  border: '1px solid rgba(245,158,11,0.25)',
+                }}
               >
                 Revisar
               </span>
             )}
             {item.human_approved && item.approved_by && (
               <span
-                className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded"
-                style={{ color: 'var(--success)', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.20)' }}
+                className="inline-flex items-center gap-1 font-mono text-[9.5px] font-medium px-1.5 py-0.5 rounded-sm uppercase tracking-wider"
+                style={{
+                  color: 'var(--success-2)',
+                  background: 'rgba(16,185,129,0.08)',
+                  border: '1px solid rgba(16,185,129,0.22)',
+                }}
               >
-                <CheckCheck size={10} /> {item.approved_by}
+                <CheckCheck size={9} /> {item.approved_by}
+              </span>
+            )}
+
+            {item.scheduled_at && (
+              <span
+                className="ml-auto flex items-center gap-1.5 font-mono text-[10.5px] font-medium tabular-nums"
+                style={{ color: 'var(--warning-2)' }}
+              >
+                <Calendar size={10} className="shrink-0" />
+                {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
+                  day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+                })}
               </span>
             )}
           </div>
-        )}
+        </>
+      )}
 
-        {/* Scheduled date */}
-        {item.scheduled_at && (
-          <div
-            className="mt-3 pt-3 flex items-center gap-2 text-[11.5px] font-medium tabular-nums"
-            style={{ borderTop: '1px solid var(--border)', color: 'var(--warning)' }}
-          >
-            <Calendar size={12} className="shrink-0" />
-            {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
-              day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Quick approve button — in footer bar */}
+      {/* Quick approve — full width action footer */}
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-[11.5px] font-semibold transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-[11.5px] font-semibold transition-colors uppercase tracking-wider font-mono"
           style={{
-            background: 'rgba(52,211,153,0.08)',
-            borderTop: '1px solid rgba(52,211,153,0.20)',
-            color: 'var(--success)',
+            background: 'rgba(16,185,129,0.08)',
+            borderTop: '1px solid rgba(16,185,129,0.22)',
+            color: 'var(--success-2)',
           }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(52,211,153,0.16)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(52,211,153,0.08)'
-          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.18)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.08)' }}
         >
           <CheckCircle2 size={13} />
           Aprobar y avanzar
@@ -640,6 +634,7 @@ function Column({
   onMove,
   onApprove,
   onSelectItem,
+  index,
 }: {
   stage:          Stage
   items:          ContentItem[]
@@ -652,65 +647,73 @@ function Column({
 }) {
   const cfg  = STAGE_CONFIG[stage]
   const Icon = STAGE_ICONS[stage]
-  const [showAddForm,  setShowAddForm]  = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
 
   const filteredItems = filterChannels.length === 0
     ? items
     : items.filter(i => filterChannels.includes(i.channel as Channel))
 
   return (
-    <div className="flex flex-col w-[316px] shrink-0 h-full">
+    <div className="flex flex-col w-[320px] shrink-0 h-full">
 
-      {/* Header — caja con presencia */}
+      {/* ── Column header — precision panel ── */}
       <div
-        className="rounded-xl px-4 py-3 mb-3 relative overflow-hidden"
+        className="col-panel mb-3 animate-fade-up"
         style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border2)',
+          ['--accent' as string]: cfg.accentHex,
+          animationDelay: `${index * 60}ms`,
         }}
       >
-        {/* Accent bar top */}
-        <div
-          className="absolute top-0 left-0 right-0 h-[2px]"
-          style={{ background: cfg.accentHex }}
-        />
-
-        <div className="flex items-center gap-2.5 mb-1.5">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: `${cfg.accentHex}18`, border: `1px solid ${cfg.accentHex}38` }}
-          >
-            <Icon size={14} style={{ color: cfg.accentHex }} />
-          </div>
-          <h3 className="text-[13.5px] font-semibold tracking-tight flex-1" style={{ color: 'var(--text)' }}>
-            {cfg.label}
-          </h3>
-          <span
-            className="text-[12px] font-bold px-2 py-0.5 rounded tabular-nums leading-none"
-            style={{
-              color: cfg.accentHex,
-              background: `${cfg.accentHex}18`,
-              border: `1px solid ${cfg.accentHex}30`,
-            }}
-          >
-            {filteredItems.length}
-          </span>
-          {cfg.automatic && (
-            <span
-              className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide"
-              style={{ color: 'var(--warning)', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.28)' }}
-            >
-              <Zap size={8} /> Auto
+        <div className="px-4 pt-4 pb-3.5">
+          {/* Step + auto */}
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-mono text-[9.5px] font-medium tracking-[0.18em] uppercase" style={{ color: 'var(--muted)' }}>
+              <span style={{ color: cfg.accentHex }}>STEP {String(index + 1).padStart(2, '0')}</span>
+              <span className="mx-1.5">·</span>
+              <span>{stage}</span>
             </span>
-          )}
+            {cfg.automatic && (
+              <span className="badge badge-amber">
+                <Zap size={8} /> Auto
+              </span>
+            )}
+          </div>
+
+          {/* Title + count */}
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-8 h-8 rounded flex items-center justify-center shrink-0"
+              style={{
+                background: `${cfg.accentHex}18`,
+                border: `1px solid ${cfg.accentHex}40`,
+              }}
+            >
+              <Icon size={14} style={{ color: cfg.accentHex }} />
+            </div>
+            <h3 className="text-[14px] font-semibold tracking-tight flex-1" style={{ color: 'var(--text)' }}>
+              {cfg.label}
+            </h3>
+            <span
+              className="font-mono text-[13px] font-bold tabular-nums px-2 py-0.5 rounded leading-none"
+              style={{
+                color: cfg.accentHex,
+                background: `${cfg.accentHex}18`,
+                border: `1px solid ${cfg.accentHex}35`,
+              }}
+            >
+              {String(filteredItems.length).padStart(2, '0')}
+            </span>
+          </div>
+
+          {/* Subtitle */}
+          <p className="text-[11.5px] leading-snug mt-2.5 ml-10" style={{ color: 'var(--muted)' }}>
+            {cfg.subtitle}
+          </p>
         </div>
-        <p className="text-[11.5px] leading-snug ml-10" style={{ color: 'var(--muted)' }}>
-          {cfg.subtitle}
-        </p>
       </div>
 
-      {/* Cards */}
-      <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+      {/* ── Cards stack ── */}
+      <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 stagger">
         {filteredItems.map(item => (
           <ContentCard
             key={item.id}
@@ -723,10 +726,10 @@ function Column({
 
         {cfg.automatic ? (
           <div
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-3.5 rounded-xl text-[11.5px] font-medium"
-            style={{ border: '1px dashed var(--border2)', color: 'var(--muted)', opacity: 0.7 }}
+            className="w-full flex items-center justify-center gap-2 px-3 py-3.5 rounded-md text-[11.5px] font-medium font-mono uppercase tracking-wider"
+            style={{ border: '1px dashed var(--line2)', color: 'var(--muted)', opacity: 0.7 }}
           >
-            <Zap size={12} /> PostiZ programa automáticamente
+            <Zap size={12} /> PostiZ Auto
           </div>
         ) : showAddForm ? (
           <AddForm
@@ -737,17 +740,17 @@ function Column({
         ) : (
           <button
             onClick={() => setShowAddForm(true)}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-[12.5px] font-medium transition-all"
-            style={{ border: '1px dashed var(--border2)', color: 'var(--muted)' }}
+            className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-md text-[12px] font-medium transition-all"
+            style={{ border: '1px dashed var(--line2)', color: 'var(--muted)' }}
             onMouseEnter={e => {
-              e.currentTarget.style.color        = cfg.accentHex
-              e.currentTarget.style.borderColor  = `${cfg.accentHex}55`
-              e.currentTarget.style.background   = `${cfg.accentHex}06`
+              e.currentTarget.style.color       = cfg.accentHex
+              e.currentTarget.style.borderColor = `${cfg.accentHex}55`
+              e.currentTarget.style.background  = `${cfg.accentHex}06`
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.color        = 'var(--muted)'
-              e.currentTarget.style.borderColor  = 'var(--border2)'
-              e.currentTarget.style.background   = 'transparent'
+              e.currentTarget.style.color       = 'var(--muted)'
+              e.currentTarget.style.borderColor = 'var(--line2)'
+              e.currentTarget.style.background  = 'transparent'
             }}
           >
             <Plus size={13} /> Añadir tarjeta

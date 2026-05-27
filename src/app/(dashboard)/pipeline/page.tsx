@@ -38,18 +38,15 @@ function StatPill({
   variant?: 'default' | 'amber' | 'emerald'
 }) {
   const s = {
-    default: { bg: 'var(--surface2)',          border: 'var(--border2)',         color: 'var(--text2)', valueColor: 'var(--text)' },
-    amber:   { bg: 'rgba(251,191,36,0.08)',    border: 'rgba(251,191,36,0.25)',  color: '#fbbf24',      valueColor: '#fbbf24'    },
-    emerald: { bg: 'rgba(52,211,153,0.08)',    border: 'rgba(52,211,153,0.25)',  color: '#34d399',      valueColor: '#34d399'    },
+    default: { bg: 'var(--surface)',         border: 'var(--line2)',          color: 'var(--text2)',    valueColor: 'var(--text)' },
+    amber:   { bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.25)', color: 'var(--warning-2)', valueColor: 'var(--warning-2)' },
+    emerald: { bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.25)', color: 'var(--success-2)', valueColor: 'var(--success-2)' },
   }[variant]
 
   return (
-    <div
-      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium tabular-nums"
-      style={{ background: s.bg, border: `1px solid ${s.border}` }}
-    >
-      <span className="font-semibold text-[12.5px]" style={{ color: s.valueColor }}>{value}</span>
-      <span style={{ color: s.color, opacity: 0.85 }}>{label}</span>
+    <div className="stat-pill" style={{ background: s.bg, borderColor: s.border, color: s.color }}>
+      <span className="stat-pill-value" style={{ color: s.valueColor }}>{String(value).padStart(2, '0')}</span>
+      <span style={{ opacity: 0.85 }}>{label}</span>
     </div>
   )
 }
@@ -204,15 +201,17 @@ export default function PipelinePage() {
   return (
     <div className="flex flex-col h-screen relative">
       {/* Topbar */}
-      <div className="flex items-center justify-between px-6 h-[60px] shrink-0 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
-        <div className="flex items-center gap-5 min-w-0">
+      <div className="topbar shrink-0 gap-4 justify-between">
+        <div className="flex items-center gap-6 min-w-0">
           <div className="shrink-0">
-            <h1 className="text-[16px] font-semibold tracking-tight leading-none" style={{ color: 'var(--text)' }}>
-              Pipeline
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.16em]" style={{ color: 'var(--orange-3)' }}>
+                — Workflow
+              </span>
+            </div>
+            <h1 className="text-[15px] font-semibold tracking-tight leading-none" style={{ color: 'var(--text)' }}>
+              Pipeline <span className="font-serif italic text-[14px]" style={{ color: 'var(--muted)' }}>/ kanban</span>
             </h1>
-            <p className="text-[11.5px] mt-1 leading-none" style={{ color: 'var(--muted)' }}>
-              Ideas → Copy → Diseño → Programación → Análisis
-            </p>
           </div>
           <div className="hidden md:flex items-center gap-2">
             <StatPill value={totalItems} label="piezas"      variant="default" />
@@ -220,16 +219,16 @@ export default function PipelinePage() {
             <StatPill value={scheduled}  label="programado"  variant="emerald" />
           </div>
         </div>
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setFilterOpen(v => !v)}
-            className={cn('btn-ghost flex items-center gap-1.5 relative', filterOpen && '!border-[var(--border-warm)] !bg-[rgba(234,88,12,0.08)]')}
+            className={cn('btn-ghost flex items-center gap-1.5 relative', filterOpen && '!border-[var(--line-warm)] !bg-[rgba(234,88,12,0.08)] !text-[var(--orange-3)]')}
           >
             <Filter size={13} />
             Filtrar
             {filterChannels.length > 0 && (
               <span
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white tabular-nums"
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full font-mono text-[9px] font-bold flex items-center justify-center text-white tabular-nums"
                 style={{ background: 'var(--orange)', boxShadow: '0 0 8px rgba(234,88,12,0.5)' }}
               >
                 {filterChannels.length}
@@ -238,7 +237,7 @@ export default function PipelinePage() {
           </button>
           <button
             onClick={() => setAiModalOpen(true)}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary flex items-center gap-1.5"
           >
             <Sparkles size={13} />
             Generar con IA
@@ -249,27 +248,25 @@ export default function PipelinePage() {
       {/* Filter bar */}
       {filterOpen && (
         <div
-          className="flex items-center gap-2 px-7 py-3 flex-wrap shrink-0 animate-fade-up"
-          style={{ borderBottom: '1px solid var(--border)', background: 'rgba(10, 10, 22, 0.6)', backdropFilter: 'blur(10px)' }}
+          className="flex items-center gap-2 px-6 py-2.5 flex-wrap shrink-0 animate-fade-up"
+          style={{ borderBottom: '1px solid var(--line)', background: 'var(--bg-soft)' }}
         >
-          <span className="text-eyebrow mr-1.5">Canal</span>
+          <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] mr-2" style={{ color: 'var(--muted)' }}>
+            — Canal
+          </span>
           {ALL_CHANNELS.map(ch => (
             <button
               key={ch}
               onClick={() => toggleFilterChannel(ch)}
               className={cn(
-                'px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all',
+                'px-2.5 py-1 rounded text-[11px] font-medium transition-all',
                 filterChannels.includes(ch)
                   ? 'text-white'
                   : 'text-[var(--text2)] hover:text-[var(--text)]'
               )}
               style={filterChannels.includes(ch)
-                ? {
-                    background: 'linear-gradient(135deg, var(--orange2), var(--orange))',
-                    border: '1px solid rgba(253,186,116,0.4)',
-                    boxShadow: '0 4px 12px rgba(234,88,12,0.3)',
-                  }
-                : { background: 'rgba(255,246,235,0.025)', border: '1px solid var(--border2)' }
+                ? { background: 'var(--orange)', border: '1px solid var(--orange-deep)' }
+                : { background: 'var(--surface)', border: '1px solid var(--line2)' }
               }
             >
               {CHANNEL_LABELS[ch]}
@@ -278,10 +275,10 @@ export default function PipelinePage() {
           {filterChannels.length > 0 && (
             <button
               onClick={() => setFilterChannels([])}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium text-rose-400 transition-colors hover:bg-rose-500/10"
-              style={{ border: '1px solid rgba(244,63,94,0.25)' }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-colors"
+              style={{ border: '1px solid rgba(239,68,68,0.25)', color: 'var(--danger-2)' }}
             >
-              <X size={11} />
+              <X size={10} />
               Limpiar
             </button>
           )}

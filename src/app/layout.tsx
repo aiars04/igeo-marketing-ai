@@ -1,20 +1,30 @@
 import type { Metadata } from 'next'
-import { Inter, Syne } from 'next/font/google'
+import { Inter, JetBrains_Mono, Instrument_Serif } from 'next/font/google'
 import './globals.css'
 
-/* ─── Body / UI font ─── */
+/* Body */
 const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-sans',
   display: 'swap',
+  weight: ['400', '500', '600', '700'],
 })
 
-/* ─── Display / headings (opt-in via .font-display / .section-title) ─── */
-const syne = Syne({
+/* Mono — labels técnicos, tabular numbers, eyebrows */
+const mono = JetBrains_Mono({
   subsets: ['latin'],
-  variable: '--font-syne',
+  variable: '--font-mono',
   display: 'swap',
-  weight: ['400', '500', '600', '700', '800'],
+  weight: ['400', '500', '600', '700'],
+})
+
+/* Display — Instrument Serif italic para acentos editoriales sutiles */
+const serif = Instrument_Serif({
+  subsets: ['latin'],
+  variable: '--font-serif',
+  display: 'swap',
+  weight: ['400'],
+  style: ['normal', 'italic'],
 })
 
 export const metadata: Metadata = {
@@ -24,8 +34,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${inter.variable} ${syne.variable} h-full`}>
-      <body className="h-full bg-[var(--bg)] text-[var(--text)] antialiased">
+    <html lang="es" className={`${inter.variable} ${mono.variable} ${serif.variable} h-full`}>
+      <body className="h-full antialiased">
         {children}
       </body>
     </html>
