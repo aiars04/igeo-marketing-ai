@@ -25,9 +25,9 @@ const STAGE_ICONS: Record<Stage, LucideIcon> = {
 
 const APPROVAL_STAGES: Stage[] = ['ideas', 'copy', 'design']
 
-const MARKET_FLAG: Record<string, string> = {
-  spain: '🇪🇸', latam: '🌎', uk: '🇬🇧', france: '🇫🇷',
-  italy: '🇮🇹', portugal: '🇵🇹', brasil: '🇧🇷',
+const MARKET_LABEL: Record<string, string> = {
+  spain: 'ES', latam: 'LATAM', uk: 'UK', france: 'FR',
+  italy: 'IT', portugal: 'PT', brasil: 'BR',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -63,7 +63,7 @@ function StatusDot({ status }: { status: string }) {
   )
 }
 
-// ─── CardMenu ────────────────────────────────────────────────────────────────
+// ─── CardMenu (lógica intacta) ───────────────────────────────────────────────
 
 function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s: Stage) => void }) {
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
@@ -123,7 +123,7 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
   )
 }
 
-// ─── AddForm ─────────────────────────────────────────────────────────────────
+// ─── AddForm (lógica intacta) ────────────────────────────────────────────────
 
 function AddForm({
   stage, onAdd, onCancel,
@@ -139,8 +139,8 @@ function AddForm({
 
   return (
     <div
-      className="animate-fade-in rounded-lg p-3 flex flex-col gap-2"
-      style={{ background: 'var(--surface)', border: `1px solid ${cfg.accentHex}55` }}
+      className="animate-fade-in rounded-[10px] p-3 flex flex-col gap-2"
+      style={{ background: 'var(--surface2)', border: `1px solid ${cfg.accentHex}55` }}
     >
       <input
         autoFocus
@@ -177,7 +177,7 @@ function AddForm({
   )
 }
 
-// ─── Card Detail Modal (mantengo el modal del board anterior) ────────────────
+// ─── Detail Modal (lógica intacta) ───────────────────────────────────────────
 
 function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -252,7 +252,7 @@ function ContentDetailModal({
       {/* Meta */}
       <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-5 p-4 rounded-lg" style={{ background: 'var(--surface2)', border: '1px solid var(--line)' }}>
         <MetaRow label="Canal"><ChannelBadge channel={item.channel as Channel} /></MetaRow>
-        <MetaRow label="Mercado">{MARKET_FLAG[item.market] ?? ''} {item.market}</MetaRow>
+        <MetaRow label="Mercado">{MARKET_LABEL[item.market] ?? item.market}</MetaRow>
         <MetaRow label="Estado">
           <div className="flex items-center gap-1.5">
             <StatusDot status={item.status} />
@@ -272,7 +272,6 @@ function ContentDetailModal({
         </MetaRow>
       </div>
 
-      {/* Content */}
       <div className="mb-5 p-4 rounded-lg" style={{ background: 'var(--surface2)', border: '1px solid var(--line)' }}>
         <p className="text-[11px] font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--muted)' }}>
           {item.content ? 'Contenido' : 'Propuesta'}
@@ -334,7 +333,6 @@ function ContentDetailModal({
         </div>
       )}
 
-      {/* Footer */}
       <div className="flex items-center gap-2 pt-4 mt-2" style={{ borderTop: '1px solid var(--line)' }}>
         {confirmDelete ? (
           <>
@@ -380,7 +378,7 @@ function ContentDetailModal({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CARD — diseño nuevo desde cero
+// CARD — specs exactas del producto
 // ═══════════════════════════════════════════════════════════════════════════
 
 function Card({
@@ -394,55 +392,51 @@ function Card({
   const cfg = STAGE_CONFIG[item.stage as Stage]
   const needsApproval = APPROVAL_STAGES.includes(item.stage as Stage) && !item.human_approved
 
-  // Iniciales del avatar
+  // Iniciales del responsable
   const initials = item.human_approved && item.approved_by
     ? item.approved_by.slice(0, 2).toUpperCase()
-    : item.ai_generated ? 'AI' : '—'
-
-  // Color del avatar
-  const avatarStyle = item.human_approved
-    ? { bg: 'rgba(16,185,129,0.18)', color: 'var(--success-2)', border: 'rgba(16,185,129,0.35)' }
-    : item.ai_generated
-    ? { bg: 'rgba(37,99,235,0.18)',  color: 'var(--blue-3)',    border: 'rgba(37,99,235,0.35)' }
-    : { bg: 'var(--surface3)',       color: 'var(--muted)',     border: 'var(--line2)' }
-
-  // Status text
-  const statusText = item.scheduled_at
-    ? new Date(item.scheduled_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-    : item.human_approved && item.approved_by
-    ? `Aprobado por ${item.approved_by}`
-    : item.ai_generated
-    ? 'Generado por IA'
-    : 'Pendiente de revisar'
-
-  const statusColor = item.scheduled_at
-    ? 'var(--warning-2)'
-    : item.human_approved
-    ? 'var(--success-2)'
-    : 'var(--muted)'
+    : null
 
   return (
     <article
-      className="group animate-fade-up cursor-pointer rounded-lg overflow-hidden transition-all duration-150"
+      className="group animate-fade-up cursor-pointer transition-all duration-150"
       style={{
-        background: 'var(--surface)',
+        background: 'var(--surface2)',                       // Más claro que la columna
         border: '1px solid var(--line2)',
+        borderRadius: 10,
+        padding: '14px 16px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
       }}
       onClick={() => onSelect(item)}
       onMouseEnter={e => {
-        e.currentTarget.style.background = 'var(--surface2)'
         e.currentTarget.style.borderColor = `${cfg.accentHex}66`
+        e.currentTarget.style.background = 'var(--surface3)'
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.background = 'var(--surface)'
         e.currentTarget.style.borderColor = 'var(--line2)'
+        e.currentTarget.style.background = 'var(--surface2)'
       }}
     >
-      {/* Top — channel + market + menu */}
-      <div className="flex items-center justify-between gap-2 px-4 pt-4">
+      {/* ── Fila superior: badge canal + ES + menu ── */}
+      <div className="flex items-center justify-between gap-2 mb-3">
         <ChannelBadge channel={item.channel as Channel} />
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-[12px]">{MARKET_FLAG[item.market] ?? ''}</span>
+          {/* Badge idioma */}
+          <span
+            className="inline-flex items-center"
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              padding: '2px 6px',
+              borderRadius: 4,
+              color: 'var(--text2)',
+              background: 'var(--surface3)',
+              border: '1px solid var(--line2)',
+              letterSpacing: '0.04em',
+            }}
+          >
+            {MARKET_LABEL[item.market] ?? item.market.toUpperCase()}
+          </span>
           <StatusDot status={item.status} />
           <div onClick={e => e.stopPropagation()}>
             <CardMenu item={item} onMove={onMove} />
@@ -450,66 +444,144 @@ function Card({
         </div>
       </div>
 
-      {/* Title */}
-      <div className="px-4 pt-3 pb-4">
-        <h4
-          className="text-[14px] font-semibold leading-[1.5] break-words"
-          style={{ color: 'var(--text)' }}
-        >
-          {item.title}
-        </h4>
-      </div>
-
-      {/* Divider + Footer */}
-      <div
-        className="flex items-center gap-2.5 px-4 py-3"
-        style={{ borderTop: '1px solid var(--line)' }}
+      {/* ── Título — 14px / 600 / line-height 1.4 / max 3 líneas ── */}
+      <h3
+        className="line-clamp-3"
+        style={{
+          fontSize: 14,
+          fontWeight: 600,
+          lineHeight: 1.4,
+          color: '#f5f6fa',
+          marginBottom: 12,
+          letterSpacing: '-0.005em',
+        }}
       >
-        {/* Avatar */}
-        <div
-          className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[10.5px] font-bold"
-          style={{
-            background: avatarStyle.bg,
-            color: avatarStyle.color,
-            border: `1px solid ${avatarStyle.border}`,
-          }}
-        >
-          {initials}
+        {item.title}
+      </h3>
+
+      {/* ── Fila inferior: avatar/nombre + estado ── */}
+      <div className="flex items-center justify-between gap-2">
+        {/* Avatar/nombre del responsable */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          {initials ? (
+            <>
+              <div
+                className="shrink-0 flex items-center justify-center rounded-full"
+                style={{
+                  width: 22, height: 22,
+                  fontSize: 9.5, fontWeight: 700,
+                  color: 'var(--success-2)',
+                  background: 'rgba(16,185,129,0.18)',
+                  border: '1px solid rgba(16,185,129,0.35)',
+                }}
+              >
+                {initials}
+              </div>
+              <span
+                className="truncate"
+                style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)' }}
+              >
+                {item.approved_by}
+              </span>
+            </>
+          ) : item.ai_generated ? (
+            <div
+              className="inline-flex items-center gap-1"
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                padding: '3px 8px',
+                borderRadius: 4,
+                color: '#94a3b8',
+                background: 'rgba(148,163,184,0.10)',
+                border: '1px solid rgba(148,163,184,0.25)',
+              }}
+            >
+              <Sparkles size={10} /> IA
+            </div>
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>—</span>
+          )}
         </div>
 
-        {/* Status text */}
-        <span className="flex-1 text-[12px] truncate" style={{ color: statusColor }}>
-          {item.scheduled_at && <Calendar size={11} className="inline mr-1 -mt-0.5" />}
-          {statusText}
-        </span>
-
-        {/* Clarity indicator */}
-        {item.clarity_pass !== null && (
-          <span
-            className="shrink-0 text-[11px] font-bold w-5 h-5 rounded flex items-center justify-center"
-            style={
-              item.clarity_pass
-                ? { color: 'var(--success-2)', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.30)' }
-                : { color: 'var(--warning-2)', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.30)' }
-            }
-          >
-            {item.clarity_pass ? '✓' : '!'}
-          </span>
-        )}
+        {/* Estado a la derecha */}
+        <div className="shrink-0">
+          {item.human_approved && item.approved_by ? (
+            <span
+              className="inline-flex items-center gap-1"
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                padding: '3px 8px',
+                borderRadius: 4,
+                color: 'var(--success-2)',
+                background: 'rgba(16,185,129,0.12)',
+                border: '1px solid rgba(16,185,129,0.30)',
+              }}
+            >
+              <CheckCheck size={11} /> Aprobado
+            </span>
+          ) : item.ai_generated ? (
+            <span
+              className="inline-flex items-center gap-1"
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                padding: '3px 8px',
+                borderRadius: 4,
+                color: '#94a3b8',
+                background: 'rgba(148,163,184,0.10)',
+                border: '1px solid rgba(148,163,184,0.25)',
+              }}
+            >
+              <Sparkles size={10} /> Generado IA
+            </span>
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+              {STATUS_LABELS[item.status] ?? item.status}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Approve button (footer bar) */}
+      {/* ── Fecha programada (chip separado debajo) ── */}
+      {item.scheduled_at && (
+        <div
+          className="mt-3 inline-flex items-center gap-1.5"
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            padding: '4px 8px',
+            borderRadius: 4,
+            color: 'var(--warning-2)',
+            background: 'rgba(245,158,11,0.10)',
+            border: '1px solid rgba(245,158,11,0.28)',
+          }}
+        >
+          <Calendar size={11} />
+          {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
+            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+          })}
+        </div>
+      )}
+
+      {/* ── Botón Aprobar y avanzar — prominente full-width naranja ── */}
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 text-[12px] font-semibold transition-colors"
+          className="w-full mt-3 flex items-center justify-center gap-1.5 transition-all"
           style={{
-            background: 'rgba(16,185,129,0.08)',
-            borderTop: '1px solid rgba(16,185,129,0.22)',
-            color: 'var(--success-2)',
+            fontSize: 12,
+            fontWeight: 600,
+            padding: '8px 12px',
+            borderRadius: 6,
+            color: '#ffffff',
+            background: 'var(--orange)',
+            border: '1px solid var(--orange-deep)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.16)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.08)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-2)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--orange)' }}
         >
           <CheckCircle2 size={13} />
           Aprobar y avanzar
@@ -520,7 +592,7 @@ function Card({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// COLUMN — header simple horizontal
+// COLUMN — cabecera grande, fondo diferenciado, gap 16px
 // ═══════════════════════════════════════════════════════════════════════════
 
 function Column({
@@ -545,42 +617,88 @@ function Column({
 
   return (
     <section
-      className="flex flex-col h-full animate-fade-up"
+      className="flex flex-col h-full shrink-0 animate-fade-up"
       style={{
-        flex: '1 1 0',
-        minWidth: 252,
-        maxWidth: 360,
+        minWidth: 280,                     // Min ancho columna
+        maxWidth: 320,                     // Max ancho columna
+        width: 'clamp(280px, 22vw, 320px)',
+        background: 'var(--surface)',      // Fondo diferenciado del general
+        border: '1px solid var(--line)',
+        borderRadius: 12,
+        padding: 14,
         animationDelay: `${index * 50}ms`,
       }}
     >
-      {/* Header */}
-      <header className="shrink-0 mb-3">
-        <div className="flex items-center gap-2 px-1 mb-1.5">
-          <Icon size={14} style={{ color: cfg.accentHex }} strokeWidth={2.2} />
-          <h2 className="text-[13.5px] font-semibold tracking-tight flex-1 truncate" style={{ color: 'var(--text)' }}>
+      {/* ── Cabecera: icono + título 16px + contador + auto chip ── */}
+      <header className="shrink-0 mb-3.5">
+        <div className="flex items-center gap-2 mb-1">
+          <div
+            className="w-6 h-6 rounded flex items-center justify-center shrink-0"
+            style={{
+              background: `${cfg.accentHex}1a`,
+              border: `1px solid ${cfg.accentHex}40`,
+            }}
+          >
+            <Icon size={13} style={{ color: cfg.accentHex }} />
+          </div>
+          <h2
+            className="flex-1 truncate"
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              color: 'var(--text)',
+              letterSpacing: '-0.01em',
+            }}
+          >
             {cfg.label}
           </h2>
+          {/* Contador */}
           <span
-            className="text-[11.5px] font-semibold tabular-nums px-1.5 rounded leading-[18px]"
+            className="tabular-nums"
             style={{
+              fontSize: 11,
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: 4,
               color: cfg.accentHex,
               background: `${cfg.accentHex}18`,
-              border: `1px solid ${cfg.accentHex}30`,
+              border: `1px solid ${cfg.accentHex}35`,
             }}
           >
             {filtered.length}
           </span>
-          {cfg.automatic && <span className="badge badge-amber"><Zap size={9} /> Auto</span>}
+          {/* Auto chip */}
+          {cfg.automatic && (
+            <span
+              className="inline-flex items-center gap-1"
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 6px',
+                borderRadius: 4,
+                color: '#34d399',
+                background: 'rgba(16,185,129,0.14)',
+                border: '1px solid rgba(16,185,129,0.30)',
+              }}
+            >
+              <Zap size={9} /> AUTO
+            </span>
+          )}
         </div>
-        <p className="text-[11.5px] leading-snug px-1" style={{ color: 'var(--muted)' }}>
+        <p
+          style={{
+            fontSize: 12,
+            color: '#9ca3af',
+            lineHeight: 1.4,
+            marginLeft: 32,
+          }}
+        >
           {cfg.subtitle}
         </p>
-        {/* Accent line */}
-        <div className="mt-3 h-[2px] rounded" style={{ background: cfg.accentHex, opacity: 0.4 }} />
       </header>
 
-      {/* Cards stack */}
-      <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+      {/* ── Stack de cards — gap 10px ── */}
+      <div className="flex-1 overflow-y-auto pr-1" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {filtered.map(item => (
           <Card
             key={item.id}
@@ -593,7 +711,7 @@ function Column({
 
         {cfg.automatic ? (
           <div
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-3 rounded-lg text-[11.5px] font-medium"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-3 rounded-[10px] text-[11.5px] font-medium"
             style={{ border: '1px dashed var(--line2)', color: 'var(--muted)', opacity: 0.7 }}
           >
             <Zap size={12} /> PostiZ automático
@@ -607,7 +725,7 @@ function Column({
         ) : (
           <button
             onClick={() => setShowAddForm(true)}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-[12px] font-medium transition-all"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] text-[12px] font-medium transition-all"
             style={{ border: '1px dashed var(--line2)', color: 'var(--muted)' }}
             onMouseEnter={e => {
               e.currentTarget.style.color       = cfg.accentHex
@@ -629,7 +747,7 @@ function Column({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BOARD — contenedor responsive
+// BOARD — scroll horizontal funcional, gap 16px entre columnas
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove }: BoardProps) {
@@ -649,7 +767,13 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
 
   return (
     <>
-      <div className="flex gap-4 h-full overflow-x-auto px-5 pt-5 pb-5 pipeline-scroll">
+      <div
+        className="flex h-full overflow-x-auto pipeline-scroll"
+        style={{
+          gap: 16,                        // Separador entre columnas: 16px
+          padding: '20px 20px 24px',
+        }}
+      >
         {STAGES.map((stage, idx) => (
           <Column
             key={stage}
