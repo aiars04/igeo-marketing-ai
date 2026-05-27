@@ -48,12 +48,12 @@ function NavItem({
   return (
     <Link
       href={href}
-      className="relative flex items-center h-8 rounded-md transition-colors mx-2 px-2"
+      className="relative flex items-center h-9 rounded-md transition-colors mx-2 px-2.5"
       style={{
         background: active ? 'rgba(234,88,12,0.10)' : 'transparent',
       }}
       onMouseEnter={e => {
-        if (!active) e.currentTarget.style.background = 'var(--surface2)'
+        if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
       }}
       onMouseLeave={e => {
         if (!active) e.currentTarget.style.background = 'transparent'
@@ -63,21 +63,21 @@ function NavItem({
         <motion.span
           layoutId="nav-active-bar"
           className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r"
-          style={{ background: 'var(--orange)', boxShadow: '0 0 8px rgba(234,88,12,0.5)' }}
+          style={{ background: 'var(--orange)' }}
           transition={{ type: 'spring', stiffness: 500, damping: 35 }}
         />
       )}
 
       <Icon
-        size={14}
-        strokeWidth={active ? 2.4 : 1.8}
+        size={15}
+        strokeWidth={active ? 2.2 : 1.8}
         className="shrink-0"
         style={{ color: active ? 'var(--orange-3)' : 'var(--text2)' }}
       />
 
       <Label show={open}>
         <span
-          className="ml-2.5 text-[12.5px] tracking-tight"
+          className="ml-2.5 text-[13px]"
           style={{
             color: active ? 'var(--text)' : 'var(--text2)',
             fontWeight: active ? 600 : 500,
@@ -89,12 +89,11 @@ function NavItem({
 
       {badge && open && (
         <span
-          className="ml-auto shrink-0 font-mono text-[9.5px] font-bold px-1.5 rounded tabular-nums"
+          className="ml-auto shrink-0 text-[11px] font-semibold px-1.5 rounded tabular-nums"
           style={{
             background: active ? 'rgba(234,88,12,0.22)' : 'var(--surface3)',
             color: active ? 'var(--orange-3)' : 'var(--text2)',
-            border: active ? '1px solid rgba(234,88,12,0.35)' : '1px solid var(--line2)',
-            lineHeight: '16px',
+            lineHeight: '18px',
           }}
         >
           {badge}
@@ -115,33 +114,32 @@ export function Sidebar() {
       className="fixed left-0 top-0 z-40 h-full flex flex-col"
       style={{
         width: open ? 'var(--sidebar-expanded)' : 'var(--sidebar-collapsed)',
-        transition: 'width 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-        background: 'linear-gradient(180deg, var(--surface) 0%, var(--bg-soft) 100%)',
+        transition: 'width 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        background: 'var(--surface)',
         borderRight: '1px solid var(--line)',
       }}
     >
       {/* Brand */}
       <div
-        className="relative flex items-center shrink-0 px-3"
+        className="flex items-center shrink-0 px-3"
         style={{ height: 56, borderBottom: '1px solid var(--line)' }}
       >
         <div
-          className="shrink-0 flex items-center justify-center rounded text-[13px] font-bold text-white relative overflow-hidden"
+          className="shrink-0 flex items-center justify-center rounded-md text-[13px] font-bold text-white"
           style={{
-            width: 30, height: 30,
+            width: 32, height: 32,
             background: 'linear-gradient(135deg, var(--orange-2) 0%, var(--orange-deep) 100%)',
-            boxShadow: '0 0 0 1px rgba(253,186,116,0.30), 0 0 14px rgba(234,88,12,0.30)',
           }}
         >
-          <span>i</span>
+          i
         </div>
         <Label show={open}>
           <div className="ml-2.5 flex flex-col leading-none">
-            <span className="text-[12.5px] font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
-              iGEO <span className="font-serif italic" style={{ color: 'var(--orange-3)' }}>Marketing</span>
+            <span className="text-[13px] font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+              iGEO Marketing
             </span>
-            <span className="font-mono text-[9px] mt-1 uppercase tracking-[0.16em]" style={{ color: 'var(--muted)' }}>
-              AI · Workspace
+            <span className="text-[10.5px] mt-1" style={{ color: 'var(--muted)' }}>
+              AI Workspace
             </span>
           </div>
         </Label>
@@ -149,13 +147,6 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 flex flex-col py-3 gap-0.5 overflow-hidden">
-        {open && (
-          <div className="px-4 pb-2 pt-1">
-            <span className="font-mono text-[9px] font-medium uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>
-              — Workspace
-            </span>
-          </div>
-        )}
         {NAV_TOP.map(item => (
           <NavItem
             key={item.href}
@@ -165,15 +156,8 @@ export function Sidebar() {
           />
         ))}
 
-        <div className="mx-4 my-2 divider" />
+        <div className="mx-3 my-2 divider" />
 
-        {open && (
-          <div className="px-4 pb-2 pt-1">
-            <span className="font-mono text-[9px] font-medium uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>
-              — System
-            </span>
-          </div>
-        )}
         {NAV_BOTTOM.map(item => (
           <NavItem
             key={item.href}
@@ -188,15 +172,14 @@ export function Sidebar() {
       <div className="shrink-0 p-2" style={{ borderTop: '1px solid var(--line)' }}>
         <div
           className="flex items-center rounded-md px-2 py-2 gap-2.5 cursor-pointer transition-colors group"
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface2)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
         >
           <div
             className="shrink-0 flex items-center justify-center rounded text-[11px] font-bold text-white"
             style={{
-              width: 26, height: 26,
+              width: 28, height: 28,
               background: 'linear-gradient(135deg, var(--orange-2) 0%, var(--orange-deep) 100%)',
-              boxShadow: '0 0 0 1px rgba(253,186,116,0.30)',
             }}
           >
             R
@@ -204,10 +187,10 @@ export function Sidebar() {
 
           <Label show={open}>
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-[12px] font-semibold leading-none truncate" style={{ color: 'var(--text)' }}>
+              <span className="text-[12.5px] font-semibold leading-none truncate" style={{ color: 'var(--text)' }}>
                 Ramón
               </span>
-              <span className="font-mono text-[9px] mt-1 uppercase tracking-wider truncate" style={{ color: 'var(--muted)' }}>
+              <span className="text-[10.5px] mt-1 truncate" style={{ color: 'var(--muted)' }}>
                 Editor
               </span>
             </div>
