@@ -1,15 +1,15 @@
 import { cn } from '@/lib/utils'
 import type { Channel } from '@/types/database'
 
-// Paleta apagada: fondo --*-soft, texto del color principal
-const CHANNEL_STYLES: Record<Channel, { label: string; bg: string; color: string; border: string }> = {
-  linkedin:   { label: 'LinkedIn',   bg: 'rgba(10, 102, 194, 0.14)',   color: '#7eb3ff', border: 'rgba(10, 102, 194, 0.30)' },
-  instagram:  { label: 'Instagram',  bg: 'rgba(193, 53, 132, 0.14)',   color: '#f9a8d4', border: 'rgba(193, 53, 132, 0.30)' },
-  facebook:   { label: 'Facebook',   bg: 'rgba(24, 119, 242, 0.14)',   color: '#93c5fd', border: 'rgba(24, 119, 242, 0.30)' },
-  x:          { label: 'X',          bg: 'rgba(113, 118, 123, 0.18)',  color: '#cbd5e1', border: 'rgba(113, 118, 123, 0.35)' },
-  blog:       { label: 'Blog',       bg: 'rgba(230, 81, 0, 0.14)',     color: '#fdba74', border: 'rgba(230, 81, 0, 0.30)' },
-  email:      { label: 'Email',      bg: 'rgba(255, 160, 0, 0.14)',    color: '#fcd34d', border: 'rgba(255, 160, 0, 0.30)' },
-  newsletter: { label: 'Newsletter', bg: 'rgba(46, 125, 50, 0.16)',    color: '#86efac', border: 'rgba(46, 125, 50, 0.30)' },
+// Outline only — border 40% + texto 80%
+const CHANNEL_COLORS: Record<Channel, { label: string; rgb: string }> = {
+  linkedin:   { label: 'LinkedIn',   rgb: '59, 130, 246' },   // #3b82f6
+  instagram:  { label: 'Instagram',  rgb: '236, 72, 153' },   // #ec4899
+  facebook:   { label: 'Facebook',   rgb: '24, 119, 242' },
+  x:          { label: 'X',          rgb: '156, 163, 175' },
+  blog:       { label: 'Blog',       rgb: '245, 158, 11' },   // #f59e0b
+  email:      { label: 'Email',      rgb: '251, 191, 36' },
+  newsletter: { label: 'Newsletter', rgb: '16, 185, 129' },   // #10b981
 }
 
 interface ChannelBadgeProps {
@@ -18,19 +18,19 @@ interface ChannelBadgeProps {
 }
 
 export function ChannelBadge({ channel, className }: ChannelBadgeProps) {
-  const s = CHANNEL_STYLES[channel]
+  const s = CHANNEL_COLORS[channel]
   return (
     <span
       className={cn('inline-flex items-center shrink-0', className)}
       style={{
-        height: 22,
-        padding: '0 10px',
-        fontSize: 11,
+        height: 20,
+        padding: '0 8px',
+        fontSize: 10,
         fontWeight: 700,
         letterSpacing: '0.02em',
-        color: s.color,
-        background: s.bg,
-        border: `1px solid ${s.border}`,
+        color: `rgba(${s.rgb}, 0.85)`,
+        background: 'transparent',
+        border: `1px solid rgba(${s.rgb}, 0.40)`,
         borderRadius: 5,
         lineHeight: 1,
         whiteSpace: 'nowrap',

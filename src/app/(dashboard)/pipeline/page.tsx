@@ -31,31 +31,26 @@ const CHANNEL_LABELS: Record<Channel, string> = {
 // ─── StatPill ─────────────────────────────────────────────────────────────────
 
 function StatPill({
-  value, label, variant = 'default',
+  value, label,
 }: {
   value: string | number
   label: string
-  variant?: 'default' | 'amber' | 'emerald'
+  variant?: 'default' | 'amber' | 'emerald'  // se acepta por compatibilidad pero ignora — todos en indigo
 }) {
-  const s = {
-    default: { bg: 'var(--surface-2)',  border: 'var(--border)',         color: 'var(--ink-2)',  valueColor: 'var(--ink)'     },
-    amber:   { bg: 'var(--amber-soft)', border: 'rgba(245,158,11,0.25)', color: 'var(--amber-2)', valueColor: 'var(--amber-2)' },
-    emerald: { bg: 'var(--green-soft)', border: 'rgba(16,185,129,0.25)', color: 'var(--green-2)', valueColor: 'var(--green-2)' },
-  }[variant]
-
   return (
     <div
       className="flex items-center gap-1.5 px-2.5 rounded-md tabular-nums"
       style={{
         height: 28,
-        background: s.bg,
-        border: `1px solid ${s.border}`,
+        background: 'rgba(99,102,241,0.12)',
+        border: '1px solid rgba(99,102,241,0.25)',
         fontSize: 12,
         fontWeight: 500,
+        color: '#a5b4fc',
       }}
     >
-      <span style={{ fontSize: 13, fontWeight: 600, color: s.valueColor }}>{value}</span>
-      <span style={{ color: s.color }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: '#a5b4fc' }}>{value}</span>
+      <span style={{ color: '#a5b4fc', opacity: 0.85 }}>{label}</span>
     </div>
   )
 }
@@ -210,33 +205,58 @@ export default function PipelinePage() {
   return (
     <div className="flex flex-col h-screen relative">
       {/* Topbar */}
-      <div className="topbar shrink-0 gap-4 justify-between" style={{ height: 64 }}>
+      <div className="topbar shrink-0 gap-4 justify-between" style={{ height: 68 }}>
         <div className="flex items-center gap-5 min-w-0">
           <div className="shrink-0">
-            <h1 className="page-title" style={{ fontSize: 20, lineHeight: 1.1 }}>
+            <h1
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                color: 'var(--ink)',
+                letterSpacing: '-0.015em',
+                lineHeight: 1.15,
+              }}
+            >
               Pipeline
             </h1>
-            <p className="text-[11.5px] mt-1 leading-none" style={{ color: 'var(--ink-3)' }}>
+            <p
+              style={{
+                fontSize: 11,
+                color: '#55556a',
+                marginTop: 4,
+                lineHeight: 1.3,
+              }}
+            >
               Ideas → Copy → Diseño → Programación → Análisis
             </p>
           </div>
           <div className="hidden md:flex items-center gap-2">
-            <StatPill value={totalItems} label="piezas"      variant="default" />
-            <StatPill value={inRevision} label="en revisión" variant="amber"   />
-            <StatPill value={scheduled}  label="programado"  variant="emerald" />
+            <StatPill value={totalItems} label="piezas"      />
+            <StatPill value={inRevision} label="en revisión" />
+            <StatPill value={scheduled}  label="programado"  />
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setFilterOpen(v => !v)}
-            className={cn('btn-ghost flex items-center gap-1.5 relative', filterOpen && '!bg-[var(--surface2)] !border-[var(--line3)] !text-[var(--text)]')}
+            className="flex items-center gap-1.5 relative transition-colors"
+            style={{
+              height: 36,
+              padding: '0 14px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 500,
+              background: filterOpen ? 'var(--surface-3)' : 'var(--surface-2)',
+              border: `1px solid ${filterOpen ? 'var(--border-hover)' : 'var(--border)'}`,
+              color: filterOpen ? 'var(--ink)' : 'var(--ink-2)',
+            }}
           >
             <Filter size={13} />
             Filtrar
             {filterChannels.length > 0 && (
               <span
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white tabular-nums"
-                style={{ background: 'var(--orange)' }}
+                className="absolute -top-1 -right-1 rounded-full text-[10px] font-bold flex items-center justify-center text-white tabular-nums"
+                style={{ width: 16, height: 16, background: '#6366f1' }}
               >
                 {filterChannels.length}
               </span>
@@ -244,7 +264,20 @@ export default function PipelinePage() {
           </button>
           <button
             onClick={() => setAiModalOpen(true)}
-            className="btn-primary flex items-center gap-1.5"
+            className="flex items-center gap-1.5 transition-all"
+            style={{
+              height: 36,
+              padding: '0 16px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#fff',
+              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+              border: '1px solid rgba(99,102,241,0.5)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.3), 0 0 0 1px rgba(99,102,241,0.15) inset',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.1)' }}
+            onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)' }}
           >
             <Sparkles size={13} />
             Generar con IA

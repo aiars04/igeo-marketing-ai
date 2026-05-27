@@ -662,14 +662,15 @@ function Card({
 
   return (
     <article
-      className="group animate-fade-up cursor-pointer transition-all duration-150 flex flex-col"
+      className="pcard group animate-fade-up cursor-pointer transition-all duration-150 flex flex-col"
+      data-channel={item.channel}
       style={{
         background: 'var(--surface-2)',
         border: '1px solid var(--border)',
         borderRadius: 10,
-        padding: 16,
-        gap: 10,
-        minHeight: 156,
+        padding: 12,
+        gap: 8,
+        minHeight: 140,
         boxShadow: '0 2px 8px rgba(0,0,0,0.30)',
       }}
       onClick={() => onSelect(item)}
@@ -710,14 +711,14 @@ function Card({
         </div>
       </div>
 
-      {/* ── Título — 14px / 600 / line-height 1.4 / max 3 líneas ── */}
+      {/* ── Título — 13px / 600 / line-height 1.4 / max 2 líneas con ellipsis ── */}
       <h3
-        className="line-clamp-3"
+        className="line-clamp-2"
         style={{
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: 600,
           lineHeight: 1.4,
-          color: '#f5f6fa',
+          color: 'var(--ink)',
           letterSpacing: '-0.005em',
         }}
       >
@@ -842,17 +843,17 @@ function Card({
         </div>
       )}
 
-      {/* ── Botón Aprobar y avanzar — height 34, font 13, radius 6 ── */}
+      {/* ── Botón Aprobar y avanzar — compacto h32 / 12px ── */}
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
           className="w-full flex items-center justify-center transition-all"
           style={{
             gap: 6,
-            height: 34,                   // ← height 34px
-            fontSize: 13,                  // ← font 13px
+            height: 32,
+            fontSize: 12,
             fontWeight: 600,
-            borderRadius: 6,               // ← radius 6px
+            borderRadius: 6,
             color: '#ffffff',
             background: 'var(--orange)',
             border: '1px solid var(--orange-deep)',
@@ -861,7 +862,7 @@ function Card({
           onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-2)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'var(--orange)' }}
         >
-          <CheckCircle2 size={14} />
+          <CheckCircle2 size={13} />
           Aprobar y avanzar
         </button>
       )}
@@ -895,34 +896,27 @@ function Column({
 
   return (
     <section
-      className="flex flex-col h-full shrink-0 animate-fade-up"
-      style={{
-        minWidth: 280,
-        maxWidth: 320,
-        width: 'clamp(280px, 22vw, 320px)',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 12,
-        padding: 14,
-        animationDelay: `${index * 50}ms`,
-      }}
+      className="pipeline-column animate-fade-up"
+      style={{ animationDelay: `${index * 50}ms` }}
     >
-      {/* ── Cabecera: icono + título 16px + contador + auto chip ── */}
-      <header className="shrink-0 mb-3.5">
+      {/* ── Cabecera compacta: icono + título 14 + contador 18 + auto ── */}
+      <header className="shrink-0 mb-3">
         <div className="flex items-center gap-2 mb-1">
           <div
-            className="w-6 h-6 rounded flex items-center justify-center shrink-0"
+            className="rounded flex items-center justify-center shrink-0"
             style={{
+              width: 22,
+              height: 22,
               background: `${cfg.accentHex}1a`,
               border: `1px solid ${cfg.accentHex}40`,
             }}
           >
-            <Icon size={13} style={{ color: cfg.accentHex }} />
+            <Icon size={12} style={{ color: cfg.accentHex }} />
           </div>
           <h2
             className="flex-1 truncate"
             style={{
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: 700,
               color: 'var(--ink)',
               letterSpacing: '-0.01em',
@@ -930,33 +924,35 @@ function Column({
           >
             {cfg.label}
           </h2>
-          {/* Contador */}
+          {/* Contador — neutro */}
           <span
-            className="tabular-nums"
+            className="inline-flex items-center justify-center tabular-nums shrink-0"
             style={{
+              width: 18,
+              height: 18,
               fontSize: 11,
               fontWeight: 700,
-              padding: '2px 7px',
-              borderRadius: 4,
-              color: 'var(--accent-3)',
-              background: 'var(--accent-soft)',
-              border: '1px solid rgba(99,102,241,0.30)',
+              borderRadius: 5,
+              color: '#9090a8',
+              background: 'rgba(255,255,255,0.08)',
             }}
           >
             {filtered.length}
           </span>
-          {/* Auto chip */}
+          {/* Auto chip — verde */}
           {cfg.automatic && (
             <span
-              className="inline-flex items-center gap-1"
+              className="inline-flex items-center gap-1 shrink-0"
               style={{
                 fontSize: 10,
                 fontWeight: 700,
-                padding: '2px 6px',
+                padding: '0 6px',
+                height: 18,
+                lineHeight: 1,
                 borderRadius: 4,
-                color: '#34d399',
-                background: 'rgba(16,185,129,0.14)',
-                border: '1px solid rgba(16,185,129,0.30)',
+                color: '#6ee7b7',
+                background: 'rgba(16,185,129,0.12)',
+                border: '1px solid rgba(16,185,129,0.25)',
               }}
             >
               <Zap size={9} /> AUTO
@@ -965,18 +961,18 @@ function Column({
         </div>
         <p
           style={{
-            fontSize: 12,
-            color: 'var(--ink-2)',
+            fontSize: 11,
+            color: 'var(--ink-3)',
             lineHeight: 1.4,
-            marginLeft: 32,
+            marginLeft: 30,
           }}
         >
           {cfg.subtitle}
         </p>
       </header>
 
-      {/* ── Stack de cards — gap 10px ── */}
-      <div className="flex-1 overflow-y-auto pr-1" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* ── Stack de cards — gap 8px ── */}
+      <div className="flex-1 overflow-y-auto min-h-0" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filtered.map(item => (
           <Card
             key={item.id}
@@ -1045,13 +1041,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
 
   return (
     <>
-      <div
-        className="flex h-full overflow-x-auto pipeline-scroll"
-        style={{
-          gap: 20,                        // ← gap entre columnas 20px
-          padding: '20px 20px 24px',
-        }}
-      >
+      <div className="pipeline-board">
         {STAGES.map((stage, idx) => (
           <Column
             key={stage}
