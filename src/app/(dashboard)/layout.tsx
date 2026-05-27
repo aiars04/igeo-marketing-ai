@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Sidebar } from '@/components/layout/Sidebar'
-import { FloatingPaths } from '@/components/ui/FloatingPaths'
+import { AppShell } from '@/components/app-shell'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -9,26 +8,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/login')
 
-  return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-      {/* Fondo animado — muy sutil detrás del contenido */}
-      <div className="fixed inset-0 z-0 pointer-events-none" style={{ opacity: 0.22 }}>
-        <FloatingPaths />
-      </div>
+  // Mapear user de Supabase al shape Profile que espera AppShell
+  const profile = {
+    user_id:   user.id,
+    email:     user.email ?? '',
+    full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
+    role:      'admin' as const,   // rol por defecto hasta que tengamos tabla de roles
+  }
 
-      {/* Sidebar fixed */}
-      <Sidebar />
-
-      {/* Contenido principal */}
-      <main
-        className="relative z-10 h-screen overflow-y-auto overflow-x-hidden"
-        style={{
-          marginLeft: 'var(--sidebar-collapsed)',
-          width: 'calc(100% - var(--sidebar-collapsed))',
-        }}
-      >
-        {children}
-      </main>
-    </div>
-  )
+  return <AppShell profile={profile}>{children}</AppShell>
 }

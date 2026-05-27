@@ -336,3 +336,290 @@ textarea.input { resize: vertical; min-height: 80px; }
   --accent2: var(--blue-2);
   --accent3: var(--blue-3);
 }
+
+/* ════════════════════════════════════════════════════════
+   APP SHELL (new sidebar) — variables prefijadas --shell-*
+   Tema claro propio del sidebar sobre contenido dark
+   ════════════════════════════════════════════════════════ */
+
+:root {
+  --shell-bg:        #f5f5f6;
+  --shell-panel:     #ffffff;
+  --shell-ink:       #111827;
+  --shell-muted:     #6b7280;
+  --shell-soft:      #9ca3af;
+  --shell-line:      #e8e8e8;
+  --shell-line-soft: #f1f1f1;
+  --shell-dark:      #111827;
+  --sidebar:         3.75rem;     /* 60px colapsado */
+  --sidebar-open:    15rem;       /* 240px expandido */
+}
+
+.app-shell { min-height: 100vh; }
+
+/* ── Sidebar (fixed izquierda, expande on hover) ── */
+.app-shell .sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 40;
+  width: var(--sidebar);
+  border-right: 1px solid var(--shell-line);
+  background: var(--shell-panel);
+  color: var(--shell-muted);
+  overflow: hidden;
+  transition: width 0.22s cubic-bezier(.4,0,.2,1);
+}
+.app-shell .sidebar:hover { width: var(--sidebar-open); }
+
+/* ── Brand (logo + texto) ── */
+.app-shell .brand {
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 13px;
+  border-bottom: 1px solid var(--shell-line);
+  flex-shrink: 0;
+}
+.app-shell .sidebar:hover .brand { justify-content: flex-start; }
+
+.app-shell .brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  background: linear-gradient(135deg, #f97316, #c2410c);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.app-shell .brand-text {
+  opacity: 0;
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.15s ease, max-width 0s 0.15s;
+}
+.app-shell .sidebar:hover .brand-text {
+  opacity: 1;
+  max-width: 200px;
+  pointer-events: auto;
+  transition: opacity 0.2s ease 0.05s, max-width 0s 0s;
+}
+
+.app-shell .brand-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--shell-ink);
+  white-space: nowrap;
+}
+.app-shell .brand-subtitle {
+  margin: 3px 0 0;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--shell-soft);
+  white-space: nowrap;
+}
+
+/* ── Scroll area ── */
+.app-shell .sidebar-scroll {
+  height: calc(100vh - 58px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: none;
+}
+.app-shell .sidebar-scroll::-webkit-scrollbar { display: none; }
+
+/* ── Nav blocks (secciones separadas por línea) ── */
+.app-shell .nav-block {
+  padding: 8px 0 10px;
+  border-bottom: 1px solid var(--shell-line-soft);
+}
+.app-shell .nav-block:last-child {
+  border-bottom: 0;
+  padding-bottom: 4px;
+}
+
+/* Etiqueta de sección (WORKSPACE, SISTEMA…) */
+.app-shell .section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #c2c7d0;
+  white-space: nowrap;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 8px;
+  pointer-events: none;
+  transition: opacity 0.15s ease, max-height 0s 0.15s, padding-top 0s 0.15s, padding-bottom 0s 0.15s;
+}
+.app-shell .sidebar:hover .section-label {
+  opacity: 1;
+  max-height: 40px;
+  padding: 8px 8px 6px;
+  pointer-events: auto;
+  transition: opacity 0.2s ease 0.05s, max-height 0s 0s, padding-top 0s 0s, padding-bottom 0s 0s;
+}
+
+/* ── Nav links / buttons ── */
+.app-shell .nav-link,
+.app-shell .nav-button {
+  width: 100%;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 9px;
+  margin-bottom: 2px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.app-shell .sidebar:hover .nav-link,
+.app-shell .sidebar:hover .nav-button { justify-content: flex-start; }
+
+.app-shell .nav-link:hover,
+.app-shell .nav-button:hover {
+  background: #f3f4f6;
+  color: var(--shell-ink);
+}
+.app-shell .nav-link.active {
+  background: var(--shell-dark);
+  color: #fff;
+}
+
+.app-shell .nav-link svg,
+.app-shell .nav-button svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+/* Etiqueta de texto del link (se oculta cuando sidebar colapsado) */
+.app-shell .sidebar-label {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, max-width 0s 0.15s;
+}
+.app-shell .sidebar:hover .sidebar-label {
+  max-width: 200px;
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.2s ease 0.05s, max-width 0s 0s;
+}
+
+/* ── Main content area ── */
+.app-shell .main {
+  min-height: 100vh;
+  padding-left: var(--sidebar);
+  overflow: visible;
+}
+
+/* ── Tarjeta de usuario (abajo del sidebar) ── */
+.app-shell .sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 8px 10px;
+  padding: 10px 9px;
+  border-top: 1px solid var(--shell-line-soft);
+  border-radius: 10px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.app-shell .sidebar-user-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #f97316, #c2410c);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.app-shell .sidebar-user-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.15s ease, width 0s 0.15s;
+}
+.app-shell .sidebar:hover .sidebar-user-info {
+  opacity: 1;
+  width: auto;
+  pointer-events: auto;
+  transition: opacity 0.2s 0.05s ease, width 0s;
+}
+
+.app-shell .sidebar-user-name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--shell-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.app-shell .sidebar-user-role {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--shell-soft);
+  line-height: 1;
+}
+
+.app-shell .sidebar-user-logout {
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--shell-muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  pointer-events: none;
+}
+.app-shell .sidebar:hover .sidebar-user-logout {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.2s 0.08s ease, background 0.15s ease, color 0.15s ease;
+}
+.app-shell .sidebar-user-logout:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
