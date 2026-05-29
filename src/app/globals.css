@@ -436,7 +436,12 @@ textarea.input {
    APP SHELL — sidebar LIGHT mode Apple
    ════════════════════════════════════════════════════════ */
 
-.app-shell { min-height: 100vh; background: var(--bg); }
+.app-shell {
+  min-height: 100vh;
+  background: transparent;
+  position: relative;
+  z-index: 1;
+}
 
 .app-shell .sidebar {
   position: fixed;
@@ -647,6 +652,7 @@ textarea.input {
   min-height: 100vh;
   padding: 28px 36px 80px calc(var(--sidebar) + 28px);
   overflow: visible;
+  background: transparent;
 }
 
 /* ── Pipeline: padding reducido cuando el board está activo ── */
@@ -759,7 +765,9 @@ textarea.input {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 12px;
@@ -770,9 +778,9 @@ textarea.input {
   border-color: var(--border-hover);
 }
 
-/* ── Pipeline card — Apple light ── */
+/* ── Pipeline card — Apple light, semi-opaca para que los paths se entrevean ── */
 .pcard {
-  background: var(--surface-2);
+  background: rgba(245, 245, 247, 0.90);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px;
