@@ -68,14 +68,25 @@ export interface EventManagerProps {
   availableTags?: string[]
 }
 
+// Paleta Apple apagada para las píldoras de evento
 const defaultColors = [
-  { name: "Azul", value: "blue", bg: "bg-blue-500", text: "text-blue-700" },
-  { name: "Verde", value: "green", bg: "bg-green-500", text: "text-green-700" },
-  { name: "Morado", value: "purple", bg: "bg-purple-500", text: "text-purple-700" },
-  { name: "Naranja", value: "orange", bg: "bg-orange-500", text: "text-orange-700" },
-  { name: "Rosa", value: "pink", bg: "bg-pink-500", text: "text-pink-700" },
-  { name: "Rojo", value: "red", bg: "bg-red-500", text: "text-red-700" },
+  { name: "Azul",    value: "blue",   bg: "bg-[#0071e3]", text: "text-[#0055b3]" },
+  { name: "Verde",   value: "green",  bg: "bg-[#34c759]", text: "text-[#1a7a36]" },
+  { name: "Morado",  value: "purple", bg: "bg-[#af52de]", text: "text-[#7b2fa8]" },
+  { name: "Naranja", value: "orange", bg: "bg-[#ff9f0a]", text: "text-[#b25000]" },
+  { name: "Rosa",    value: "pink",   bg: "bg-[#e8388c]", text: "text-[#c0245a]" },
+  { name: "Rojo",    value: "red",    bg: "bg-[#ff3b30]", text: "text-[#c0392b]" },
 ]
+
+// Estilos apagados (background+text) usados en EventCard
+const EVENT_STYLES: Record<string, { bg: string; text: string }> = {
+  blue:   { bg: "rgba(0, 113, 227, 0.12)",  text: "#0055b3" },
+  green:  { bg: "rgba(52, 199, 89, 0.10)",  text: "#1a7a36" },
+  purple: { bg: "rgba(175, 82, 222, 0.10)", text: "#7b2fa8" },
+  orange: { bg: "rgba(255, 159, 10, 0.12)", text: "#b25000" },
+  pink:   { bg: "rgba(232, 56, 140, 0.10)", text: "#c0245a" },
+  red:    { bg: "rgba(255, 59, 48, 0.10)",  text: "#c0392b" },
+}
 
 export function EventManager({
   events: initialEvents = [],
@@ -250,7 +261,16 @@ export function EventManager({
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <h2 className="text-xl font-semibold sm:text-2xl">
+          <h2
+            style={{
+              fontSize: 28,
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+              color: "var(--ink)",
+              lineHeight: 1.15,
+              textTransform: "capitalize",
+            }}
+          >
             {view === "month" &&
               currentDate.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
             {view === "week" &&
@@ -264,16 +284,51 @@ export function EventManager({
               })}
             {view === "list" && "Todos los eventos"}
           </h2>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => navigateDate("prev")} className="h-8 w-8">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => navigateDate("prev")}
+              className="inline-flex items-center justify-center transition-colors"
+              style={{
+                height: 32,
+                width: 32,
+                borderRadius: 980,
+                border: "1px solid var(--border)",
+                background: "#ffffff",
+                color: "var(--ink)",
+              }}
+            >
               <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())}>
+            </button>
+            <button
+              onClick={() => setCurrentDate(new Date())}
+              className="inline-flex items-center justify-center transition-colors"
+              style={{
+                height: 32,
+                padding: "0 14px",
+                borderRadius: 980,
+                border: "1px solid var(--border)",
+                background: "#ffffff",
+                color: "var(--ink)",
+                fontSize: 13,
+                fontWeight: 500,
+              }}
+            >
               Hoy
-            </Button>
-            <Button variant="outline" size="icon" onClick={() => navigateDate("next")} className="h-8 w-8">
+            </button>
+            <button
+              onClick={() => navigateDate("next")}
+              className="inline-flex items-center justify-center transition-colors"
+              style={{
+                height: 32,
+                width: 32,
+                borderRadius: 980,
+                border: "1px solid var(--border)",
+                background: "#ffffff",
+                color: "var(--ink)",
+              }}
+            >
               <ChevronRight className="h-4 w-4" />
-            </Button>
+            </button>
           </div>
         </div>
 
@@ -309,93 +364,158 @@ export function EventManager({
             </Select>
           </div>
 
-          {/* Desktop button group */}
-          <div className="hidden sm:flex items-center gap-1 rounded-lg border bg-background p-1">
-            <Button
-              variant={view === "month" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setView("month")}
-              className="h-8"
-            >
-              <Calendar className="h-4 w-4" />
-              <span className="ml-1">Mes</span>
-            </Button>
-            <Button
-              variant={view === "week" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setView("week")}
-              className="h-8"
-            >
-              <Grid3x3 className="h-4 w-4" />
-              <span className="ml-1">Semana</span>
-            </Button>
-            <Button
-              variant={view === "day" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setView("day")}
-              className="h-8"
-            >
-              <Clock className="h-4 w-4" />
-              <span className="ml-1">Día</span>
-            </Button>
-            <Button
-              variant={view === "list" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setView("list")}
-              className="h-8"
-            >
-              <List className="h-4 w-4" />
-              <span className="ml-1">Lista</span>
-            </Button>
+          {/* Desktop pill group */}
+          <div
+            className="hidden sm:flex items-center"
+            style={{
+              gap: 2,
+              padding: 3,
+              borderRadius: 980,
+              border: "1px solid var(--border)",
+              background: "#ffffff",
+            }}
+          >
+            {[
+              { key: "month", label: "Mes", icon: Calendar },
+              { key: "week", label: "Semana", icon: Grid3x3 },
+              { key: "day", label: "Día", icon: Clock },
+              { key: "list", label: "Lista", icon: List },
+            ].map(({ key, label, icon: Icon }) => {
+              const active = view === key
+              return (
+                <button
+                  key={key}
+                  onClick={() => setView(key as "month" | "week" | "day" | "list")}
+                  className="inline-flex items-center transition-colors"
+                  style={{
+                    height: 28,
+                    padding: "0 12px",
+                    gap: 5,
+                    borderRadius: 980,
+                    background: active ? "var(--accent)" : "transparent",
+                    color: active ? "#ffffff" : "var(--ink-2)",
+                    fontSize: 12,
+                    fontWeight: active ? 600 : 500,
+                    border: "none",
+                  }}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </button>
+              )
+            })}
           </div>
 
-          <Button
+          <button
             onClick={() => {
               setIsCreating(true)
               setIsDialogOpen(true)
             }}
-            className="w-full sm:w-auto"
+            className="inline-flex items-center justify-center w-full sm:w-auto transition-all"
+            style={{
+              height: 36,
+              padding: "0 18px",
+              borderRadius: 980,
+              background: "var(--accent)",
+              color: "#ffffff",
+              fontSize: 13,
+              fontWeight: 600,
+              border: "none",
+              gap: 6,
+              boxShadow: "0 1px 4px rgba(0,113,227,0.25)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--orange-hover)"
+              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,113,227,0.35)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--accent)"
+              e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,113,227,0.25)"
+            }}
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="h-4 w-4" />
             Nuevo evento
-          </Button>
+          </button>
         </div>
       </div>
 
       {/* Search + Filters */}
       <div className="flex flex-col gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+          <Search
+            className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2"
+            style={{ color: "var(--ink-3)" }}
+          />
+          <input
             placeholder="Buscar eventos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="w-full transition-colors focus:outline-none"
+            style={{
+              height: 38,
+              padding: "0 14px 0 38px",
+              borderRadius: 10,
+              border: "1px solid var(--border)",
+              background: "var(--surface-2)",
+              color: "var(--ink)",
+              fontSize: 13,
+            }}
           />
           {searchQuery && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center transition-colors"
+              style={{
+                height: 24,
+                width: 24,
+                borderRadius: 980,
+                background: "transparent",
+                color: "var(--ink-3)",
+                border: "none",
+              }}
               onClick={() => setSearchQuery("")}
             >
-              <X className="h-4 w-4" />
-            </Button>
+              <X className="h-3.5 w-3.5" />
+            </button>
           )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                <Filter className="h-4 w-4" />
+              <button
+                className="inline-flex items-center transition-colors"
+                style={{
+                  height: 30,
+                  padding: "0 12px",
+                  gap: 5,
+                  borderRadius: 980,
+                  border: "1px solid var(--border)",
+                  background: "#ffffff",
+                  color: "var(--ink-2)",
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
+              >
+                <Filter className="h-3.5 w-3.5" />
                 Colores
                 {selectedColors.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1">
+                  <span
+                    style={{
+                      marginLeft: 4,
+                      padding: "0 6px",
+                      height: 18,
+                      lineHeight: "18px",
+                      borderRadius: 980,
+                      background: "var(--accent-soft)",
+                      color: "var(--accent)",
+                      fontSize: 10,
+                      fontWeight: 700,
+                    }}
+                  >
                     {selectedColors.length}
-                  </Badge>
+                  </span>
                 )}
-              </Button>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel>Filtrar por color</DropdownMenuLabel>
@@ -421,15 +541,40 @@ export function EventManager({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                <Filter className="h-4 w-4" />
+              <button
+                className="inline-flex items-center transition-colors"
+                style={{
+                  height: 30,
+                  padding: "0 12px",
+                  gap: 5,
+                  borderRadius: 980,
+                  border: "1px solid var(--border)",
+                  background: "#ffffff",
+                  color: "var(--ink-2)",
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
+              >
+                <Filter className="h-3.5 w-3.5" />
                 Etiquetas
                 {selectedTags.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1">
+                  <span
+                    style={{
+                      marginLeft: 4,
+                      padding: "0 6px",
+                      height: 18,
+                      lineHeight: "18px",
+                      borderRadius: 980,
+                      background: "var(--accent-soft)",
+                      color: "var(--accent)",
+                      fontSize: 10,
+                      fontWeight: 700,
+                    }}
+                  >
                     {selectedTags.length}
-                  </Badge>
+                  </span>
                 )}
-              </Button>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel>Filtrar por etiqueta</DropdownMenuLabel>
@@ -450,15 +595,40 @@ export function EventManager({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                <Filter className="h-4 w-4" />
+              <button
+                className="inline-flex items-center transition-colors"
+                style={{
+                  height: 30,
+                  padding: "0 12px",
+                  gap: 5,
+                  borderRadius: 980,
+                  border: "1px solid var(--border)",
+                  background: "#ffffff",
+                  color: "var(--ink-2)",
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
+              >
+                <Filter className="h-3.5 w-3.5" />
                 Categorías
                 {selectedCategories.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1">
+                  <span
+                    style={{
+                      marginLeft: 4,
+                      padding: "0 6px",
+                      height: 18,
+                      lineHeight: "18px",
+                      borderRadius: 980,
+                      background: "var(--accent-soft)",
+                      color: "var(--accent)",
+                      fontSize: 10,
+                      fontWeight: 700,
+                    }}
+                  >
                     {selectedCategories.length}
-                  </Badge>
+                  </span>
                 )}
-              </Button>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel>Filtrar por categoría</DropdownMenuLabel>
@@ -821,6 +991,9 @@ function EventCard({
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
   }
 
+  // Paleta apagada Apple
+  const eventStyle = EVENT_STYLES[event.color] ?? EVENT_STYLES.blue
+
   if (variant === "compact") {
     return (
       <div
@@ -833,12 +1006,18 @@ function EventCard({
         className="relative cursor-pointer"
       >
         <div
-          className={cn(
-            "rounded px-1.5 py-0.5 text-xs font-medium transition-all duration-300",
-            colorClasses.bg,
-            "text-white truncate",
-            isHovered && "scale-105 shadow-lg z-10",
-          )}
+          className={cn("transition-all duration-200 truncate", isHovered && "scale-[1.02] z-10")}
+          style={{
+            borderRadius: 5,
+            padding: "2px 8px",
+            height: 20,
+            lineHeight: "16px",
+            fontSize: 11,
+            fontWeight: 600,
+            background: eventStyle.bg,
+            color: eventStyle.text,
+            border: "none",
+          }}
         >
           {event.title}
         </div>
@@ -889,18 +1068,22 @@ function EventCard({
         onClick={() => onEventClick(event)}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={cn(
-          "cursor-pointer rounded-lg p-3 transition-all duration-300",
-          colorClasses.bg,
-          "text-white",
-          isHovered && "scale-[1.03] shadow-2xl ring-2 ring-white/50",
-        )}
+        className={cn("cursor-pointer transition-all duration-200", isHovered && "scale-[1.01] shadow-lg")}
+        style={{
+          borderRadius: 10,
+          padding: 12,
+          background: eventStyle.bg,
+          color: eventStyle.text,
+          border: `1px solid ${eventStyle.bg.replace("0.12", "0.25").replace("0.10", "0.20")}`,
+        }}
       >
-        <div className="font-semibold">{event.title}</div>
+        <div style={{ fontWeight: 600, fontSize: 13 }}>{event.title}</div>
         {event.description && (
-          <div className="mt-1 text-sm opacity-90 line-clamp-2">{event.description}</div>
+          <div className="mt-1 line-clamp-2" style={{ fontSize: 12, opacity: 0.85 }}>
+            {event.description}
+          </div>
         )}
-        <div className="mt-2 flex items-center gap-2 text-xs opacity-80">
+        <div className="mt-2 flex items-center gap-1.5" style={{ fontSize: 11, opacity: 0.8 }}>
           <Clock className="h-3 w-3" />
           {formatTime(event.startTime)} - {formatTime(event.endTime)}
         </div>
@@ -933,12 +1116,16 @@ function EventCard({
       className="relative"
     >
       <div
-        className={cn(
-          "cursor-pointer rounded px-2 py-1 text-xs font-medium transition-all duration-300",
-          colorClasses.bg,
-          "text-white",
-          isHovered && "scale-105 shadow-lg z-10",
-        )}
+        className={cn("cursor-pointer transition-all duration-200", isHovered && "scale-[1.02] z-10")}
+        style={{
+          borderRadius: 5,
+          padding: "3px 8px",
+          fontSize: 11,
+          fontWeight: 600,
+          background: eventStyle.bg,
+          color: eventStyle.text,
+          border: "none",
+        }}
       >
         <div className="truncate">{event.title}</div>
       </div>
@@ -987,43 +1174,114 @@ function MonthView({
   const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
 
   return (
-    <Card className="overflow-hidden">
-      <div className="grid grid-cols-7 border-b">
+    <div
+      className="overflow-hidden"
+      style={{
+        background: "#ffffff",
+        border: "1px solid var(--border)",
+        borderRadius: 12,
+      }}
+    >
+      {/* Header de días de la semana */}
+      <div
+        className="grid grid-cols-7"
+        style={{
+          background: "var(--surface-2)",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
         {dayNames.map((day) => (
           <div
             key={day}
-            className="border-r p-2 text-center text-xs font-medium last:border-r-0 sm:text-sm"
+            className="text-center"
+            style={{
+              padding: "10px 0",
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "var(--ink-3)",
+            }}
           >
             <span className="hidden sm:inline">{day}</span>
             <span className="sm:hidden">{day.charAt(0)}</span>
           </div>
         ))}
       </div>
+
+      {/* Grid de días */}
       <div className="grid grid-cols-7">
         {days.map((day, index) => {
           const dayEvents = getEventsForDay(day)
           const isCurrentMonth = day.getMonth() === currentDate.getMonth()
           const isToday = day.toDateString() === new Date().toDateString()
+          const isLastCol = (index + 1) % 7 === 0
+          const isLastRow = index >= days.length - 7
 
           return (
             <div
               key={index}
-              className={cn(
-                "min-h-20 border-b border-r p-1 transition-colors last:border-r-0 sm:min-h-24 sm:p-2",
-                !isCurrentMonth && "bg-muted/30",
-                "hover:bg-accent/50",
-              )}
+              className="min-h-20 sm:min-h-24 transition-colors"
+              style={{
+                padding: 6,
+                background: isToday
+                  ? "var(--accent-soft)"
+                  : isCurrentMonth
+                  ? "#ffffff"
+                  : "rgba(0,0,0,0.02)",
+                borderRight: isLastCol ? "none" : "1px solid var(--border)",
+                borderBottom: isLastRow ? "none" : "1px solid var(--border)",
+              }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => onDrop(day)}
+              onMouseEnter={(e) => {
+                if (!isToday) e.currentTarget.style.background = "rgba(0,0,0,0.02)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = isToday
+                  ? "var(--accent-soft)"
+                  : isCurrentMonth
+                  ? "#ffffff"
+                  : "rgba(0,0,0,0.02)"
+              }}
             >
+              {/* Número de día */}
               <div
-                className={cn(
-                  "mb-1 flex h-5 w-5 items-center justify-center rounded-full text-xs sm:h-6 sm:w-6 sm:text-sm",
-                  isToday && "bg-primary text-primary-foreground font-semibold",
-                )}
+                className="mb-1.5 flex items-center"
+                style={{
+                  padding: "2px 4px",
+                }}
               >
-                {day.getDate()}
+                {isToday ? (
+                  <span
+                    className="inline-flex items-center justify-center"
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: "50%",
+                      background: "var(--accent)",
+                      color: "#ffffff",
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {day.getDate()}
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: isCurrentMonth ? "var(--ink-2)" : "var(--ink-3)",
+                      padding: "0 4px",
+                    }}
+                  >
+                    {day.getDate()}
+                  </span>
+                )}
               </div>
+
+              {/* Eventos */}
               <div className="space-y-1">
                 {dayEvents.slice(0, 3).map((event) => (
                   <EventCard
@@ -1037,7 +1295,7 @@ function MonthView({
                   />
                 ))}
                 {dayEvents.length > 3 && (
-                  <div className="text-[10px] text-muted-foreground sm:text-xs">
+                  <div style={{ fontSize: 10, color: "var(--ink-3)", padding: "0 4px" }}>
                     +{dayEvents.length - 3} más
                   </div>
                 )}
@@ -1046,7 +1304,7 @@ function MonthView({
           )
         })}
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -1256,10 +1514,8 @@ function ListView({
                   >
                     <div className="flex items-start gap-2 sm:gap-3">
                       <div
-                        className={cn(
-                          "mt-1 h-2.5 w-2.5 rounded-full sm:h-3 sm:w-3",
-                          colorClasses.bg,
-                        )}
+                        className="mt-1 h-2.5 w-2.5 rounded-full sm:h-3 sm:w-3 shrink-0"
+                        style={{ background: EVENT_STYLES[event.color]?.text ?? "#0055b3" }}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
