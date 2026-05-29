@@ -273,12 +273,18 @@ export default function PipelinePage() {
               fontSize: 13,
               fontWeight: 600,
               color: '#fff',
-              background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-              border: '1px solid rgba(139,92,246,0.4)',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+              background: 'linear-gradient(135deg, #4338ca, #6366f1)',
+              border: '1px solid rgba(99,102,241,0.4)',
+              boxShadow: '0 0 20px rgba(99,102,241,0.20)',
             }}
-            onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.12)' }}
-            onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)' }}
+            onMouseEnter={e => {
+              e.currentTarget.style.filter = 'brightness(1.1)'
+              e.currentTarget.style.boxShadow = '0 0 28px rgba(99,102,241,0.30)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.filter = 'brightness(1)'
+              e.currentTarget.style.boxShadow = '0 0 20px rgba(99,102,241,0.20)'
+            }}
           >
             <Sparkles size={13} />
             Generar con IA
