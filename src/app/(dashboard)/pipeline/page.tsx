@@ -31,23 +31,31 @@ const CHANNEL_LABELS: Record<Channel, string> = {
 // ─── StatPill ─────────────────────────────────────────────────────────────────
 
 function StatPill({
-  value, label,
+  value, label, variant = 'default',
 }: {
   value: string | number
   label: string
-  variant?: 'default' | 'amber' | 'emerald'  // ignorado — unificado a indigo
+  variant?: 'default' | 'amber' | 'emerald'
 }) {
+  const styles = {
+    default: { bg: 'var(--surface-2)',  border: 'var(--border)',           color: 'var(--ink-2)' },
+    amber:   { bg: 'var(--amber-soft)', border: 'rgba(255, 159, 10, 0.25)', color: '#b25000'      },
+    emerald: { bg: 'var(--green-soft)', border: 'var(--green-border)',     color: '#248a3d'      },
+  }[variant]
+
   return (
     <div
       className="inline-flex items-center gap-1.5 tabular-nums"
       style={{
-        padding: '2px 10px',
-        background: 'var(--accent-soft)',
-        border: '1px solid var(--accent-border)',
-        borderRadius: 5,
+        height: 24,
+        padding: '0 10px',
+        background: styles.bg,
+        border: `1px solid ${styles.border}`,
+        borderRadius: 980,
         fontSize: 11,
         fontWeight: 600,
-        color: '#a5b4fc',
+        color: styles.color,
+        lineHeight: 1,
       }}
     >
       <span style={{ fontWeight: 700 }}>{value}</span>
@@ -205,52 +213,84 @@ export default function PipelinePage() {
 
   return (
     <div className="flex flex-col h-screen relative">
-      {/* Topbar */}
-      <div className="topbar shrink-0 gap-4 justify-between" style={{ height: 68 }}>
-        <div className="flex items-center gap-5 min-w-0">
-          <div className="shrink-0">
-            <h1
-              style={{
-                fontSize: 22,
-                fontWeight: 800,
-                color: 'var(--ink)',
-                letterSpacing: '-0.02em',
-                lineHeight: 1.15,
-              }}
-            >
-              Pipeline
-            </h1>
-            <p
-              style={{
-                fontSize: 11,
-                fontWeight: 400,
-                color: 'var(--ink-3)',
-                marginTop: 4,
-                lineHeight: 1.3,
-              }}
-            >
-              Ideas → Copy → Diseño → Programación → Análisis
-            </p>
-          </div>
-          <div className="hidden md:flex items-center gap-2">
-            <StatPill value={totalItems} label="piezas"      />
-            <StatPill value={inRevision} label="en revisión" />
-            <StatPill value={scheduled}  label="programado"  />
-          </div>
+      {/* Header pipeline */}
+      <header
+        className="shrink-0"
+        style={{
+          padding: '20px 20px 16px 20px',
+          marginBottom: 16,
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        {/* Bloque título + breadcrumb */}
+        <div className="shrink-0 min-w-0 flex flex-col">
+          <h1
+            style={{
+              fontSize: 26,
+              fontWeight: 800,
+              color: 'var(--ink)',
+              letterSpacing: '-0.03em',
+              lineHeight: 1,
+            }}
+          >
+            Pipeline
+          </h1>
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 400,
+              color: 'var(--ink-3)',
+              marginTop: 3,
+              letterSpacing: '0.01em',
+              lineHeight: 1.3,
+            }}
+          >
+            Ideas → Copy → Diseño → Programación → Análisis
+          </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+
+        {/* Stat pills — 3 estilos distintos según tipo */}
+        <div
+          className="hidden md:flex items-center gap-2"
+          style={{ marginLeft: 4 }}
+        >
+          <StatPill value={totalItems} label="piezas"      variant="default" />
+          <StatPill value={inRevision} label="en revisión" variant="amber"   />
+          <StatPill value={scheduled}  label="programado"  variant="emerald" />
+        </div>
+
+        {/* Acciones — pegadas a la derecha */}
+        <div
+          className="flex items-center gap-2 shrink-0"
+          style={{ marginLeft: 'auto' }}
+        >
+          {/* Filtrar */}
           <button
             onClick={() => setFilterOpen(v => !v)}
-            className="flex items-center gap-1.5 relative transition-colors"
+            className="inline-flex items-center relative transition-all"
             style={{
-              height: 36,
+              height: 34,
               padding: '0 14px',
-              borderRadius: 8,
+              gap: 6,
+              borderRadius: 980,
+              border: `1px solid ${filterOpen ? 'var(--border-hover)' : 'var(--border)'}`,
+              background: filterOpen ? 'var(--surface-2)' : '#ffffff',
+              color: filterOpen ? 'var(--ink)' : 'var(--ink-2)',
               fontSize: 13,
               fontWeight: 500,
-              background: filterOpen ? 'var(--surface-3)' : 'var(--surface-2)',
-              border: `1px solid ${filterOpen ? 'var(--border-hover)' : 'var(--border)'}`,
-              color: filterOpen ? 'var(--ink)' : 'var(--ink-2)',
+            }}
+            onMouseEnter={e => {
+              if (filterOpen) return
+              e.currentTarget.style.borderColor = 'var(--border-hover)'
+              e.currentTarget.style.color = 'var(--ink)'
+            }}
+            onMouseLeave={e => {
+              if (filterOpen) return
+              e.currentTarget.style.borderColor = 'var(--border)'
+              e.currentTarget.style.color = 'var(--ink-2)'
             }}
           >
             <Filter size={13} />
@@ -264,34 +304,37 @@ export default function PipelinePage() {
               </span>
             )}
           </button>
+
+          {/* Generar con IA */}
           <button
             onClick={() => setAiModalOpen(true)}
-            className="flex items-center gap-1.5 transition-all"
+            className="inline-flex items-center transition-all"
             style={{
-              height: 36,
-              padding: '0 20px',
+              height: 34,
+              padding: '0 16px',
+              gap: 6,
               borderRadius: 980,
               fontSize: 13,
               fontWeight: 600,
-              color: '#fff',
+              color: '#ffffff',
               background: 'linear-gradient(135deg, #4338ca, #6366f1)',
-              border: '1px solid rgba(99,102,241,0.4)',
-              boxShadow: '0 0 20px rgba(99,102,241,0.20)',
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(99,102,241,0.30)',
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.filter = 'brightness(1.1)'
-              e.currentTarget.style.boxShadow = '0 0 28px rgba(99,102,241,0.30)'
+              e.currentTarget.style.filter = 'brightness(1.08)'
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.40)'
             }}
             onMouseLeave={e => {
               e.currentTarget.style.filter = 'brightness(1)'
-              e.currentTarget.style.boxShadow = '0 0 20px rgba(99,102,241,0.20)'
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(99,102,241,0.30)'
             }}
           >
             <Sparkles size={13} />
             Generar con IA
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Filter bar */}
       {filterOpen && (
