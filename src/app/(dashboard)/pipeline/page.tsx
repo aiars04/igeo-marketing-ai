@@ -35,22 +35,23 @@ function StatPill({
 }: {
   value: string | number
   label: string
-  variant?: 'default' | 'amber' | 'emerald'  // se acepta por compatibilidad pero ignora — todos en indigo
+  variant?: 'default' | 'amber' | 'emerald'  // ignorado — unificado a indigo
 }) {
   return (
     <div
-      className="flex items-center gap-1.5 px-2.5 rounded-md tabular-nums"
+      className="inline-flex items-center gap-1.5 tabular-nums"
       style={{
-        height: 28,
-        background: 'rgba(99,102,241,0.12)',
-        border: '1px solid rgba(99,102,241,0.25)',
-        fontSize: 12,
-        fontWeight: 500,
+        padding: '2px 10px',
+        background: 'var(--accent-soft)',
+        border: '1px solid var(--accent-border)',
+        borderRadius: 5,
+        fontSize: 11,
+        fontWeight: 600,
         color: '#a5b4fc',
       }}
     >
-      <span style={{ fontSize: 13, fontWeight: 700, color: '#a5b4fc' }}>{value}</span>
-      <span style={{ color: '#a5b4fc', opacity: 0.85 }}>{label}</span>
+      <span style={{ fontWeight: 700 }}>{value}</span>
+      <span style={{ opacity: 0.85 }}>{label}</span>
     </div>
   )
 }
@@ -210,8 +211,8 @@ export default function PipelinePage() {
           <div className="shrink-0">
             <h1
               style={{
-                fontSize: 22,
-                fontWeight: 700,
+                fontSize: 20,
+                fontWeight: 800,
                 color: 'var(--ink)',
                 letterSpacing: '-0.015em',
                 lineHeight: 1.15,
@@ -222,7 +223,7 @@ export default function PipelinePage() {
             <p
               style={{
                 fontSize: 11,
-                color: '#55556a',
+                color: 'var(--ink-3)',
                 marginTop: 4,
                 lineHeight: 1.3,
               }}
@@ -272,11 +273,11 @@ export default function PipelinePage() {
               fontSize: 13,
               fontWeight: 600,
               color: '#fff',
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              border: '1px solid rgba(99,102,241,0.5)',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.3), 0 0 0 1px rgba(99,102,241,0.15) inset',
+              background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+              border: '1px solid rgba(139,92,246,0.4)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
             }}
-            onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.1)' }}
+            onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.12)' }}
             onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)' }}
           >
             <Sparkles size={13} />

@@ -662,26 +662,14 @@ function Card({
 
   return (
     <article
-      className="pcard group animate-fade-up cursor-pointer transition-all duration-150 flex flex-col"
+      className="pcard group animate-fade-up cursor-pointer flex flex-col"
       data-channel={item.channel}
       style={{
-        background: 'var(--surface-2)',
-        border: '1px solid var(--border)',
-        borderRadius: 10,
-        padding: 12,
-        gap: 8,
-        minHeight: 140,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.30)',
+        padding: 10,
+        gap: 6,
+        minHeight: 130,
       }}
       onClick={() => onSelect(item)}
-      onMouseEnter={e => {
-        e.currentTarget.style.borderColor = 'var(--border-hover)'
-        e.currentTarget.style.background = 'var(--surface-3)'
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.borderColor = 'var(--border)'
-        e.currentTarget.style.background = 'var(--surface-2)'
-      }}
     >
       {/* ── Fila superior: badge canal + ES + menu ── */}
       <div className="flex items-center justify-between gap-2">
@@ -711,11 +699,11 @@ function Card({
         </div>
       </div>
 
-      {/* ── Título — 13px / 600 / line-height 1.4 / max 2 líneas con ellipsis ── */}
+      {/* ── Título — 12px / 600 / max 2 líneas con ellipsis ── */}
       <h3
         className="line-clamp-2"
         style={{
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: 600,
           lineHeight: 1.4,
           color: 'var(--ink)',
@@ -843,26 +831,25 @@ function Card({
         </div>
       )}
 
-      {/* ── Botón Aprobar y avanzar — compacto h32 / 12px ── */}
+      {/* ── Botón Aprobar y avanzar — h30 / 11px / sin border ── */}
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full flex items-center justify-center transition-all"
+          className="w-full flex items-center justify-center transition-colors"
           style={{
-            gap: 6,
-            height: 32,
-            fontSize: 12,
+            gap: 5,
+            height: 30,
+            fontSize: 11,
             fontWeight: 600,
             borderRadius: 6,
             color: '#ffffff',
             background: 'var(--orange)',
-            border: '1px solid var(--orange-deep)',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+            border: 'none',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-2)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-hover)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'var(--orange)' }}
         >
-          <CheckCircle2 size={13} />
+          <CheckCircle2 size={12} />
           Aprobar y avanzar
         </button>
       )}
@@ -899,80 +886,87 @@ function Column({
       className="pipeline-column animate-fade-up"
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      {/* ── Cabecera compacta: icono + título 14 + contador 18 + auto ── */}
-      <header className="shrink-0 mb-3">
+      {/* ── Cabecera compacta — icono color condicional + título 13 + counter + AUTO ── */}
+      <header className="shrink-0 mb-2.5">
         <div className="flex items-center gap-2 mb-1">
           <div
             className="rounded flex items-center justify-center shrink-0"
             style={{
-              width: 22,
-              height: 22,
-              background: `${cfg.accentHex}1a`,
-              border: `1px solid ${cfg.accentHex}40`,
+              width: 20,
+              height: 20,
+              background: filtered.length > 0 ? `${cfg.accentHex}1a` : 'transparent',
+              border: filtered.length > 0 ? `1px solid ${cfg.accentHex}40` : '1px solid var(--border)',
+              borderRadius: 5,
             }}
           >
-            <Icon size={12} style={{ color: cfg.accentHex }} />
+            <Icon
+              size={11}
+              style={{ color: filtered.length > 0 ? cfg.accentHex : 'var(--ink-3)' }}
+            />
           </div>
           <h2
             className="flex-1 truncate"
             style={{
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 700,
               color: 'var(--ink)',
-              letterSpacing: '-0.01em',
+              letterSpacing: '-0.005em',
             }}
           >
             {cfg.label}
           </h2>
-          {/* Contador — neutro */}
+          {/* Contador neutro */}
           <span
             className="inline-flex items-center justify-center tabular-nums shrink-0"
             style={{
-              width: 18,
-              height: 18,
+              padding: '1px 7px',
               fontSize: 11,
-              fontWeight: 700,
-              borderRadius: 5,
-              color: '#9090a8',
-              background: 'rgba(255,255,255,0.08)',
+              fontWeight: 600,
+              borderRadius: 4,
+              color: 'var(--ink-2)',
+              background: 'rgba(255,255,255,0.07)',
+              lineHeight: 1.4,
             }}
           >
             {filtered.length}
           </span>
-          {/* Auto chip — verde */}
+          {/* Chip AUTO — verde */}
           {cfg.automatic && (
             <span
               className="inline-flex items-center gap-1 shrink-0"
               style={{
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: 700,
                 padding: '0 6px',
                 height: 18,
                 lineHeight: 1,
                 borderRadius: 4,
                 color: '#6ee7b7',
-                background: 'rgba(16,185,129,0.12)',
+                background: 'var(--green-soft)',
                 border: '1px solid rgba(16,185,129,0.25)',
               }}
             >
-              <Zap size={9} /> AUTO
+              <Zap size={8} /> AUTO
             </span>
           )}
         </div>
         <p
           style={{
-            fontSize: 11,
+            fontSize: 10,
             color: 'var(--ink-3)',
             lineHeight: 1.4,
-            marginLeft: 30,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            fontWeight: 600,
+            marginLeft: 28,
           }}
         >
           {cfg.subtitle}
         </p>
       </header>
 
-      {/* ── Stack de cards — gap 8px ── */}
-      <div className="flex-1 overflow-y-auto min-h-0" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* ── Stack de cards — gap 6px ── */}
+      <div className="flex-1 overflow-y-auto min-h-0" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {filtered.map(item => (
           <Card
             key={item.id}
