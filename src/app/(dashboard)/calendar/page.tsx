@@ -115,7 +115,15 @@ export default function CalendarPage() {
   }, [events, hydrated])
 
   return (
-    <div className="p-4 sm:p-6">
+    <div
+      className="p-4 sm:p-6"
+      style={{
+        background: 'var(--bg)',
+        position: 'relative',
+        zIndex: 1,
+        minHeight: '100vh',
+      }}
+    >
       <div className="mb-4">
         <h1
           style={{

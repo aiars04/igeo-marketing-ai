@@ -1068,13 +1068,13 @@ function EventCard({
         onClick={() => onEventClick(event)}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={cn("cursor-pointer transition-all duration-200", isHovered && "scale-[1.01] shadow-lg")}
+        className={cn("cursor-pointer transition-all duration-200", isHovered && "shadow-md")}
         style={{
           borderRadius: 10,
           padding: 12,
           background: eventStyle.bg,
           color: eventStyle.text,
-          border: `1px solid ${eventStyle.bg.replace("0.12", "0.25").replace("0.10", "0.20")}`,
+          border: "1px solid var(--border)",
         }}
       >
         <div style={{ fontWeight: 600, fontSize: 13 }}>{event.title}</div>
@@ -1347,38 +1347,102 @@ function WeekView({
     })
 
   return (
-    <Card className="overflow-auto">
-      <div className="grid grid-cols-8 border-b">
-        <div className="border-r p-2 text-center text-xs font-medium sm:text-sm">Hora</div>
-        {weekDays.map((day) => (
+    <div
+      className="overflow-auto"
+      style={{
+        background: "#ffffff",
+        border: "1px solid var(--border)",
+        borderRadius: 12,
+      }}
+    >
+      {/* Header */}
+      <div
+        className="grid grid-cols-8"
+        style={{
+          background: "var(--surface-2)",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <div
+          className="text-center"
+          style={{
+            padding: "8px 0",
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "var(--ink-3)",
+            borderRight: "1px solid var(--border)",
+          }}
+        >
+          Hora
+        </div>
+        {weekDays.map((day, idx) => (
           <div
             key={day.toISOString()}
-            className="border-r p-2 text-center text-xs font-medium last:border-r-0 sm:text-sm"
+            className="text-center"
+            style={{
+              padding: "8px 4px",
+              borderRight: idx === weekDays.length - 1 ? "none" : "1px solid var(--border)",
+            }}
           >
-            <div className="hidden sm:block">
+            <div
+              className="hidden sm:block"
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                color: "var(--ink-3)",
+              }}
+            >
               {day.toLocaleDateString("es-ES", { weekday: "short" })}
             </div>
-            <div className="sm:hidden">
+            <div
+              className="sm:hidden"
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                textTransform: "uppercase",
+                color: "var(--ink-3)",
+              }}
+            >
               {day.toLocaleDateString("es-ES", { weekday: "narrow" })}
             </div>
-            <div className="text-[10px] text-muted-foreground sm:text-xs">
+            <div style={{ fontSize: 11, color: "var(--ink-2)", marginTop: 2 }}>
               {day.toLocaleDateString("es-ES", { month: "short", day: "numeric" })}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Grid */}
       <div className="grid grid-cols-8">
         {hours.map((hour) => (
           <Fragment key={`row-${hour}`}>
-            <div className="border-b border-r p-1 text-[10px] text-muted-foreground sm:p-2 sm:text-xs">
+            <div
+              style={{
+                padding: "6px 4px",
+                fontSize: 11,
+                color: "var(--ink-2)",
+                borderBottom: hour === 23 ? "none" : "1px solid var(--border-soft)",
+                borderRight: "1px solid var(--border)",
+                textAlign: "center",
+              }}
+            >
               {hour.toString().padStart(2, "0")}:00
             </div>
-            {weekDays.map((day) => {
+            {weekDays.map((day, dayIdx) => {
               const dayEvents = getEventsForDayAndHour(day, hour)
               return (
                 <div
                   key={`${day.toISOString()}-${hour}`}
-                  className="min-h-12 border-b border-r p-0.5 transition-colors hover:bg-accent/50 last:border-r-0 sm:min-h-16 sm:p-1"
+                  className="min-h-12 sm:min-h-16 transition-colors hover:bg-[rgba(0,0,0,0.02)]"
+                  style={{
+                    padding: 4,
+                    borderBottom: hour === 23 ? "none" : "1px solid var(--border-soft)",
+                    borderRight: dayIdx === weekDays.length - 1 ? "none" : "1px solid var(--border-soft)",
+                  }}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => onDrop(day, hour)}
                 >
@@ -1401,7 +1465,7 @@ function WeekView({
           </Fragment>
         ))}
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -1435,21 +1499,47 @@ function DayView({
     })
 
   return (
-    <Card className="overflow-auto">
+    <div
+      className="overflow-auto"
+      style={{
+        background: "#ffffff",
+        border: "1px solid var(--border)",
+        borderRadius: 12,
+      }}
+    >
       <div className="space-y-0">
         {hours.map((hour) => {
           const hourEvents = getEventsForHour(hour)
           return (
             <div
               key={hour}
-              className="flex border-b last:border-b-0"
+              className="flex transition-colors hover:bg-[rgba(0,0,0,0.02)]"
+              style={{
+                borderBottom: hour === 23 ? "none" : "1px solid var(--border-soft)",
+              }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => onDrop(currentDate, hour)}
             >
-              <div className="w-14 flex-shrink-0 border-r p-2 text-xs text-muted-foreground sm:w-20 sm:p-3 sm:text-sm">
+              {/* Columna de hora */}
+              <div
+                className="flex-shrink-0"
+                style={{
+                  width: 64,
+                  padding: "10px 8px",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: "var(--ink-2)",
+                  borderRight: "1px solid var(--border)",
+                  textAlign: "center",
+                }}
+              >
                 {hour.toString().padStart(2, "0")}:00
               </div>
-              <div className="min-h-16 flex-1 p-1 transition-colors hover:bg-accent/50 sm:min-h-20 sm:p-2">
+              {/* Eventos */}
+              <div
+                className="min-h-16 flex-1 sm:min-h-20"
+                style={{ padding: 8 }}
+              >
                 <div className="space-y-2">
                   {hourEvents.map((event) => (
                     <EventCard
@@ -1468,7 +1558,7 @@ function DayView({
           )
         })}
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -1498,86 +1588,171 @@ function ListView({
   }, {} as Record<string, Event[]>)
 
   return (
-    <Card className="p-3 sm:p-4">
-      <div className="space-y-6">
-        {Object.entries(groupedEvents).map(([date, dateEvents]) => (
-          <div key={date} className="space-y-3">
-            <h3 className="text-xs font-semibold text-muted-foreground sm:text-sm">{date}</h3>
-            <div className="space-y-2">
-              {dateEvents.map((event) => {
-                const colorClasses = getColorClasses(event.color)
-                return (
-                  <div
-                    key={event.id}
-                    onClick={() => onEventClick(event)}
-                    className="group cursor-pointer rounded-lg border bg-card p-3 transition-all hover:shadow-md hover:scale-[1.01] sm:p-4"
-                  >
-                    <div className="flex items-start gap-2 sm:gap-3">
-                      <div
-                        className="mt-1 h-2.5 w-2.5 rounded-full sm:h-3 sm:w-3 shrink-0"
-                        style={{ background: EVENT_STYLES[event.color]?.text ?? "#0055b3" }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0">
-                            <h4 className="font-semibold text-sm group-hover:text-primary transition-colors sm:text-base truncate">
-                              {event.title}
-                            </h4>
-                            {event.description && (
-                              <p className="mt-1 text-xs text-muted-foreground sm:text-sm line-clamp-2">
-                                {event.description}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            {event.category && (
-                              <Badge variant="secondary" className="text-xs">
-                                {event.category}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground sm:gap-4 sm:text-xs">
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {event.startTime.toLocaleTimeString("es-ES", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}{" "}
-                            -{" "}
-                            {event.endTime.toLocaleTimeString("es-ES", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </div>
-                          {event.tags && event.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {event.tags.map((tag) => (
-                                <Badge
-                                  key={tag}
-                                  variant="outline"
-                                  className="text-[10px] h-4 sm:text-xs sm:h-5"
-                                >
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
+    <div className="flex flex-col" style={{ gap: 8 }}>
+      {Object.entries(groupedEvents).map(([date, dateEvents]) => (
+        <div
+          key={date}
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            background: "#ffffff",
+            overflow: "hidden",
+          }}
+        >
+          {/* Header de fecha */}
+          <div
+            style={{
+              padding: "6px 14px",
+              background: "var(--surface-2)",
+              borderBottom: "1px solid var(--border)",
+              fontSize: 11,
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "var(--ink-3)",
+            }}
+          >
+            {date}
+          </div>
+
+          {/* Eventos del día */}
+          <div>
+            {dateEvents.map((event, idx) => {
+              const eventStyle = EVENT_STYLES[event.color] ?? EVENT_STYLES.blue
+              return (
+                <div
+                  key={event.id}
+                  onClick={() => onEventClick(event)}
+                  className="cursor-pointer transition-colors hover:bg-[rgba(0,0,0,0.02)]"
+                  style={{
+                    padding: "12px 14px",
+                    borderTop: idx === 0 ? "none" : "1px solid var(--border-soft)",
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Dot de color */}
+                    <div
+                      className="shrink-0"
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        background: eventStyle.text,
+                        marginTop: 5,
+                      }}
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          {/* Título */}
+                          <h4
+                            className="truncate"
+                            style={{
+                              fontSize: 14,
+                              fontWeight: 600,
+                              color: "var(--ink)",
+                              lineHeight: 1.3,
+                            }}
+                          >
+                            {event.title}
+                          </h4>
+                          {/* Descripción */}
+                          {event.description && (
+                            <p
+                              className="line-clamp-2 mt-1"
+                              style={{
+                                fontSize: 12,
+                                color: "var(--ink-2)",
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {event.description}
+                            </p>
                           )}
                         </div>
+
+                        {/* Categoría a la derecha */}
+                        {event.category && (
+                          <div
+                            className="shrink-0"
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 500,
+                              color: "var(--ink-3)",
+                              background: "transparent",
+                              border: "none",
+                            }}
+                          >
+                            {event.category}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Hora + tags */}
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <div
+                          className="inline-flex items-center gap-1"
+                          style={{ fontSize: 12, color: "var(--ink-2)" }}
+                        >
+                          <Clock className="h-3 w-3" />
+                          {event.startTime.toLocaleTimeString("es-ES", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}{" "}
+                          -{" "}
+                          {event.endTime.toLocaleTimeString("es-ES", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                        {event.tags && event.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {event.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="inline-flex items-center"
+                                style={{
+                                  height: 18,
+                                  padding: "0 8px",
+                                  borderRadius: 980,
+                                  fontSize: 10,
+                                  fontWeight: 600,
+                                  border: "1px solid var(--border)",
+                                  background: "var(--surface-2)",
+                                  color: "var(--ink-2)",
+                                  lineHeight: 1,
+                                }}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                )
-              })}
-            </div>
+                </div>
+              )
+            })}
           </div>
-        ))}
-        {sortedEvents.length === 0 && (
-          <div className="py-12 text-center text-sm text-muted-foreground sm:text-base">
-            No hay eventos
-          </div>
-        )}
-      </div>
-    </Card>
+        </div>
+      ))}
+      {sortedEvents.length === 0 && (
+        <div
+          style={{
+            padding: "48px 0",
+            textAlign: "center",
+            fontSize: 14,
+            color: "var(--ink-3)",
+            background: "#ffffff",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+          }}
+        >
+          No hay eventos
+        </div>
+      )}
+    </div>
   )
 }
