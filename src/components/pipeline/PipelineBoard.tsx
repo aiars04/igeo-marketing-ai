@@ -102,9 +102,9 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
             className="fixed z-[9999] rounded-md py-1 animate-scale-in min-w-[200px]"
             style={{
               top: pos.top, right: pos.right,
-              background: 'var(--surface3)',
-              border: '1px solid var(--line3)',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
             }}
           >
             <button
@@ -188,13 +188,13 @@ function MetaRow({ label, children }: { label: string; children: React.ReactNode
           fontSize: 10,
           fontWeight: 700,
           letterSpacing: '0.08em',
-          color: 'rgba(255,255,255,0.45)',
+          color: 'var(--ink-3)',
           marginBottom: 6,
         }}
       >
         {label}
       </p>
-      <div style={{ fontSize: 14, fontWeight: 600, color: '#ffffff', lineHeight: 1.4 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.4 }}>
         {children}
       </div>
     </div>
@@ -210,10 +210,10 @@ function StatusChip({
   children: React.ReactNode
 }) {
   const styles: Record<string, { bg: string; color: string; border: string }> = {
-    stage:   { bg: 'rgba(99,102,241,0.15)',  color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.40)' },
-    ai:      { bg: 'rgba(168,85,247,0.12)',  color: '#c4b5fd', border: '1px solid rgba(168,85,247,0.35)' },
-    user:    { bg: 'rgba(34,197,94,0.12)',   color: '#86efac', border: '1px solid rgba(34,197,94,0.30)' },
-    warning: { bg: 'rgba(245,158,11,0.12)',  color: '#fcd34d', border: '1px solid rgba(245,158,11,0.30)' },
+    stage:   { bg: 'var(--accent-soft)',         color: 'var(--accent)', border: '1px solid var(--accent-border)' },
+    ai:      { bg: 'rgba(175, 82, 222, 0.08)',   color: '#7c3aed',       border: '1px solid rgba(175, 82, 222, 0.25)' },
+    user:    { bg: 'var(--green-soft)',          color: '#248a3d',       border: '1px solid var(--green-border)' },
+    warning: { bg: 'var(--amber-soft)',          color: '#b25000',       border: '1px solid rgba(255, 159, 10, 0.25)' },
   }
   const s = styles[variant]
   return (
@@ -294,16 +294,16 @@ function ContentDetailModal({
                     background: isCurrent
                       ? sCfg.accentHex
                       : isDone
-                      ? `${sCfg.accentHex}28`
-                      : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${isCurrent ? sCfg.accentHex : isDone ? `${sCfg.accentHex}55` : 'rgba(255,255,255,0.08)'}`,
+                      ? `${sCfg.accentHex}1f`
+                      : 'var(--surface-2)',
+                    border: `1px solid ${isCurrent ? sCfg.accentHex : isDone ? `${sCfg.accentHex}55` : 'var(--border)'}`,
                     boxShadow: isCurrent ? `0 0 0 3px ${sCfg.accentHex}22` : 'none',
                   }}
                 >
                   <SIcon
                     size={16}
                     style={{
-                      color: isCurrent ? '#ffffff' : isDone ? sCfg.accentHex : '#ffffff',
+                      color: isCurrent ? '#ffffff' : isDone ? sCfg.accentHex : 'var(--ink-2)',
                     }}
                   />
                 </div>
@@ -313,9 +313,9 @@ function ContentDetailModal({
                     marginTop: 8,
                     fontSize: 11,
                     fontWeight: isCurrent ? 700 : 500,
-                    color: isCurrent ? '#ffffff' : isDone ? sCfg.accentHex : '#ffffff',
+                    color: isCurrent ? 'var(--ink)' : isDone ? sCfg.accentHex : 'var(--ink-2)',
                     lineHeight: 1.3,
-                    opacity: isCurrent ? 1 : isDone ? 1 : 0.4,  // ← label inactivo opacity 0.4
+                    opacity: isCurrent ? 1 : isDone ? 1 : 0.5,
                   }}
                 >
                   {sCfg.label.split(' ')[0]}
@@ -327,8 +327,8 @@ function ContentDetailModal({
                 <div
                   className="flex-1"
                   style={{
-                    height: 1,                                              // ← 1px (era 2)
-                    background: isDone ? `${sCfg.accentHex}55` : 'rgba(255,255,255,0.12)',  // ← inactivo 0.12
+                    height: 1,
+                    background: isDone ? `${sCfg.accentHex}55` : 'var(--border)',
                     marginTop: 17.5,
                     minWidth: 8,
                   }}
@@ -359,8 +359,8 @@ function ContentDetailModal({
           columnGap: 32,
           padding: 20,
           marginBottom: 20,
-          background: 'rgba(255,255,255,0.025)',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--surface-2)',
+          border: '1px solid var(--border)',
           borderRadius: 10,
         }}
       >
@@ -381,10 +381,10 @@ function ContentDetailModal({
         </MetaRow>
       </div>
 
-      {/* ── Sección Contenido — bg #252535 padding 12 radius 8 ── */}
+      {/* ── Sección Contenido ── */}
       <div
         style={{
-          background: '#252535',
+          background: 'var(--surface-2)',
           padding: 16,
           borderRadius: 8,
           marginBottom: 16,
@@ -396,7 +396,7 @@ function ContentDetailModal({
             fontSize: 10,
             fontWeight: 700,
             letterSpacing: '0.08em',
-            color: 'rgba(255,255,255,0.45)',
+            color: 'var(--ink-3)',
             marginBottom: 10,
           }}
         >
@@ -407,7 +407,7 @@ function ContentDetailModal({
             style={{
               fontSize: 14,
               lineHeight: 1.6,
-              color: '#e8e9ed',
+              color: 'var(--ink)',
               whiteSpace: 'pre-wrap',
               display: '-webkit-box',
               WebkitLineClamp: 3,
@@ -419,7 +419,7 @@ function ContentDetailModal({
           </p>
         ) : (
           <div>
-            <p style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5, color: '#e8e9ed', marginBottom: 12 }}>
+            <p style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5, color: 'var(--ink)', marginBottom: 12 }}>
               {item.title}
             </p>
             <div
@@ -454,8 +454,8 @@ function ContentDetailModal({
             gap: 10,
             padding: '12px 14px',
             marginBottom: 16,
-            background: item.clarity_pass ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)',
-            border: `1px solid ${item.clarity_pass ? 'rgba(34,197,94,0.30)' : 'rgba(245,158,11,0.30)'}`,
+            background: item.clarity_pass ? 'var(--green-soft)' : 'var(--amber-soft)',
+            border: `1px solid ${item.clarity_pass ? 'var(--green-border)' : 'rgba(255,159,10,0.25)'}`,
             borderRadius: 8,
           }}
         >
@@ -464,24 +464,24 @@ function ContentDetailModal({
             style={{
               width: 22, height: 22,
               borderRadius: '50%',
-              background: item.clarity_pass ? 'rgba(34,197,94,0.25)' : 'rgba(245,158,11,0.25)',
+              background: item.clarity_pass ? 'rgba(52,199,89,0.20)' : 'rgba(255,159,10,0.20)',
             }}
           >
-            <CheckCircle2 size={13} style={{ color: item.clarity_pass ? '#86efac' : '#fcd34d' }} />
+            <CheckCircle2 size={13} style={{ color: item.clarity_pass ? '#248a3d' : '#b25000' }} />
           </div>
           <div className="min-w-0 flex-1">
             <p
               style={{
                 fontSize: 13,
                 fontWeight: 600,
-                color: item.clarity_pass ? '#86efac' : '#fcd34d',
+                color: item.clarity_pass ? '#248a3d' : '#b25000',
                 lineHeight: 1.3,
               }}
             >
               Clarity {item.clarity_pass ? 'OK' : 'requiere revisión'}
             </p>
             {item.clarity_summary && (
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 2, lineHeight: 1.4 }}>
+              <p style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2, lineHeight: 1.4 }}>
                 {item.clarity_summary}
               </p>
             )}
@@ -497,17 +497,17 @@ function ContentDetailModal({
             gap: 10,
             padding: '12px 14px',
             marginBottom: 16,
-            background: 'rgba(245,158,11,0.10)',
-            border: '1px solid rgba(245,158,11,0.28)',
+            background: 'var(--amber-soft)',
+            border: '1px solid rgba(255,159,10,0.25)',
             borderRadius: 8,
           }}
         >
-          <Calendar size={16} className="shrink-0" style={{ color: '#fcd34d' }} />
+          <Calendar size={16} className="shrink-0" style={{ color: '#b25000' }} />
           <div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#fcd34d', lineHeight: 1.3 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#b25000', lineHeight: 1.3 }}>
               Programado vía PostiZ
             </p>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
+            <p style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>
               {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
                 day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
               })}
@@ -523,12 +523,12 @@ function ContentDetailModal({
           gap: 10,
           paddingTop: 16,
           marginTop: 8,
-          borderTop: '1px solid rgba(255,255,255,0.08)',
+          borderTop: '1px solid var(--border)',
         }}
       >
         {confirmDelete ? (
           <>
-            <p style={{ fontSize: 13, flex: 1, color: 'rgba(255,255,255,0.55)' }}>
+            <p style={{ fontSize: 13, flex: 1, color: 'var(--ink-2)' }}>
               ¿Eliminar definitivamente?
             </p>
             <button
@@ -540,8 +540,8 @@ function ContentDetailModal({
                 fontSize: 13,
                 fontWeight: 600,
                 color: '#ffffff',
-                background: '#ef4444',
-                borderRadius: 6,
+                background: 'var(--red)',
+                borderRadius: 980,
                 border: 'none',
               }}
             >
@@ -555,10 +555,10 @@ function ContentDetailModal({
                 padding: '0 14px',
                 fontSize: 13,
                 fontWeight: 500,
-                color: 'rgba(255,255,255,0.65)',
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.15)',
-                borderRadius: 6,
+                color: 'var(--ink)',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 980,
               }}
             >
               Cancelar
@@ -576,12 +576,12 @@ function ContentDetailModal({
                 padding: '0 14px',
                 fontSize: 13,
                 fontWeight: 600,
-                color: '#f87171',
+                color: 'var(--red)',
                 background: 'transparent',
-                border: '1px solid rgba(239,68,68,0.40)',
-                borderRadius: 6,
+                border: '1px solid rgba(255,59,48,0.30)',
+                borderRadius: 980,
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.10)' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-soft)' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
             >
               <Trash2 size={13} /> Eliminar
@@ -597,17 +597,16 @@ function ContentDetailModal({
                 style={{
                   gap: 6,
                   height: 36,
-                  padding: '0 16px',
+                  padding: '0 18px',
                   fontSize: 13,
                   fontWeight: 600,
                   color: '#ffffff',
-                  background: 'var(--orange)',
-                  border: '1px solid var(--orange-deep)',
-                  borderRadius: 6,
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                  background: 'var(--accent)',
+                  border: 'none',
+                  borderRadius: 980,
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-2)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'var(--orange)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-hover)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,113,227,0.30)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.boxShadow = 'none' }}
               >
                 <CheckCircle2 size={14} /> Aprobar y avanzar
               </button>
@@ -618,17 +617,16 @@ function ContentDetailModal({
                 style={{
                   gap: 6,
                   height: 36,
-                  padding: '0 16px',
+                  padding: '0 18px',
                   fontSize: 13,
                   fontWeight: 600,
                   color: '#ffffff',
-                  background: 'var(--orange)',
-                  border: '1px solid var(--orange-deep)',
-                  borderRadius: 6,
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                  background: 'var(--accent)',
+                  border: 'none',
+                  borderRadius: 980,
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-2)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'var(--orange)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-hover)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,113,227,0.30)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.boxShadow = 'none' }}
               >
                 Mover a {nextCfg.label} <ArrowRight size={13} />
               </button>
@@ -727,14 +725,14 @@ function Card({
                 style={{
                   width: 22, height: 22,
                   fontSize: 9.5, fontWeight: 700,
-                  color: 'var(--success-2)',
-                  background: 'rgba(16,185,129,0.18)',
-                  border: '1px solid rgba(16,185,129,0.35)',
+                  color: '#248a3d',
+                  background: 'var(--green-soft)',
+                  border: '1px solid var(--green-border)',
                 }}
               >
                 {initials}
               </div>
-              <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)' }}>
+              <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-2)' }}>
                 {item.approved_by}
               </span>
             </>
@@ -742,22 +740,22 @@ function Card({
             <div
               className="inline-flex items-center"
               style={{
-                gap: 4,                   // ← gap 4px entre icono y texto
+                gap: 4,
                 height: 22,
                 padding: '0 10px',
                 fontSize: 11,
                 fontWeight: 600,
                 borderRadius: 4,
-                color: '#94a3b8',
-                background: 'rgba(148,163,184,0.10)',
-                border: '1px solid rgba(148,163,184,0.25)',
+                color: 'var(--accent)',
+                background: 'var(--accent-soft)',
+                border: '1px solid var(--accent-border)',
                 lineHeight: 1,
               }}
             >
               <Sparkles size={11} /> IA
             </div>
           ) : (
-            <span style={{ fontSize: 11, color: 'var(--muted)' }}>—</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>—</span>
           )}
         </div>
 
@@ -769,13 +767,13 @@ function Card({
               style={{
                 gap: 4,
                 height: 22,
-                padding: '0 10px',         // ← padding horizontal 10px
+                padding: '0 10px',
                 fontSize: 11,
                 fontWeight: 600,
                 borderRadius: 4,
-                color: 'var(--success-2)',
-                background: 'rgba(16,185,129,0.12)',
-                border: '1px solid rgba(16,185,129,0.30)',
+                color: '#248a3d',
+                background: 'var(--green-soft)',
+                border: '1px solid var(--green-border)',
                 lineHeight: 1,
               }}
             >
@@ -785,22 +783,22 @@ function Card({
             <span
               className="inline-flex items-center"
               style={{
-                gap: 4,                   // ← gap 4px ✨ texto
+                gap: 4,
                 height: 22,
-                padding: '0 10px',         // ← padding horizontal 10px
+                padding: '0 10px',
                 fontSize: 11,
                 fontWeight: 600,
                 borderRadius: 4,
-                color: '#94a3b8',
-                background: 'rgba(148,163,184,0.10)',
-                border: '1px solid rgba(148,163,184,0.25)',
+                color: 'var(--accent)',
+                background: 'var(--accent-soft)',
+                border: '1px solid var(--accent-border)',
                 lineHeight: 1,
               }}
             >
               <Sparkles size={11} /> Generado IA
             </span>
           ) : (
-            <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
               {STATUS_LABELS[item.status] ?? item.status}
             </span>
           )}
@@ -818,9 +816,9 @@ function Card({
             fontSize: 11,
             fontWeight: 600,
             borderRadius: 4,
-            color: 'var(--warning-2)',
-            background: 'rgba(245,158,11,0.10)',
-            border: '1px solid rgba(245,158,11,0.28)',
+            color: '#b25000',
+            background: 'var(--amber-soft)',
+            border: '1px solid rgba(255,159,10,0.25)',
             lineHeight: 1,
           }}
         >
@@ -831,23 +829,23 @@ function Card({
         </div>
       )}
 
-      {/* ── Botón Aprobar y avanzar — h30 / 11px / sin border ── */}
+      {/* ── Botón Aprobar y avanzar — pill Apple ── */}
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full flex items-center justify-center transition-colors"
+          className="w-full flex items-center justify-center transition-all"
           style={{
             gap: 5,
             height: 30,
             fontSize: 11,
             fontWeight: 600,
-            borderRadius: 6,
+            borderRadius: 980,
             color: '#ffffff',
-            background: 'var(--orange)',
+            background: 'var(--accent)',
             border: 'none',
           }}
           onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-hover)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'var(--orange)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)' }}
         >
           <CheckCircle2 size={12} />
           Aprobar y avanzar
@@ -924,7 +922,7 @@ function Column({
               fontWeight: 600,
               borderRadius: 4,
               color: 'var(--ink-2)',
-              background: 'rgba(255,255,255,0.07)',
+              background: 'rgba(0,0,0,0.05)',
               lineHeight: 1.4,
             }}
           >
@@ -941,9 +939,9 @@ function Column({
                 height: 18,
                 lineHeight: 1,
                 borderRadius: 4,
-                color: '#6ee7b7',
+                color: '#248a3d',
                 background: 'var(--green-soft)',
-                border: '1px solid rgba(16,185,129,0.25)',
+                border: '1px solid var(--green-border)',
               }}
             >
               <Zap size={8} /> AUTO

@@ -1,16 +1,16 @@
 import { cn } from '@/lib/utils'
 import type { Channel } from '@/types/database'
 
-// Paleta apagada (no neón) — minimalismo frío con glassmorphism
+// Paleta light mode Apple
 const CHANNEL_COLORS: Record<string, { text: string; border: string; bg: string }> = {
-  linkedin:   { text: '#93c5fd', border: 'rgba(96, 165, 250, 0.25)',  bg: 'rgba(96, 165, 250, 0.08)'  },
-  instagram:  { text: '#f9a8d4', border: 'rgba(244, 114, 182, 0.25)', bg: 'rgba(244, 114, 182, 0.08)' },
-  facebook:   { text: '#93c5fd', border: 'rgba(96, 165, 250, 0.25)',  bg: 'rgba(96, 165, 250, 0.08)'  },
-  x:          { text: '#9090a8', border: 'rgba(144, 144, 168, 0.20)', bg: 'rgba(144, 144, 168, 0.06)' },
-  blog:       { text: '#fde68a', border: 'rgba(251, 191, 36, 0.25)',  bg: 'rgba(251, 191, 36, 0.08)'  },
-  email:      { text: '#fde68a', border: 'rgba(251, 191, 36, 0.25)',  bg: 'rgba(251, 191, 36, 0.08)'  },
-  newsletter: { text: '#6ee7b7', border: 'rgba(52, 211, 153, 0.25)',  bg: 'rgba(52, 211, 153, 0.08)'  },
-  default:    { text: '#9090a8', border: 'rgba(144, 144, 168, 0.20)', bg: 'rgba(144, 144, 168, 0.06)' },
+  linkedin:   { text: '#0071e3', border: 'rgba(0, 113, 227, 0.20)',  bg: 'rgba(0, 113, 227, 0.07)'  },
+  instagram:  { text: '#e8388c', border: 'rgba(232, 56, 140, 0.20)', bg: 'rgba(232, 56, 140, 0.07)' },
+  facebook:   { text: '#0071e3', border: 'rgba(0, 113, 227, 0.20)',  bg: 'rgba(0, 113, 227, 0.07)'  },
+  x:          { text: '#6e6e73', border: 'rgba(0, 0, 0, 0.10)',      bg: 'rgba(0, 0, 0, 0.04)'      },
+  blog:       { text: '#b25000', border: 'rgba(255, 159, 10, 0.25)', bg: 'rgba(255, 159, 10, 0.08)' },
+  email:      { text: '#b25000', border: 'rgba(255, 159, 10, 0.25)', bg: 'rgba(255, 159, 10, 0.08)' },
+  newsletter: { text: '#248a3d', border: 'rgba(52, 199, 89, 0.25)',  bg: 'rgba(52, 199, 89, 0.08)'  },
+  default:    { text: '#6e6e73', border: 'rgba(0, 0, 0, 0.10)',      bg: 'rgba(0, 0, 0, 0.04)'      },
 }
 
 interface ChannelBadgeProps {
@@ -27,8 +27,8 @@ export function ChannelBadge({ channel, className }: ChannelBadgeProps) {
       style={{
         padding: '1px 8px',
         fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: '0.05em',
+        fontWeight: 600,
+        letterSpacing: '0.04em',
         color: colors.text,
         background: colors.bg,
         border: `1px solid ${colors.border}`,
