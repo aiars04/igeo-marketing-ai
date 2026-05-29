@@ -809,9 +809,9 @@ textarea.input {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 12px;
@@ -824,7 +824,7 @@ textarea.input {
 
 /* ── Pipeline card — Apple light, semi-opaca para que los paths se entrevean ── */
 .pcard {
-  background: rgba(245, 245, 247, 0.90);
+  background: rgba(245, 245, 247, 0.82);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px;
