@@ -225,14 +225,14 @@ export default function PipelinePage() {
           gap: 12,
         }}
       >
-        {/* Bloque título + breadcrumb */}
+        {/* Bloque título + subtítulo */}
         <div className="shrink-0 min-w-0 flex flex-col">
           <h1
             style={{
-              fontSize: 26,
+              fontSize: 28,
               fontWeight: 800,
               color: 'var(--ink)',
-              letterSpacing: '-0.03em',
+              letterSpacing: '-0.04em',
               lineHeight: 1,
             }}
           >
@@ -240,15 +240,14 @@ export default function PipelinePage() {
           </h1>
           <p
             style={{
-              fontSize: 11,
-              fontWeight: 400,
+              fontSize: 12,
+              fontWeight: 500,
               color: 'var(--ink-3)',
-              marginTop: 3,
+              margin: '3px 0 0',
               letterSpacing: '0.01em',
-              lineHeight: 1.3,
             }}
           >
-            Ideas → Copy → Diseño → Programación → Análisis
+            Agente Marketing · iGEO
           </p>
         </div>
 
