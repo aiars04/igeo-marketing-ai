@@ -662,29 +662,18 @@ function Card({
     <article
       className="pcard group animate-fade-up cursor-pointer flex flex-col"
       data-channel={item.channel}
-      style={{
-        gap: 8,
-        minHeight: 130,
-      }}
+      style={{ gap: 10 }}
       onClick={() => onSelect(item)}
     >
-      {/* ── Fila superior: badge canal + ES + menu ── */}
+      {/* ── Fila superior: badge canal + ES + status dot + menu ── */}
       <div className="flex items-center justify-between gap-2">
         <ChannelBadge channel={item.channel as Channel} />
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <span
-            className="inline-flex items-center"
             style={{
-              height: 22,
-              padding: '0 8px',
-              fontSize: 10,
-              fontWeight: 700,
-              borderRadius: 4,
-              color: 'var(--text2)',
-              background: 'var(--surface3)',
-              border: '1px solid var(--line2)',
-              letterSpacing: '0.04em',
-              lineHeight: 1,
+              fontSize: 11,
+              color: 'var(--ink-3)',
+              fontWeight: 500,
             }}
           >
             {MARKET_LABEL[item.market] ?? item.market.toUpperCase()}
@@ -696,34 +685,48 @@ function Card({
         </div>
       </div>
 
-      {/* ── Título — 13px / 600 / line-height 1.5 / max 2 líneas con ellipsis ── */}
+      {/* ── Título ── */}
       <h3
         className="line-clamp-2"
         style={{
           fontSize: 13,
           fontWeight: 600,
-          lineHeight: 1.5,
+          lineHeight: 1.45,
           color: 'var(--ink)',
-          letterSpacing: '-0.005em',
+          letterSpacing: '-0.01em',
         }}
       >
         {item.title}
+        {item.ai_generated && !initials && (
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 400,
+              color: 'var(--ink-3)',
+              letterSpacing: 0,
+              marginLeft: 4,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            · Generado por IA
+          </span>
+        )}
       </h3>
 
-      {/* ── Fila inferior: meta ── */}
-      <div
-        className="flex items-center justify-between gap-3"
-        style={{ marginTop: 6 }}
-      >
-        {/* Avatar/nombre del responsable — nombre COMPLETO sin truncate */}
-        <div className="flex items-center gap-2 min-w-0">
+      {/* ── Fila inferior — solo si hay autor aprobado o fecha programada ── */}
+      {(initials || item.scheduled_at) && (
+        <div
+          className="flex items-center justify-between gap-3"
+          style={{ marginTop: 8 }}
+        >
+          {/* Avatar+nombre del responsable */}
           {initials ? (
-            <>
+            <div className="flex items-center gap-2 min-w-0">
               <div
                 className="shrink-0 flex items-center justify-center rounded-full"
                 style={{
                   width: 22, height: 22,
-                  fontSize: 9.5, fontWeight: 700,
+                  fontSize: 10, fontWeight: 700,
                   color: '#248a3d',
                   background: 'var(--green-soft)',
                   border: '1px solid var(--green-border)',
@@ -731,45 +734,25 @@ function Card({
               >
                 {initials}
               </div>
-              <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-2)' }}>
+              <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>
                 {item.approved_by}
               </span>
-            </>
-          ) : item.ai_generated ? (
-            <div
-              className="inline-flex items-center"
-              style={{
-                gap: 4,
-                height: 22,
-                padding: '0 10px',
-                fontSize: 11,
-                fontWeight: 600,
-                borderRadius: 4,
-                color: 'var(--accent)',
-                background: 'var(--accent-soft)',
-                border: '1px solid var(--accent-border)',
-                lineHeight: 1,
-              }}
-            >
-              <Sparkles size={11} /> IA
             </div>
           ) : (
-            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>—</span>
+            <div />
           )}
-        </div>
 
-        {/* Estado a la derecha — padding-x mín 10px */}
-        <div className="shrink-0">
-          {item.human_approved && item.approved_by ? (
+          {/* Chip "Aprobado" — pill verde Apple */}
+          {item.human_approved && (
             <span
-              className="inline-flex items-center"
+              className="inline-flex items-center shrink-0"
               style={{
                 gap: 4,
-                height: 22,
-                padding: '0 10px',
+                height: 20,
+                padding: '0 8px',
                 fontSize: 11,
-                fontWeight: 600,
-                borderRadius: 4,
+                fontWeight: 500,
+                borderRadius: 980,
                 color: '#248a3d',
                 background: 'var(--green-soft)',
                 border: '1px solid var(--green-border)',
@@ -778,85 +761,64 @@ function Card({
             >
               <CheckCheck size={11} /> Aprobado
             </span>
-          ) : item.ai_generated ? (
+          )}
+
+          {/* Fecha programada — pill ámbar Apple */}
+          {item.scheduled_at && !item.human_approved && (
             <span
-              className="inline-flex items-center"
+              className="inline-flex items-center shrink-0"
               style={{
-                gap: 4,
-                height: 22,
-                padding: '0 10px',
+                gap: 5,
+                height: 20,
+                padding: '0 8px',
                 fontSize: 11,
-                fontWeight: 600,
-                borderRadius: 4,
-                color: 'var(--accent)',
-                background: 'var(--accent-soft)',
-                border: '1px solid var(--accent-border)',
+                fontWeight: 500,
+                borderRadius: 980,
+                color: '#b25000',
+                background: 'var(--amber-soft)',
+                border: '1px solid rgba(255,159,10,0.25)',
                 lineHeight: 1,
               }}
             >
-              <Sparkles size={11} /> Generado IA
-            </span>
-          ) : (
-            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-              {STATUS_LABELS[item.status] ?? item.status}
+              <Calendar size={10} />
+              {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
+                day: '2-digit', month: 'short',
+              })}
             </span>
           )}
         </div>
-      </div>
-
-      {/* ── Fecha programada (chip debajo de meta) ── */}
-      {item.scheduled_at && (
-        <div
-          className="inline-flex items-center self-start"
-          style={{
-            gap: 6,
-            height: 22,
-            padding: '0 10px',
-            fontSize: 11,
-            fontWeight: 600,
-            borderRadius: 4,
-            color: '#b25000',
-            background: 'var(--amber-soft)',
-            border: '1px solid rgba(255,159,10,0.25)',
-            lineHeight: 1,
-          }}
-        >
-          <Calendar size={11} />
-          {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
-            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-          })}
-        </div>
       )}
 
-      {/* ── Botón Aprobar y avanzar — pill h32 / 12px ── */}
+      {/* ── Botón Aprobar y avanzar — ghost refinado ── */}
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full flex items-center justify-center"
+          className="w-full inline-flex items-center justify-center"
           style={{
-            gap: 6,
-            height: 32,
+            gap: 5,
+            height: 28,
+            marginTop: 8,
             fontSize: 12,
-            fontWeight: 600,
-            letterSpacing: '0.01em',
+            fontWeight: 500,
             borderRadius: 980,
-            color: '#ffffff',
-            background: 'var(--accent)',
-            border: 'none',
-            boxShadow: '0 1px 4px rgba(0,113,227,0.25)',
-            transition: 'background 0.15s ease, box-shadow 0.15s ease',
+            color: 'var(--ink-2)',
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            transition: 'all 0.15s ease',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'var(--orange-hover)'
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,113,227,0.35)'
+            e.currentTarget.style.borderColor = 'var(--accent)'
+            e.currentTarget.style.color = 'var(--accent)'
+            e.currentTarget.style.background = 'var(--accent-soft)'
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = 'var(--accent)'
-            e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,113,227,0.25)'
+            e.currentTarget.style.borderColor = 'var(--border)'
+            e.currentTarget.style.color = 'var(--ink-2)'
+            e.currentTarget.style.background = 'transparent'
           }}
         >
-          <CheckCircle2 size={13} />
           Aprobar y avanzar
+          <ArrowRight size={13} />
         </button>
       )}
     </article>
@@ -896,14 +858,14 @@ function Column({
       <header
         className="shrink-0"
         style={{
-          marginBottom: 10,
+          marginBottom: 8,
           paddingBottom: 10,
           borderBottom: '1px solid var(--border)',
         }}
       >
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2">
           <div
-            className="rounded flex items-center justify-center shrink-0"
+            className="flex items-center justify-center shrink-0"
             style={{
               width: 20,
               height: 20,
@@ -920,10 +882,10 @@ function Column({
           <h2
             className="flex-1 truncate"
             style={{
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 700,
               color: 'var(--ink)',
-              letterSpacing: '-0.01em',
+              letterSpacing: 0,
             }}
           >
             {cfg.label}
@@ -943,7 +905,7 @@ function Column({
           >
             {filtered.length}
           </span>
-          {/* Chip AUTO — verde */}
+          {/* Chip AUTO */}
           {cfg.automatic && (
             <span
               className="inline-flex items-center gap-1 shrink-0"
@@ -963,19 +925,6 @@ function Column({
             </span>
           )}
         </div>
-        <p
-          style={{
-            fontSize: 10,
-            color: 'var(--ink-3)',
-            lineHeight: 1.4,
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            fontWeight: 500,
-            marginLeft: 28,
-          }}
-        >
-          {cfg.subtitle}
-        </p>
       </header>
 
       {/* ── Stack de cards — gap 6px ── */}

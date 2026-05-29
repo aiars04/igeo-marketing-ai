@@ -822,13 +822,13 @@ textarea.input {
   border-color: var(--border-hover);
 }
 
-/* ── Pipeline card — Apple light, semi-opaca para que los paths se entrevean ── */
+/* ── Pipeline card — refinada minimalista ── */
 .pcard {
-  background: rgba(245, 245, 247, 0.82);
+  background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 2px;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   position: relative;
