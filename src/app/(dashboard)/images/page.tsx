@@ -168,11 +168,24 @@ export default function ImagesPage() {
       <div className="flex items-center justify-between px-6 h-[60px] shrink-0 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-5 min-w-0">
           <div className="shrink-0">
-            <h1 className="page-title">
+            <h1 style={{
+              fontSize: '28px',
+              fontWeight: 800,
+              letterSpacing: '-0.04em',
+              color: 'var(--ink)',
+              lineHeight: 1,
+              margin: 0,
+            }}>
               Imágenes
             </h1>
-            <p className="section-label mt-1">
-              Banco visual generado con IA
+            <p style={{
+              fontSize: '12px',
+              fontWeight: 500,
+              color: 'var(--ink-3)',
+              margin: '3px 0 0',
+              letterSpacing: '0.01em',
+            }}>
+              Agente Marketing · iGEO
             </p>
           </div>
           <div className="hidden md:flex items-center gap-2">

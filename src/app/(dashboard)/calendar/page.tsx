@@ -125,27 +125,24 @@ export default function CalendarPage() {
       }}
     >
       <div className="mb-4">
-        <h1
-          style={{
-            fontSize: 22,
-            fontWeight: 800,
-            color: 'var(--ink)',
-            letterSpacing: '-0.02em',
-            lineHeight: 1.15,
-          }}
-        >
+        <h1 style={{
+          fontSize: '28px',
+          fontWeight: 800,
+          letterSpacing: '-0.04em',
+          color: 'var(--ink)',
+          lineHeight: 1,
+          margin: 0,
+        }}>
           Calendario
         </h1>
-        <p
-          style={{
-            fontSize: 11,
-            fontWeight: 400,
-            color: 'var(--ink-3)',
-            marginTop: 4,
-            lineHeight: 1.3,
-          }}
-        >
-          Planifica acontecimientos y contenido programado
+        <p style={{
+          fontSize: '12px',
+          fontWeight: 500,
+          color: 'var(--ink-3)',
+          margin: '3px 0 0',
+          letterSpacing: '0.01em',
+        }}>
+          Agente Marketing · iGEO
         </p>
       </div>
 
