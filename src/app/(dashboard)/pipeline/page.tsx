@@ -211,10 +211,10 @@ export default function PipelinePage() {
           <div className="shrink-0">
             <h1
               style={{
-                fontSize: 20,
+                fontSize: 22,
                 fontWeight: 800,
                 color: 'var(--ink)',
-                letterSpacing: '-0.015em',
+                letterSpacing: '-0.02em',
                 lineHeight: 1.15,
               }}
             >
@@ -223,6 +223,7 @@ export default function PipelinePage() {
             <p
               style={{
                 fontSize: 11,
+                fontWeight: 400,
                 color: 'var(--ink-3)',
                 marginTop: 4,
                 lineHeight: 1.3,
@@ -268,8 +269,8 @@ export default function PipelinePage() {
             className="flex items-center gap-1.5 transition-all"
             style={{
               height: 36,
-              padding: '0 16px',
-              borderRadius: 8,
+              padding: '0 20px',
+              borderRadius: 980,
               fontSize: 13,
               fontWeight: 600,
               color: '#fff',

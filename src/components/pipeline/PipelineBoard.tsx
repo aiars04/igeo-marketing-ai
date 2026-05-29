@@ -663,8 +663,7 @@ function Card({
       className="pcard group animate-fade-up cursor-pointer flex flex-col"
       data-channel={item.channel}
       style={{
-        padding: 10,
-        gap: 6,
+        gap: 8,
         minHeight: 130,
       }}
       onClick={() => onSelect(item)}
@@ -697,13 +696,13 @@ function Card({
         </div>
       </div>
 
-      {/* ── Título — 12px / 600 / max 2 líneas con ellipsis ── */}
+      {/* ── Título — 13px / 600 / line-height 1.5 / max 2 líneas con ellipsis ── */}
       <h3
         className="line-clamp-2"
         style={{
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: 600,
-          lineHeight: 1.4,
+          lineHeight: 1.5,
           color: 'var(--ink)',
           letterSpacing: '-0.005em',
         }}
@@ -711,10 +710,10 @@ function Card({
         {item.title}
       </h3>
 
-      {/* ── Fila inferior: meta — pegada al bottom con mt-auto ── */}
+      {/* ── Fila inferior: meta ── */}
       <div
         className="flex items-center justify-between gap-3"
-        style={{ marginTop: 'auto' }}     // ← empuja al bottom
+        style={{ marginTop: 6 }}
       >
         {/* Avatar/nombre del responsable — nombre COMPLETO sin truncate */}
         <div className="flex items-center gap-2 min-w-0">
@@ -829,25 +828,34 @@ function Card({
         </div>
       )}
 
-      {/* ── Botón Aprobar y avanzar — pill Apple ── */}
+      {/* ── Botón Aprobar y avanzar — pill h32 / 12px ── */}
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full flex items-center justify-center transition-all"
+          className="w-full flex items-center justify-center"
           style={{
-            gap: 5,
-            height: 30,
-            fontSize: 11,
+            gap: 6,
+            height: 32,
+            fontSize: 12,
             fontWeight: 600,
+            letterSpacing: '0.01em',
             borderRadius: 980,
             color: '#ffffff',
             background: 'var(--accent)',
             border: 'none',
+            boxShadow: '0 1px 4px rgba(0,113,227,0.25)',
+            transition: 'background 0.15s ease, box-shadow 0.15s ease',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-hover)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)' }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'var(--orange-hover)'
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,113,227,0.35)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'var(--accent)'
+            e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,113,227,0.25)'
+          }}
         >
-          <CheckCircle2 size={12} />
+          <CheckCircle2 size={13} />
           Aprobar y avanzar
         </button>
       )}
@@ -884,8 +892,15 @@ function Column({
       className="pipeline-column animate-fade-up"
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      {/* ── Cabecera compacta — icono color condicional + título 13 + counter + AUTO ── */}
-      <header className="shrink-0 mb-2.5">
+      {/* ── Cabecera con separación visual del stack de cards ── */}
+      <header
+        className="shrink-0"
+        style={{
+          marginBottom: 10,
+          paddingBottom: 10,
+          borderBottom: '1px solid var(--border)',
+        }}
+      >
         <div className="flex items-center gap-2 mb-1">
           <div
             className="rounded flex items-center justify-center shrink-0"
@@ -905,10 +920,10 @@ function Column({
           <h2
             className="flex-1 truncate"
             style={{
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: 700,
               color: 'var(--ink)',
-              letterSpacing: '-0.005em',
+              letterSpacing: '-0.01em',
             }}
           >
             {cfg.label}
@@ -954,8 +969,8 @@ function Column({
             color: 'var(--ink-3)',
             lineHeight: 1.4,
             textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-            fontWeight: 600,
+            letterSpacing: '0.04em',
+            fontWeight: 500,
             marginLeft: 28,
           }}
         >
