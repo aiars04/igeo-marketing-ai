@@ -1,3 +1,5 @@
+'use client'
+
 import { BarChart3, TrendingUp, Eye, Heart, MessageCircle, Share2, ArrowUpRight } from 'lucide-react'
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
 import type { Channel } from '@/types/database'
