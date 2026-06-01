@@ -13,6 +13,15 @@ import { Modal } from '@/components/ui/Modal'
 import type { ContentItem, Stage, Channel } from '@/types/database'
 import type { LucideIcon } from 'lucide-react'
 
+/** Convierte un hex (#RRGGBB) a rgba con alpha [0,1]. */
+const withAlpha = (hex: string, alpha: number): string => {
+  const clean = hex.replace('#', '')
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 const STAGE_ICONS: Record<Stage, LucideIcon> = {
@@ -57,6 +66,7 @@ function StatusDot({ status }: { status: string }) {
   const color = STATUS_COLOR[status] ?? '#6b7280'
   return (
     <span
+      aria-hidden="true"
       className={cn('inline-block w-1.5 h-1.5 rounded-full shrink-0', status === 'in_progress' && 'animate-pulse-dot')}
       style={{ background: color }}
     />
@@ -89,28 +99,28 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
       <button
         ref={ref}
         onClick={toggle}
-        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-white/5 transition-opacity"
+        className="opacity-0 group-hover:opacity-100 p-1 rounded-[var(--radius-sm)] hover:bg-[var(--surface-2)] transition-opacity"
         aria-label="Más opciones"
       >
-        <MoreHorizontal size={14} className="text-[var(--muted)]" />
+        <MoreHorizontal size={14} aria-hidden="true" className="text-[var(--ink-2)]" />
       </button>
 
       {mounted && pos && createPortal(
         <>
           <div className="fixed inset-0 z-[9998]" onClick={e => { e.stopPropagation(); setPos(null) }} />
           <div
-            className="fixed z-[9999] rounded-md py-1 animate-scale-in min-w-[200px]"
+            className="fixed z-[9999] rounded-[var(--radius-md)] py-1 animate-scale-in min-w-[200px]"
             style={{
               top: pos.top, right: pos.right,
               background: 'var(--surface)',
               border: '1px solid var(--border)',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
             }}
           >
             <button
               onClick={e => { e.stopPropagation(); onMove(item.id, next); setPos(null) }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-white/5 transition-colors"
-              style={{ color: 'var(--text)' }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-[var(--surface-2)] transition-colors"
+              style={{ color: 'var(--ink)' }}
             >
               <ChevronRight size={13} style={{ color: nextCfg.accentHex }} />
               Mover a <span className="font-medium">{nextCfg.label}</span>
@@ -126,21 +136,20 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
 // ─── AddForm (lógica intacta) ────────────────────────────────────────────────
 
 function AddForm({
-  stage, onAdd, onCancel,
+  onAdd, onCancel,
 }: {
-  stage: Stage
   onAdd: (title: string, channel: Channel) => void
   onCancel: () => void
 }) {
   const [title, setTitle] = useState('')
   const [channel, setChannel] = useState<Channel>('linkedin')
-  const cfg = STAGE_CONFIG[stage]
-  const submit = () => { if (title.trim()) onAdd(title.trim(), channel) }
+  const isValid = title.trim().length >= 3
+  const submit = () => { if (isValid) onAdd(title.trim(), channel) }
 
   return (
     <div
-      className="animate-fade-in rounded-[10px] p-3 flex flex-col gap-2"
-      style={{ background: 'var(--surface2)', border: `1px solid ${cfg.accentHex}55` }}
+      className="animate-fade-in rounded-[var(--radius-md)] p-3 flex flex-col gap-2"
+      style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
     >
       <input
         autoFocus
@@ -150,25 +159,27 @@ function AddForm({
         onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onCancel() }}
         placeholder="Título del contenido..."
         className="input"
+        style={{ height: 32, borderRadius: 'var(--radius-md)' }}
       />
       <select
         value={channel}
         onChange={e => setChannel(e.target.value as Channel)}
         className="input"
+        style={{ height: 32, borderRadius: 'var(--radius-md)' }}
       >
         {(['linkedin','instagram','facebook','x','blog','email','newsletter'] as Channel[]).map(c => (
           <option key={c} value={c}>{c}</option>
         ))}
       </select>
       <div className="flex gap-2">
-        <button onClick={onCancel} className="btn-ghost flex-1 justify-center text-[12px]">
+        <button onClick={onCancel} className="btn-ghost flex-1">
           Cancelar
         </button>
         <button
           onClick={submit}
-          disabled={!title.trim()}
-          className="flex-1 px-2 py-2 rounded-md text-[12px] font-semibold text-white transition-opacity disabled:opacity-40"
-          style={{ background: cfg.accentHex }}
+          disabled={!isValid}
+          className="btn-cta flex-1"
+          style={{ height: 32 }}
         >
           Añadir
         </button>
@@ -210,10 +221,10 @@ function StatusChip({
   children: React.ReactNode
 }) {
   const styles: Record<string, { bg: string; color: string; border: string }> = {
-    stage:   { bg: 'var(--accent-soft)',         color: 'var(--accent)', border: '1px solid var(--accent-border)' },
-    ai:      { bg: 'rgba(175, 82, 222, 0.08)',   color: '#7c3aed',       border: '1px solid rgba(175, 82, 222, 0.25)' },
-    user:    { bg: 'var(--green-soft)',          color: '#248a3d',       border: '1px solid var(--green-border)' },
-    warning: { bg: 'var(--amber-soft)',          color: '#b25000',       border: '1px solid rgba(255, 159, 10, 0.25)' },
+    stage:   { bg: 'var(--accent-soft)',         color: 'var(--accent)',  border: '1px solid var(--accent-border)' },
+    ai:      { bg: 'var(--surface-2)',           color: 'var(--ink-2)',   border: '1px solid var(--border)' },
+    user:    { bg: 'var(--green-soft)',          color: 'var(--green-2)', border: '1px solid var(--green-border)' },
+    warning: { bg: 'var(--amber-soft)',          color: 'var(--amber-2)', border: '1px solid var(--amber-border)' },
   }
   const s = styles[variant]
   return (
@@ -226,13 +237,13 @@ function StatusChip({
         background: s.bg,
         color: s.color,
         border: s.border,
-        borderRadius: 6,
+        borderRadius: 'var(--radius-sm)',
         fontSize: 12,
         fontWeight: 600,
         lineHeight: 1,
       }}
     >
-      {Icon && <Icon size={12} />}
+      {Icon && <Icon size={12} aria-hidden="true" />}
       {children}
     </span>
   )
@@ -290,17 +301,18 @@ function ContentDetailModal({
                   className="flex items-center justify-center transition-all"
                   style={{
                     width: 36, height: 36,
-                    borderRadius: 8,
+                    borderRadius: 'var(--radius-md)',
                     background: isCurrent
                       ? sCfg.accentHex
                       : isDone
-                      ? `${sCfg.accentHex}1f`
+                      ? withAlpha(sCfg.accentHex, 0.12)
                       : 'var(--surface-2)',
-                    border: `1px solid ${isCurrent ? sCfg.accentHex : isDone ? `${sCfg.accentHex}55` : 'var(--border)'}`,
-                    boxShadow: isCurrent ? `0 0 0 3px ${sCfg.accentHex}22` : 'none',
+                    border: `1px solid ${isCurrent ? sCfg.accentHex : isDone ? withAlpha(sCfg.accentHex, 0.33) : 'var(--border)'}`,
+                    boxShadow: isCurrent ? `0 0 0 3px ${withAlpha(sCfg.accentHex, 0.13)}` : 'none',
                   }}
                 >
                   <SIcon
+                    aria-hidden="true"
                     size={16}
                     style={{
                       color: isCurrent ? '#ffffff' : isDone ? sCfg.accentHex : 'var(--ink-2)',
@@ -328,7 +340,7 @@ function ContentDetailModal({
                   className="flex-1"
                   style={{
                     height: 1,
-                    background: isDone ? `${sCfg.accentHex}55` : 'var(--border)',
+                    background: isDone ? withAlpha(sCfg.accentHex, 0.33) : 'var(--border)',
                     marginTop: 17.5,
                     minWidth: 8,
                   }}
@@ -361,7 +373,7 @@ function ContentDetailModal({
           marginBottom: 20,
           background: 'var(--surface-2)',
           border: '1px solid var(--border)',
-          borderRadius: 10,
+          borderRadius: 'var(--radius-md)',
         }}
       >
         <MetaRow label="Canal"><ChannelBadge channel={item.channel as Channel} /></MetaRow>
@@ -386,7 +398,7 @@ function ContentDetailModal({
         style={{
           background: 'var(--surface-2)',
           padding: 16,
-          borderRadius: 8,
+          borderRadius: 'var(--radius-md)',
           marginBottom: 16,
         }}
       >
@@ -427,15 +439,15 @@ function ContentDetailModal({
               style={{
                 gap: 6,
                 padding: '8px 12px',
-                borderRadius: 6,
+                borderRadius: 'var(--radius-sm)',
                 fontSize: 12,
                 fontWeight: 600,
-                background: `${stageCfg.accentHex}15`,
-                border: `1px solid ${stageCfg.accentHex}35`,
+                background: withAlpha(stageCfg.accentHex, 0.08),
+                border: `1px solid ${withAlpha(stageCfg.accentHex, 0.21)}`,
                 color: stageCfg.accentHex,
               }}
             >
-              <Sparkles size={12} />
+              <Sparkles size={12} aria-hidden="true" />
               {item.stage === 'ideas' ? 'Pendiente de aprobar y pasar a redacción'
                 : item.stage === 'copy' ? 'Pendiente de redactar el contenido completo'
                 : item.stage === 'design' ? 'Pendiente de crear los visuales'
@@ -455,8 +467,8 @@ function ContentDetailModal({
             padding: '12px 14px',
             marginBottom: 16,
             background: item.clarity_pass ? 'var(--green-soft)' : 'var(--amber-soft)',
-            border: `1px solid ${item.clarity_pass ? 'var(--green-border)' : 'rgba(255,159,10,0.25)'}`,
-            borderRadius: 8,
+            border: `1px solid ${item.clarity_pass ? 'var(--green-border)' : 'var(--amber-border)'}`,
+            borderRadius: 'var(--radius-md)',
           }}
         >
           <div
@@ -467,14 +479,14 @@ function ContentDetailModal({
               background: item.clarity_pass ? 'rgba(52,199,89,0.20)' : 'rgba(255,159,10,0.20)',
             }}
           >
-            <CheckCircle2 size={13} style={{ color: item.clarity_pass ? '#248a3d' : '#b25000' }} />
+            <CheckCircle2 size={13} aria-hidden="true" style={{ color: item.clarity_pass ? 'var(--green-2)' : 'var(--amber-2)' }} />
           </div>
           <div className="min-w-0 flex-1">
             <p
               style={{
                 fontSize: 13,
                 fontWeight: 600,
-                color: item.clarity_pass ? '#248a3d' : '#b25000',
+                color: item.clarity_pass ? 'var(--green-2)' : 'var(--amber-2)',
                 lineHeight: 1.3,
               }}
             >
@@ -498,13 +510,13 @@ function ContentDetailModal({
             padding: '12px 14px',
             marginBottom: 16,
             background: 'var(--amber-soft)',
-            border: '1px solid rgba(255,159,10,0.25)',
-            borderRadius: 8,
+            border: '1px solid var(--amber-border)',
+            borderRadius: 'var(--radius-md)',
           }}
         >
-          <Calendar size={16} className="shrink-0" style={{ color: '#b25000' }} />
+          <Calendar size={16} aria-hidden="true" className="shrink-0" style={{ color: 'var(--amber-2)' }} />
           <div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#b25000', lineHeight: 1.3 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--amber-2)', lineHeight: 1.3 }}>
               Programado vía PostiZ
             </p>
             <p style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>
@@ -541,7 +553,7 @@ function ContentDetailModal({
                 fontWeight: 600,
                 color: '#ffffff',
                 background: 'var(--red)',
-                borderRadius: 980,
+                borderRadius: 'var(--radius-pill)',
                 border: 'none',
               }}
             >
@@ -558,7 +570,7 @@ function ContentDetailModal({
                 color: 'var(--ink)',
                 background: 'var(--surface)',
                 border: '1px solid var(--border)',
-                borderRadius: 980,
+                borderRadius: 'var(--radius-pill)',
               }}
             >
               Cancelar
@@ -579,12 +591,12 @@ function ContentDetailModal({
                 color: 'var(--red)',
                 background: 'transparent',
                 border: '1px solid rgba(255,59,48,0.30)',
-                borderRadius: 980,
+                borderRadius: 'var(--radius-pill)',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-soft)' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
             >
-              <Trash2 size={13} /> Eliminar
+              <Trash2 size={13} aria-hidden="true" /> Eliminar
             </button>
 
             <div style={{ flex: 1 }} />
@@ -593,42 +605,16 @@ function ContentDetailModal({
             {needsApproval ? (
               <button
                 onClick={() => { onApprove(item.id, item.stage as Stage); onClose() }}
-                className="inline-flex items-center transition-colors"
-                style={{
-                  gap: 6,
-                  height: 36,
-                  padding: '0 18px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#ffffff',
-                  background: 'var(--accent)',
-                  border: 'none',
-                  borderRadius: 980,
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-hover)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,113,227,0.30)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.boxShadow = 'none' }}
+                className="btn-cta"
               >
-                <CheckCircle2 size={14} /> Aprobar y avanzar
+                <CheckCircle2 size={14} aria-hidden="true" /> Aprobar y avanzar
               </button>
             ) : next && nextCfg ? (
               <button
                 onClick={() => { onMove(item.id, next); onClose() }}
-                className="inline-flex items-center transition-colors"
-                style={{
-                  gap: 6,
-                  height: 36,
-                  padding: '0 18px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#ffffff',
-                  background: 'var(--accent)',
-                  border: 'none',
-                  borderRadius: 980,
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--orange-hover)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,113,227,0.30)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.boxShadow = 'none' }}
+                className="btn-cta"
               >
-                Mover a {nextCfg.label} <ArrowRight size={13} />
+                Mover a {nextCfg.label} <ArrowRight size={13} aria-hidden="true" />
               </button>
             ) : null}
           </>
@@ -660,10 +646,19 @@ function Card({
 
   return (
     <article
+      role="button"
+      tabIndex={0}
+      aria-label={`Abrir detalle de ${item.title}`}
       className="pcard group animate-fade-up cursor-pointer flex flex-col"
       data-channel={item.channel}
       style={{ gap: 10 }}
       onClick={() => onSelect(item)}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onSelect(item)
+        }
+      }}
     >
       {/* ── Fila superior: badge canal + ES + status dot + menu ── */}
       <div className="flex items-center justify-between gap-2">
@@ -727,7 +722,7 @@ function Card({
                 style={{
                   width: 22, height: 22,
                   fontSize: 10, fontWeight: 700,
-                  color: '#248a3d',
+                  color: 'var(--green-2)',
                   background: 'var(--green-soft)',
                   border: '1px solid var(--green-border)',
                 }}
@@ -752,14 +747,14 @@ function Card({
                 padding: '0 8px',
                 fontSize: 11,
                 fontWeight: 500,
-                borderRadius: 980,
-                color: '#248a3d',
+                borderRadius: 'var(--radius-pill)',
+                color: 'var(--green-2)',
                 background: 'var(--green-soft)',
                 border: '1px solid var(--green-border)',
                 lineHeight: 1,
               }}
             >
-              <CheckCheck size={11} /> Aprobado
+              <CheckCheck size={11} aria-hidden="true" /> Aprobado
             </span>
           )}
 
@@ -773,14 +768,14 @@ function Card({
                 padding: '0 8px',
                 fontSize: 11,
                 fontWeight: 500,
-                borderRadius: 980,
-                color: '#b25000',
+                borderRadius: 'var(--radius-pill)',
+                color: 'var(--amber-2)',
                 background: 'var(--amber-soft)',
-                border: '1px solid rgba(255,159,10,0.25)',
+                border: '1px solid var(--amber-border)',
                 lineHeight: 1,
               }}
             >
-              <Calendar size={10} />
+              <Calendar size={10} aria-hidden="true" />
               {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
                 day: '2-digit', month: 'short',
               })}
@@ -793,32 +788,11 @@ function Card({
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
-          className="w-full inline-flex items-center justify-center"
-          style={{
-            gap: 5,
-            height: 28,
-            marginTop: 8,
-            fontSize: 12,
-            fontWeight: 500,
-            borderRadius: 980,
-            color: 'var(--ink-2)',
-            background: 'transparent',
-            border: '1px solid var(--border)',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.borderColor = 'var(--accent)'
-            e.currentTarget.style.color = 'var(--accent)'
-            e.currentTarget.style.background = 'var(--accent-soft)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = 'var(--border)'
-            e.currentTarget.style.color = 'var(--ink-2)'
-            e.currentTarget.style.background = 'transparent'
-          }}
+          className="btn-pill-ghost"
+          style={{ marginTop: 8 }}
         >
           Aprobar y avanzar
-          <ArrowRight size={13} />
+          <ArrowRight size={13} aria-hidden="true" />
         </button>
       )}
     </article>
@@ -869,12 +843,13 @@ function Column({
             style={{
               width: 20,
               height: 20,
-              background: filtered.length > 0 ? `${cfg.accentHex}1a` : 'transparent',
-              border: filtered.length > 0 ? `1px solid ${cfg.accentHex}40` : '1px solid var(--border)',
-              borderRadius: 5,
+              background: filtered.length > 0 ? withAlpha(cfg.accentHex, 0.10) : 'transparent',
+              border: filtered.length > 0 ? `1px solid ${withAlpha(cfg.accentHex, 0.25)}` : '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
             }}
           >
             <Icon
+              aria-hidden="true"
               size={11}
               style={{ color: filtered.length > 0 ? cfg.accentHex : 'var(--ink-3)' }}
             />
@@ -897,7 +872,7 @@ function Column({
               padding: '1px 7px',
               fontSize: 11,
               fontWeight: 600,
-              borderRadius: 4,
+              borderRadius: 'var(--radius-sm)',
               color: 'var(--ink-2)',
               background: 'rgba(0,0,0,0.05)',
               lineHeight: 1.4,
@@ -915,13 +890,13 @@ function Column({
                 padding: '0 6px',
                 height: 18,
                 lineHeight: 1,
-                borderRadius: 4,
-                color: '#248a3d',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--green-2)',
                 background: 'var(--green-soft)',
                 border: '1px solid var(--green-border)',
               }}
             >
-              <Zap size={8} /> AUTO
+              <Zap size={8} aria-hidden="true" /> AUTO
             </span>
           )}
         </div>
@@ -941,30 +916,29 @@ function Column({
 
         {cfg.automatic ? (
           <div
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-3 rounded-[10px] text-[11.5px] font-medium"
-            style={{ border: '1px dashed var(--line2)', color: 'var(--muted)', opacity: 0.7 }}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-3 rounded-[var(--radius-md)] text-[11.5px] font-medium"
+            style={{ border: '1px dashed var(--border-soft)', color: 'var(--ink-3)', opacity: 0.7 }}
           >
-            <Zap size={12} /> PostiZ automático
+            <Zap size={12} aria-hidden="true" /> PostiZ automático
           </div>
         ) : showAddForm ? (
           <AddForm
-            stage={stage}
             onAdd={(title, channel) => { onAdd(stage, { title, channel }); setShowAddForm(false) }}
             onCancel={() => setShowAddForm(false)}
           />
         ) : (
           <button
             onClick={() => setShowAddForm(true)}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] text-[12px] font-medium transition-all"
-            style={{ border: '1px dashed var(--line2)', color: 'var(--muted)' }}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-[var(--radius-md)] text-[12px] font-medium transition-all"
+            style={{ border: '1px dashed var(--border-soft)', color: 'var(--ink-2)' }}
             onMouseEnter={e => {
               e.currentTarget.style.color       = cfg.accentHex
-              e.currentTarget.style.borderColor = `${cfg.accentHex}55`
-              e.currentTarget.style.background  = `${cfg.accentHex}06`
+              e.currentTarget.style.borderColor = withAlpha(cfg.accentHex, 0.33)
+              e.currentTarget.style.background  = withAlpha(cfg.accentHex, 0.024)
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.color       = 'var(--muted)'
-              e.currentTarget.style.borderColor = 'var(--line2)'
+              e.currentTarget.style.color       = 'var(--ink-2)'
+              e.currentTarget.style.borderColor = 'var(--border-soft)'
               e.currentTarget.style.background  = 'transparent'
             }}
           >

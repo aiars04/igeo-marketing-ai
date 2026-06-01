@@ -44,6 +44,7 @@
   --amber:        #ff9f0a;
   --amber-2:      #b25000;
   --amber-soft:   rgba(255, 159, 10, 0.10);
+  --amber-border: rgba(255, 159, 10, 0.25);
 
   --red:          #ff3b30;
   --red-2:        #c0392b;
@@ -63,6 +64,12 @@
   /* ── Sidebar dimensiones ── */
   --sidebar:      3.75rem;
   --sidebar-open: 15rem;
+
+  /* ── Radius system (unificado) ── */
+  --radius-sm:   6px;     /* badges, chips, micro elementos (antes 4-6) */
+  --radius-md:   10px;    /* inputs, botones cuadrados, tarjetas medias (antes 8-12) */
+  --radius-lg:   16px;    /* contenedores grandes, cards principales, columns (antes 16-18) */
+  --radius-pill: 980px;   /* pills, botones primarios, badges píldora */
 
   /* ── shadcn tokens (mapeados a la paleta Apple) ── */
   --background:            #ffffff;
@@ -174,7 +181,7 @@ body::before { display: none; }
   gap: 6px;
   height: 36px;
   padding: 0 18px;
-  border-radius: 980px;
+  border-radius: var(--radius-pill);
   font-size: 13px;
   font-weight: 600;
   color: #ffffff;
@@ -201,7 +208,7 @@ body::before { display: none; }
   background: var(--surface);
   color: var(--ink);
   border: 1px solid var(--border);
-  border-radius: 980px;
+  border-radius: var(--radius-pill);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -222,7 +229,7 @@ body::before { display: none; }
   background: transparent;
   color: var(--accent);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -235,7 +242,7 @@ body::before { display: none; }
   align-items: center;
   justify-content: center;
   width: 32px; height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   border: 1px solid var(--border);
   color: var(--ink-2);
@@ -247,11 +254,90 @@ body::before { display: none; }
   color: var(--ink);
 }
 
+/* CTA principal — azul Apple con gradient sutil */
+.btn-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, var(--accent), #0077ed);
+  color: #fff;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,113,227,0.25);
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+.btn-cta:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 14px rgba(0,113,227,0.35);
+}
+.btn-cta:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Ghost pill — acciones secundarias dentro de tarjetas */
+.btn-pill-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 30px;
+  width: 100%;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.btn-pill-ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Pill secundario — toolbar / filtros */
+.btn-pill-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.btn-pill-secondary:hover {
+  border-color: var(--border-hover);
+  color: var(--ink);
+}
+.btn-pill-secondary.is-active {
+  border-color: var(--border-hover);
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
 /* ═══════════════ Card primitive (Apple light) ═══════════════ */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   padding: 20px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -262,20 +348,20 @@ body::before { display: none; }
 .card-flat {
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   padding: 20px;
 }
 .card-glow {
   background: var(--surface);
   border: 1px solid var(--border-accent);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 0 0 3px var(--accent-soft);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .card-hover {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .card-hover:hover {
@@ -296,7 +382,7 @@ body::before { display: none; }
   gap: 5px;
   height: 20px;
   padding: 0 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -304,10 +390,10 @@ body::before { display: none; }
   border: 1px solid transparent;
   line-height: 1;
 }
-.badge-accent { background: var(--accent-soft);  color: var(--accent); border-color: var(--accent-border); }
-.badge-green  { background: var(--green-soft);   color: #248a3d;       border-color: var(--green-border); }
-.badge-amber  { background: var(--amber-soft);   color: #b25000;       border-color: rgba(255,159,10,0.25); }
-.badge-red    { background: var(--red-soft);     color: #c0392b;       border-color: rgba(255,59,48,0.20); }
+.badge-accent { background: var(--accent-soft);  color: var(--accent);   border-color: var(--accent-border); }
+.badge-green  { background: var(--green-soft);   color: var(--green-2);  border-color: var(--green-border); }
+.badge-amber  { background: var(--amber-soft);   color: var(--amber-2);  border-color: var(--amber-border); }
+.badge-red    { background: var(--red-soft);     color: var(--red-2);    border-color: rgba(255,59,48,0.20); }
 .badge-muted  { background: var(--surface-2);    color: var(--ink-2);  border-color: var(--border); }
 .badge-orange { background: var(--accent-soft);  color: var(--accent); border-color: var(--accent-border); }
 .badge-blue   { background: var(--accent-soft);  color: var(--accent); border-color: var(--accent-border); }
@@ -317,7 +403,7 @@ body::before { display: none; }
   width: 100%;
   height: 38px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 13px;
   color: var(--ink);
   background: var(--surface-2);
@@ -326,6 +412,7 @@ body::before { display: none; }
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .input:focus {
+  outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
@@ -336,6 +423,120 @@ textarea.input {
   padding: 10px 12px;
   resize: vertical;
 }
+
+/* ═══════════════ Login page (Apple light) ═══════════════ */
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 32px;
+  background: linear-gradient(180deg, rgba(240, 247, 255, 0.6) 0%, #ffffff 100%);
+  border: 1px solid rgba(0, 113, 227, 0.12);
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0, 113, 227, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 113, 227, 0.10);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.08);
+  margin-bottom: 20px;
+  color: var(--accent);
+}
+
+.login-input-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 12px;
+}
+.login-input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-3);
+  pointer-events: none;
+}
+.login-input-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-3);
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  transition: color 0.15s ease;
+}
+.login-input-toggle:hover { color: var(--ink); }
+
+.login-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px 0 42px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.login-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  background: #ffffff;
+}
+.login-input::placeholder { color: var(--ink-3); }
+.login-input-password { padding-right: 44px; }
+
+.login-submit {
+  width: 100%;
+  height: 44px;
+  margin-top: 8px;
+  background: linear-gradient(135deg, var(--accent), #0077ed);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.25);
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.login-submit:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 18px rgba(0, 113, 227, 0.35);
+}
+.login-submit:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.login-forgot-link {
+  display: block;
+  text-align: right;
+  width: 100%;
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  margin: -4px 0 16px;
+  transition: text-decoration 0.15s ease;
+}
+.login-forgot-link:hover { text-decoration: underline; }
 
 /* ═══════════════ Topbar ═══════════════ */
 .topbar {
@@ -384,7 +585,7 @@ textarea.input {
   background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.6s infinite;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 /* ═══════════════ Pipeline scroll ═══════════════ */
@@ -517,7 +718,7 @@ textarea.input {
 .app-shell .brand-mark {
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -610,7 +811,7 @@ textarea.input {
   justify-content: center;
   gap: 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 0 9px;
   margin-bottom: 2px;
   background: transparent;
@@ -681,7 +882,7 @@ textarea.input {
   display: flex;
   align-items: center;
   gap: 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 0 8px;
   font-size: 12px;
   color: var(--ink-2);
@@ -713,7 +914,7 @@ textarea.input {
   margin: 8px 8px 10px;
   padding: 10px 9px;
   border-top: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   flex-shrink: 0;
   min-width: 0;
 }
@@ -769,7 +970,7 @@ textarea.input {
   flex: 0 0 26px;
   width: 26px;
   height: 26px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 0;
   background: transparent;
   color: var(--ink-2);
@@ -813,7 +1014,7 @@ textarea.input {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 12px;
   min-height: 0;
   transition: border-color 0.2s ease;
@@ -826,7 +1027,7 @@ textarea.input {
 .pcard {
   background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 14px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   cursor: pointer;
@@ -838,6 +1039,28 @@ textarea.input {
   border-color: var(--border-hover);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
+}
+
+/* ── Focus visible (teclado) ── */
+.pcard:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+.pcard:focus {
+  outline: none;
+}
+
+.btn-cta:focus-visible,
+.btn-pill-ghost:focus-visible,
+.btn-pill-secondary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btn-cta:focus,
+.btn-pill-ghost:focus,
+.btn-pill-secondary:focus {
+  outline: none;
 }
 
 /* Indicador de canal — borde izquierdo sutil (light) */

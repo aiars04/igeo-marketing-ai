@@ -51,7 +51,7 @@ function StatPill({
         padding: '0 10px',
         background: styles.bg,
         border: `1px solid ${styles.border}`,
-        borderRadius: 980,
+        borderRadius: 'var(--radius-pill)',
         fontSize: 11,
         fontWeight: 600,
         color: styles.color,
@@ -269,35 +269,14 @@ export default function PipelinePage() {
           {/* Filtrar */}
           <button
             onClick={() => setFilterOpen(v => !v)}
-            className="inline-flex items-center relative transition-all"
-            style={{
-              height: 34,
-              padding: '0 14px',
-              gap: 6,
-              borderRadius: 980,
-              border: `1px solid ${filterOpen ? 'var(--border-hover)' : 'var(--border)'}`,
-              background: filterOpen ? 'var(--surface-2)' : '#ffffff',
-              color: filterOpen ? 'var(--ink)' : 'var(--ink-2)',
-              fontSize: 13,
-              fontWeight: 500,
-            }}
-            onMouseEnter={e => {
-              if (filterOpen) return
-              e.currentTarget.style.borderColor = 'var(--border-hover)'
-              e.currentTarget.style.color = 'var(--ink)'
-            }}
-            onMouseLeave={e => {
-              if (filterOpen) return
-              e.currentTarget.style.borderColor = 'var(--border)'
-              e.currentTarget.style.color = 'var(--ink-2)'
-            }}
+            className={cn('btn-pill-secondary relative', filterOpen && 'is-active')}
           >
-            <Filter size={13} />
+            <Filter size={13} aria-hidden="true" />
             Filtrar
             {filterChannels.length > 0 && (
               <span
                 className="absolute -top-1 -right-1 rounded-full text-[10px] font-bold flex items-center justify-center text-white tabular-nums"
-                style={{ width: 16, height: 16, background: '#6366f1' }}
+                style={{ width: 16, height: 16, background: 'var(--accent)' }}
               >
                 {filterChannels.length}
               </span>
@@ -307,29 +286,9 @@ export default function PipelinePage() {
           {/* Generar con IA */}
           <button
             onClick={() => setAiModalOpen(true)}
-            className="inline-flex items-center transition-all"
-            style={{
-              height: 34,
-              padding: '0 16px',
-              gap: 6,
-              borderRadius: 980,
-              fontSize: 13,
-              fontWeight: 600,
-              color: '#ffffff',
-              background: 'linear-gradient(135deg, #4338ca, #6366f1)',
-              border: 'none',
-              boxShadow: '0 2px 8px rgba(99,102,241,0.30)',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.filter = 'brightness(1.08)'
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.40)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.filter = 'brightness(1)'
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(99,102,241,0.30)'
-            }}
+            className="btn-cta"
           >
-            <Sparkles size={13} />
+            <Sparkles size={13} aria-hidden="true" />
             Generar con IA
           </button>
         </div>
@@ -400,30 +359,30 @@ export default function PipelinePage() {
       >
         {aiLoading ? (
           <div className="flex flex-col items-center justify-center py-8 gap-4">
-            <Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent2)' }} />
+            <Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent-2)' }} />
             <div className="text-center">
-              <p className="text-[14px] font-semibold" style={{ color: 'var(--text)' }}>
+              <p className="text-[14px] font-semibold" style={{ color: 'var(--ink)' }}>
                 Generando ideas con IA...
               </p>
-              <p className="text-[12px] mt-1" style={{ color: 'var(--muted)' }}>
+              <p className="text-[12px] mt-1" style={{ color: 'var(--ink-2)' }}>
                 Analizando contexto de marca y mercado
               </p>
             </div>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <p className="text-[13px]" style={{ color: 'var(--muted)' }}>
+            <p className="text-[13px]" style={{ color: 'var(--ink-2)' }}>
               La IA analizará tu contexto de marca y generará nuevas ideas de contenido para tu pipeline.
             </p>
-            <div className="rounded-lg p-3 flex flex-col gap-1.5" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--muted)' }}>
+            <div className="rounded-lg p-3 flex flex-col gap-1.5" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ink-3)' }}>
                 Canales objetivo
               </p>
               {(['linkedin', 'instagram', 'x'] as Channel[]).map(ch => (
-                <div key={ch} className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--text)' }}>
+                <div key={ch} className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--ink)' }}>
                   <span
                     className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: 'var(--accent2)', flexShrink: 0 }}
+                    style={{ background: 'var(--accent-2)', flexShrink: 0 }}
                   />
                   {CHANNEL_LABELS[ch]}
                 </div>
