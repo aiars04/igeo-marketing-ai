@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, AlertCircle, ArrowRight, Sparkles, LogIn, Mail, Lock } from 'lucide-react'
+import { Eye, EyeOff, AlertCircle, ArrowRight, Sparkles, Mail, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { FloatingPaths } from '@/components/ui/FloatingPaths'
@@ -55,15 +55,15 @@ export default function LoginPage() {
         />
       </div>
 
-      {/* Card */}
+      {/* Stack centrado — sin caja */}
       <motion.div
-        className="relative w-full max-w-[420px]"
+        className="relative login-wrap"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       >
         {/* Brand mark */}
-        <div className="flex flex-col items-center mb-8">
+        <div className="flex flex-col items-center" style={{ marginBottom: 40 }}>
           <div
             className="mb-4 relative overflow-hidden"
             style={{
@@ -85,7 +85,7 @@ export default function LoginPage() {
             i
           </div>
           <div className="text-center">
-            <h1 className="text-[20px] font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+            <h1 className="text-[20px] font-semibold tracking-tight" style={{ color: 'var(--ink)' }}>
               iGEO <span className="font-serif italic" style={{ color: 'var(--accent-2)' }}>Marketing</span>
             </h1>
             <p
@@ -97,125 +97,101 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Form card — Apple light redesign */}
-        <div className="login-card">
-          {/* Icon badge */}
-          <div className="login-icon-badge">
-            <LogIn size={24} aria-hidden="true" />
+        {/* Title + subtitle — sin caja */}
+        <h2 className="login-title">Acceder al panel</h2>
+        <p className="login-subtitle">Introduce tus credenciales para continuar</p>
+
+        {/* Form sin contenedor */}
+        <form onSubmit={handleLogin} style={{ width: '100%' }}>
+          {/* Email */}
+          <div className="login-input-wrapper">
+            <Mail size={16} aria-hidden="true" className="login-input-icon" />
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder="hola@igeoerp.com"
+              className="login-input"
+            />
           </div>
 
-          {/* Title + subtitle */}
-          <h2 style={{
-            fontSize: 22,
-            fontWeight: 700,
-            color: 'var(--ink)',
-            margin: '0 0 6px',
-            textAlign: 'center',
-            letterSpacing: '-0.02em',
-          }}>
-            Acceder al panel
-          </h2>
-          <p style={{
-            fontSize: 13,
-            color: 'var(--ink-2)',
-            textAlign: 'center',
-            margin: '0 0 24px',
-            lineHeight: 1.5,
-          }}>
-            Introduce tus credenciales para continuar
-          </p>
-
-          <form onSubmit={handleLogin} style={{ width: '100%' }}>
-            {/* Email */}
-            <div className="login-input-wrapper">
-              <Mail size={16} aria-hidden="true" className="login-input-icon" />
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                placeholder="hola@igeoerp.com"
-                className="login-input"
-              />
-            </div>
-
-            {/* Password */}
-            <div className="login-input-wrapper">
-              <Lock size={16} aria-hidden="true" className="login-input-icon" />
-              <input
-                type={show ? 'text' : 'password'}
-                value={pass}
-                onChange={e => setPass(e.target.value)}
-                required
-                autoComplete="current-password"
-                placeholder="••••••••"
-                className="login-input login-input-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShow(s => !s)}
-                className="login-input-toggle"
-                aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              >
-                {show ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
-              </button>
-            </div>
-
-            {/* Forgot password link */}
-            <a href="#" className="login-forgot-link">¿Olvidaste tu contraseña?</a>
-
-            {/* Error */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  fontSize: 12.5,
-                  borderRadius: 'var(--radius-md)',
-                  padding: '10px 12px',
-                  marginBottom: 12,
-                  background: 'var(--red-soft)',
-                  border: '1px solid rgba(239,68,68,0.25)',
-                  color: 'var(--red-2)',
-                }}
-              >
-                <AlertCircle size={14} aria-hidden="true" className="shrink-0" />
-                {error}
-              </motion.div>
-            )}
-
-            {/* Submit */}
+          {/* Password */}
+          <div className="login-input-wrapper">
+            <Lock size={16} aria-hidden="true" className="login-input-icon" />
+            <input
+              type={show ? 'text' : 'password'}
+              value={pass}
+              onChange={e => setPass(e.target.value)}
+              required
+              autoComplete="current-password"
+              placeholder="••••••••"
+              className="login-input login-input-password"
+            />
             <button
-              type="submit"
-              disabled={loading || !email || !pass}
-              className="login-submit"
+              type="button"
+              onClick={() => setShow(s => !s)}
+              className="login-input-toggle"
+              aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
             >
-              {loading ? (
-                <>
-                  <Sparkles size={14} aria-hidden="true" className="animate-pulse" />
-                  Accediendo...
-                </>
-              ) : (
-                <>
-                  Acceder al panel
-                  <ArrowRight size={14} aria-hidden="true" />
-                </>
-              )}
+              {show ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
             </button>
-          </form>
-        </div>
+          </div>
+
+          {/* Forgot password link — centrado */}
+          <a href="#" className="login-forgot-link">¿Olvidaste tu contraseña?</a>
+
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 12.5,
+                borderRadius: 'var(--radius-md)',
+                padding: '10px 12px',
+                marginBottom: 12,
+                background: 'var(--red-soft)',
+                border: '1px solid rgba(239,68,68,0.25)',
+                color: 'var(--red-2)',
+              }}
+            >
+              <AlertCircle size={14} aria-hidden="true" className="shrink-0" />
+              {error}
+            </motion.div>
+          )}
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading || !email || !pass}
+            className="login-submit"
+          >
+            {loading ? (
+              <>
+                <Sparkles size={14} aria-hidden="true" className="animate-pulse" />
+                Accediendo...
+              </>
+            ) : (
+              <>
+                Acceder al panel
+                <ArrowRight size={14} aria-hidden="true" />
+              </>
+            )}
+          </button>
+        </form>
 
         {/* Footer note */}
         <p
-          className="text-center font-mono text-[10px] mt-6 uppercase tracking-[0.14em]"
-          style={{ color: 'var(--muted)' }}
+          className="text-center"
+          style={{ marginTop: 32, color: 'var(--ink-3)', fontSize: 12 }}
         >
           ¿Problemas para acceder? Contacta con{' '}
-          <span className="font-semibold" style={{ color: 'var(--accent-2)' }}>Adrián</span>
+          <span style={{ color: 'var(--accent-2)', fontWeight: 600 }}>Adrián</span>
         </p>
       </motion.div>
     </div>
