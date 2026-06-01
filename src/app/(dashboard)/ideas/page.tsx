@@ -2,11 +2,10 @@
 
 import { useState, useCallback } from 'react'
 import { Sparkles, Plus, ArrowRight, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react'
-import { cn, MARKET_CONFIG } from '@/lib/utils'
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
 import { Modal } from '@/components/ui/Modal'
 import { useToast, Toasts } from '@/components/ui/Toast'
-import type { Channel, Market } from '@/types/database'
+import type { Channel } from '@/types/database'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -161,25 +160,25 @@ export default function IdeasPage() {
           <button
             onClick={handleSuggestAI}
             disabled={loadingAI}
-            className="btn-secondary disabled:opacity-60"
+            className="btn-pill-secondary disabled:opacity-60"
           >
             {loadingAI ? (
               <>
-                <Loader2 size={13} className="animate-spin" />
+                <Loader2 size={13} className="animate-spin" aria-hidden="true" />
                 Generando…
               </>
             ) : (
               <>
-                <Sparkles size={13} />
+                <Sparkles size={13} aria-hidden="true" />
                 Sugerir con IA
               </>
             )}
           </button>
           <button
             onClick={() => setAddModalOpen(true)}
-            className="btn-primary"
+            className="btn-cta"
           >
-            <Plus size={13} />
+            <Plus size={13} aria-hidden="true" />
             Nueva idea
           </button>
         </div>
@@ -187,14 +186,18 @@ export default function IdeasPage() {
 
       {/* List */}
       <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-3xl mx-auto space-y-2 stagger">
+        <div className="max-w-3xl mx-auto space-y-2">
           {visibleIdeas.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4 text-center animate-fade-up">
               <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+                className="w-12 h-12 flex items-center justify-center"
+                style={{
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                }}
               >
-                <Sparkles size={20} style={{ color: 'var(--ink-3)' }} />
+                <Sparkles size={20} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />
               </div>
               <div>
                 <p className="text-[14px] font-semibold" style={{ color: 'var(--ink)' }}>
@@ -324,13 +327,28 @@ function IdeaCard({
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           <span className="text-[11px] tabular-nums" style={{ color: 'var(--ink-2)' }}>{FLAGS[idea.market] ?? '🌐'} {idea.market}</span>
           {idea.source === 'ai' && (
-            <span className="badge badge-accent">
-              <Sparkles size={9} /> Sugerido por IA
+            <span className="badge badge-muted">
+              <Sparkles size={9} aria-hidden="true" style={{ color: 'var(--ink-3)' }} /> Sugerido por IA
             </span>
           )}
           {idea.status === 'accepted' && (
-            <span className="badge badge-green">
+            <span
+              className="inline-flex items-center"
+              style={{
+                gap: 5,
+                height: 20,
+                padding: '0 8px',
+                fontSize: 11,
+                fontWeight: 500,
+                borderRadius: 'var(--radius-pill)',
+                color: 'var(--green-2)',
+                background: 'var(--green-soft)',
+                border: '1px solid var(--green-border)',
+                lineHeight: 1,
+              }}
+            >
               <span
+                aria-hidden="true"
                 className="w-1.5 h-1.5 rounded-full"
                 style={{ background: 'var(--green)' }}
               />
@@ -344,34 +362,28 @@ function IdeaCard({
         {idea.status !== 'accepted' && (
           <button
             onClick={() => onAccept(idea.id)}
+            className="idea-action idea-action-accept"
+            aria-label="Aceptar idea"
             title="Aceptar"
-            className="p-2 rounded-md transition-colors"
-            style={{ color: 'var(--ink-3)', background: 'transparent' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--green-soft)'; e.currentTarget.style.color = 'var(--green-2)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-3)' }}
           >
-            <ThumbsUp size={14} />
+            <ThumbsUp size={14} aria-hidden="true" />
           </button>
         )}
         <button
           onClick={() => onDiscard(idea.id)}
+          className="idea-action idea-action-reject"
+          aria-label="Descartar idea"
           title="Descartar"
-          className="p-2 rounded-md transition-colors"
-          style={{ color: 'var(--ink-3)', background: 'transparent' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-soft)'; e.currentTarget.style.color = 'var(--red-2)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-3)' }}
         >
-          <ThumbsDown size={14} />
+          <ThumbsDown size={14} aria-hidden="true" />
         </button>
         <button
           onClick={() => onConvert(idea.id)}
+          className="idea-action idea-action-convert"
+          aria-label="Convertir al pipeline"
           title="Añadir al pipeline"
-          className="p-2 rounded-md transition-colors"
-          style={{ color: 'var(--ink-3)', background: 'transparent' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(249,115,22,0.12)'; e.currentTarget.style.color = 'var(--orange-2)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-3)' }}
         >
-          <ArrowRight size={14} />
+          <ArrowRight size={14} aria-hidden="true" />
         </button>
       </div>
     </div>

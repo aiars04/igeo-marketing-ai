@@ -333,6 +333,24 @@ body::before { display: none; }
   color: var(--ink);
 }
 
+/* Ideas — action buttons (hover acción contextual) */
+.idea-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-3);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.idea-action-accept:hover  { background: var(--green-soft);  color: var(--green-2); }
+.idea-action-reject:hover  { background: var(--red-soft);    color: var(--red); }
+.idea-action-convert:hover { background: var(--accent-soft); color: var(--accent); }
+
 /* ═══════════════ Card primitive (Apple light) ═══════════════ */
 .card {
   background: var(--surface);
