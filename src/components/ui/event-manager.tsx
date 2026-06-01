@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useMemo, Fragment } from "react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -80,12 +79,12 @@ const defaultColors = [
 
 // Estilos apagados (background+text) usados en EventCard
 const EVENT_STYLES: Record<string, { bg: string; text: string }> = {
-  blue:   { bg: "rgba(0, 113, 227, 0.12)",  text: "#0055b3" },
-  green:  { bg: "rgba(52, 199, 89, 0.10)",  text: "#1a7a36" },
+  blue:   { bg: "var(--accent-soft)",       text: "var(--accent)" },
+  green:  { bg: "var(--green-soft)",        text: "var(--green-2)" },
   purple: { bg: "rgba(175, 82, 222, 0.10)", text: "#7b2fa8" },
-  orange: { bg: "rgba(255, 159, 10, 0.12)", text: "#b25000" },
+  orange: { bg: "var(--amber-soft)",        text: "var(--amber-2)" },
   pink:   { bg: "rgba(232, 56, 140, 0.10)", text: "#c0245a" },
-  red:    { bg: "rgba(255, 59, 48, 0.10)",  text: "#c0392b" },
+  red:    { bg: "var(--red-soft)",          text: "var(--red-2)" },
 }
 
 export function EventManager({
@@ -261,13 +260,12 @@ export function EventManager({
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <h2
+          <span
             style={{
-              fontSize: 28,
-              fontWeight: 800,
-              letterSpacing: "-0.02em",
+              fontSize: 15,
+              fontWeight: 600,
+              letterSpacing: "-0.01em",
               color: "var(--ink)",
-              lineHeight: 1.15,
               textTransform: "capitalize",
             }}
           >
@@ -283,51 +281,30 @@ export function EventManager({
                 year: "numeric",
               })}
             {view === "list" && "Todos los eventos"}
-          </h2>
+          </span>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => navigateDate("prev")}
-              className="inline-flex items-center justify-center transition-colors"
-              style={{
-                height: 32,
-                width: 32,
-                borderRadius: 980,
-                border: "1px solid var(--border)",
-                background: "#ffffff",
-                color: "var(--ink)",
-              }}
+              className="btn-pill-secondary"
+              style={{ height: 32, width: 32, padding: 0 }}
+              aria-label="Anterior"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             </button>
             <button
               onClick={() => setCurrentDate(new Date())}
-              className="inline-flex items-center justify-center transition-colors"
-              style={{
-                height: 32,
-                padding: "0 14px",
-                borderRadius: 980,
-                border: "1px solid var(--border)",
-                background: "#ffffff",
-                color: "var(--ink)",
-                fontSize: 13,
-                fontWeight: 500,
-              }}
+              className="btn-pill-secondary"
+              style={{ height: 32 }}
             >
               Hoy
             </button>
             <button
               onClick={() => navigateDate("next")}
-              className="inline-flex items-center justify-center transition-colors"
-              style={{
-                height: 32,
-                width: 32,
-                borderRadius: 980,
-                border: "1px solid var(--border)",
-                background: "#ffffff",
-                color: "var(--ink)",
-              }}
+              className="btn-pill-secondary"
+              style={{ height: 32, width: 32, padding: 0 }}
+              aria-label="Siguiente"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -342,22 +319,22 @@ export function EventManager({
               <SelectContent>
                 <SelectItem value="month">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" /> Mes
+                    <Calendar className="h-4 w-4" aria-hidden="true" /> Mes
                   </div>
                 </SelectItem>
                 <SelectItem value="week">
                   <div className="flex items-center gap-2">
-                    <Grid3x3 className="h-4 w-4" /> Semana
+                    <Grid3x3 className="h-4 w-4" aria-hidden="true" /> Semana
                   </div>
                 </SelectItem>
                 <SelectItem value="day">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" /> Día
+                    <Clock className="h-4 w-4" aria-hidden="true" /> Día
                   </div>
                 </SelectItem>
                 <SelectItem value="list">
                   <div className="flex items-center gap-2">
-                    <List className="h-4 w-4" /> Lista
+                    <List className="h-4 w-4" aria-hidden="true" /> Lista
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -370,7 +347,7 @@ export function EventManager({
             style={{
               gap: 2,
               padding: 3,
-              borderRadius: 980,
+              borderRadius: "var(--radius-pill)",
               border: "1px solid var(--border)",
               background: "#ffffff",
             }}
@@ -386,20 +363,23 @@ export function EventManager({
                 <button
                   key={key}
                   onClick={() => setView(key as "month" | "week" | "day" | "list")}
+                  aria-pressed={active}
                   className="inline-flex items-center transition-colors"
                   style={{
                     height: 28,
                     padding: "0 12px",
                     gap: 5,
-                    borderRadius: 980,
+                    borderRadius: "var(--radius-pill)",
                     background: active ? "var(--accent)" : "transparent",
                     color: active ? "#ffffff" : "var(--ink-2)",
                     fontSize: 12,
                     fontWeight: active ? 600 : 500,
                     border: "none",
                   }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = "var(--surface-2)" }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent" }}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                   {label}
                 </button>
               )
@@ -411,29 +391,9 @@ export function EventManager({
               setIsCreating(true)
               setIsDialogOpen(true)
             }}
-            className="inline-flex items-center justify-center w-full sm:w-auto transition-all"
-            style={{
-              height: 36,
-              padding: "0 18px",
-              borderRadius: 980,
-              background: "var(--accent)",
-              color: "#ffffff",
-              fontSize: 13,
-              fontWeight: 600,
-              border: "none",
-              gap: 6,
-              boxShadow: "0 1px 4px rgba(0,113,227,0.25)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--orange-hover)"
-              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,113,227,0.35)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "var(--accent)"
-              e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,113,227,0.25)"
-            }}
+            className="btn-cta w-full sm:w-auto"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" aria-hidden="true" />
             Nuevo evento
           </button>
         </div>
@@ -445,20 +405,30 @@ export function EventManager({
           <Search
             className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2"
             style={{ color: "var(--ink-3)" }}
+            aria-hidden="true"
           />
           <input
             placeholder="Buscar eventos..."
+            aria-label="Buscar eventos"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full transition-colors focus:outline-none"
             style={{
               height: 38,
               padding: "0 14px 0 38px",
-              borderRadius: 10,
+              borderRadius: "var(--radius-md)",
               border: "1px solid var(--border)",
               background: "var(--surface-2)",
               color: "var(--ink)",
               fontSize: 13,
+            }}
+            onFocus={e => {
+              e.currentTarget.style.borderColor = "var(--accent)"
+              e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-soft)"
+            }}
+            onBlur={e => {
+              e.currentTarget.style.borderColor = "var(--border)"
+              e.currentTarget.style.boxShadow = "none"
             }}
           />
           {searchQuery && (
@@ -467,14 +437,15 @@ export function EventManager({
               style={{
                 height: 24,
                 width: 24,
-                borderRadius: 980,
+                borderRadius: "var(--radius-pill)",
                 background: "transparent",
                 color: "var(--ink-3)",
                 border: "none",
               }}
               onClick={() => setSearchQuery("")}
+              aria-label="Limpiar búsqueda"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           )}
         </div>
@@ -483,20 +454,10 @@ export function EventManager({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="inline-flex items-center transition-colors"
-                style={{
-                  height: 30,
-                  padding: "0 12px",
-                  gap: 5,
-                  borderRadius: 980,
-                  border: "1px solid var(--border)",
-                  background: "#ffffff",
-                  color: "var(--ink-2)",
-                  fontSize: 12,
-                  fontWeight: 500,
-                }}
+                className="btn-pill-secondary"
+                style={{ height: 30, padding: "0 12px", fontSize: 12 }}
               >
-                <Filter className="h-3.5 w-3.5" />
+                <Filter className="h-3.5 w-3.5" aria-hidden="true" />
                 Colores
                 {selectedColors.length > 0 && (
                   <span
@@ -505,7 +466,7 @@ export function EventManager({
                       padding: "0 6px",
                       height: 18,
                       lineHeight: "18px",
-                      borderRadius: 980,
+                      borderRadius: "var(--radius-pill)",
                       background: "var(--accent-soft)",
                       color: "var(--accent)",
                       fontSize: 10,
@@ -542,20 +503,10 @@ export function EventManager({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="inline-flex items-center transition-colors"
-                style={{
-                  height: 30,
-                  padding: "0 12px",
-                  gap: 5,
-                  borderRadius: 980,
-                  border: "1px solid var(--border)",
-                  background: "#ffffff",
-                  color: "var(--ink-2)",
-                  fontSize: 12,
-                  fontWeight: 500,
-                }}
+                className="btn-pill-secondary"
+                style={{ height: 30, padding: "0 12px", fontSize: 12 }}
               >
-                <Filter className="h-3.5 w-3.5" />
+                <Filter className="h-3.5 w-3.5" aria-hidden="true" />
                 Etiquetas
                 {selectedTags.length > 0 && (
                   <span
@@ -564,7 +515,7 @@ export function EventManager({
                       padding: "0 6px",
                       height: 18,
                       lineHeight: "18px",
-                      borderRadius: 980,
+                      borderRadius: "var(--radius-pill)",
                       background: "var(--accent-soft)",
                       color: "var(--accent)",
                       fontSize: 10,
@@ -596,20 +547,10 @@ export function EventManager({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="inline-flex items-center transition-colors"
-                style={{
-                  height: 30,
-                  padding: "0 12px",
-                  gap: 5,
-                  borderRadius: 980,
-                  border: "1px solid var(--border)",
-                  background: "#ffffff",
-                  color: "var(--ink-2)",
-                  fontSize: 12,
-                  fontWeight: 500,
-                }}
+                className="btn-pill-secondary"
+                style={{ height: 30, padding: "0 12px", fontSize: 12 }}
               >
-                <Filter className="h-3.5 w-3.5" />
+                <Filter className="h-3.5 w-3.5" aria-hidden="true" />
                 Categorías
                 {selectedCategories.length > 0 && (
                   <span
@@ -618,7 +559,7 @@ export function EventManager({
                       padding: "0 6px",
                       height: 18,
                       lineHeight: "18px",
-                      borderRadius: 980,
+                      borderRadius: "var(--radius-pill)",
                       background: "var(--accent-soft)",
                       color: "var(--accent)",
                       fontSize: 10,
@@ -650,53 +591,107 @@ export function EventManager({
           </DropdownMenu>
 
           {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-2">
-              <X className="h-4 w-4" />
+            <button
+              onClick={clearFilters}
+              className="btn-ghost"
+              style={{ height: 30, padding: "0 12px" }}
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
               Limpiar
-            </Button>
+            </button>
           )}
         </div>
       </div>
 
       {hasActiveFilters && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">Filtros activos:</span>
+          <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ink-3)" }}>
+            Filtros activos
+          </span>
           {selectedColors.map((colorValue) => {
             const color = getColorClasses(colorValue)
             return (
-              <Badge key={colorValue} variant="secondary" className="gap-1">
-                <div className={cn("h-2 w-2 rounded-full", color.bg)} />
+              <span
+                key={colorValue}
+                className="inline-flex items-center"
+                style={{
+                  gap: 5,
+                  height: 22,
+                  padding: "0 6px 0 10px",
+                  borderRadius: "var(--radius-pill)",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: "var(--ink)",
+                }}
+              >
+                <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", color.bg)} />
                 {color.name}
                 <button
                   onClick={() => setSelectedColors((prev) => prev.filter((c) => c !== colorValue))}
-                  className="ml-1 hover:text-foreground"
+                  className="inline-flex items-center"
+                  style={{ marginLeft: 2, color: "var(--ink-3)", background: "transparent", border: "none", padding: 2, cursor: "pointer" }}
+                  aria-label={`Quitar filtro color ${color.name}`}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-3 w-3" aria-hidden="true" />
                 </button>
-              </Badge>
+              </span>
             )
           })}
           {selectedTags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="gap-1">
+            <span
+              key={tag}
+              className="inline-flex items-center"
+              style={{
+                gap: 5,
+                height: 22,
+                padding: "0 6px 0 10px",
+                borderRadius: "var(--radius-pill)",
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                fontSize: 11,
+                fontWeight: 500,
+                color: "var(--ink)",
+              }}
+            >
               {tag}
               <button
                 onClick={() => setSelectedTags((prev) => prev.filter((t) => t !== tag))}
-                className="ml-1 hover:text-foreground"
+                className="inline-flex items-center"
+                style={{ marginLeft: 2, color: "var(--ink-3)", background: "transparent", border: "none", padding: 2, cursor: "pointer" }}
+                aria-label={`Quitar filtro etiqueta ${tag}`}
               >
-                <X className="h-3 w-3" />
+                <X className="h-3 w-3" aria-hidden="true" />
               </button>
-            </Badge>
+            </span>
           ))}
           {selectedCategories.map((category) => (
-            <Badge key={category} variant="secondary" className="gap-1">
+            <span
+              key={category}
+              className="inline-flex items-center"
+              style={{
+                gap: 5,
+                height: 22,
+                padding: "0 6px 0 10px",
+                borderRadius: "var(--radius-pill)",
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                fontSize: 11,
+                fontWeight: 500,
+                color: "var(--ink)",
+              }}
+            >
               {category}
               <button
                 onClick={() => setSelectedCategories((prev) => prev.filter((c) => c !== category))}
-                className="ml-1 hover:text-foreground"
+                className="inline-flex items-center"
+                style={{ marginLeft: 2, color: "var(--ink-3)", background: "transparent", border: "none", padding: 2, cursor: "pointer" }}
+                aria-label={`Quitar filtro categoría ${category}`}
               >
-                <X className="h-3 w-3" />
+                <X className="h-3 w-3" aria-hidden="true" />
               </button>
-            </Badge>
+            </span>
           ))}
         </div>
       )}
@@ -755,7 +750,14 @@ export function EventManager({
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-md max-h-[90vh] overflow-y-auto"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-lg)",
+          }}
+        >
           <DialogHeader>
             <DialogTitle>{isCreating ? "Crear evento" : "Detalle del evento"}</DialogTitle>
             <DialogDescription>
@@ -920,14 +922,26 @@ export function EventManager({
                     ? newEvent.tags?.includes(tag)
                     : selectedEvent?.tags?.includes(tag)
                   return (
-                    <Badge
+                    <button
                       key={tag}
-                      variant={isSelected ? "default" : "outline"}
-                      className="cursor-pointer transition-all hover:scale-105"
+                      type="button"
                       onClick={() => toggleTag(tag, isCreating)}
+                      aria-pressed={isSelected}
+                      style={{
+                        height: 26,
+                        padding: "0 12px",
+                        borderRadius: "var(--radius-pill)",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        background: isSelected ? "var(--accent)" : "var(--surface-2)",
+                        color: isSelected ? "#ffffff" : "var(--ink-2)",
+                        border: `1px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
                     >
                       {tag}
-                    </Badge>
+                    </button>
                   )
                 })}
               </div>
@@ -943,8 +957,9 @@ export function EventManager({
                 Eliminar
               </Button>
             )}
-            <Button
-              variant="outline"
+            <button
+              type="button"
+              className="btn-secondary"
               onClick={() => {
                 setIsDialogOpen(false)
                 setIsCreating(false)
@@ -952,10 +967,14 @@ export function EventManager({
               }}
             >
               Cancelar
-            </Button>
-            <Button onClick={isCreating ? handleCreateEvent : handleUpdateEvent}>
+            </button>
+            <button
+              type="button"
+              className="btn-cta"
+              onClick={isCreating ? handleCreateEvent : handleUpdateEvent}
+            >
               {isCreating ? "Crear" : "Guardar"}
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1008,7 +1027,7 @@ function EventCard({
         <div
           className={cn("transition-all duration-200 truncate", isHovered && "scale-[1.02] z-10")}
           style={{
-            borderRadius: 5,
+            borderRadius: "var(--radius-sm)",
             padding: "2px 8px",
             height: 20,
             lineHeight: "16px",
@@ -1023,17 +1042,25 @@ function EventCard({
         </div>
         {isHovered && (
           <div className="absolute left-0 top-full z-50 mt-1 w-64">
-            <Card className="border-2 p-3 shadow-xl">
+            <div
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                padding: 12,
+              }}
+            >
               <div className="space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <h4 className="font-semibold text-sm leading-tight">{event.title}</h4>
-                  <div className={cn("h-3 w-3 rounded-full flex-shrink-0", colorClasses.bg)} />
+                  <div aria-hidden="true" className={cn("h-3 w-3 rounded-full flex-shrink-0", colorClasses.bg)} />
                 </div>
                 {event.description && (
                   <p className="text-xs text-muted-foreground line-clamp-2">{event.description}</p>
                 )}
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
+                  <Clock className="h-3 w-3" aria-hidden="true" />
                   <span>
                     {formatTime(event.startTime)} - {formatTime(event.endTime)}
                   </span>
@@ -1052,7 +1079,7 @@ function EventCard({
                   ))}
                 </div>
               </div>
-            </Card>
+            </div>
           </div>
         )}
       </div>
@@ -1070,11 +1097,13 @@ function EventCard({
         onMouseLeave={() => setIsHovered(false)}
         className={cn("cursor-pointer transition-all duration-200", isHovered && "shadow-md")}
         style={{
-          borderRadius: 10,
+          borderRadius: "var(--radius-md)",
           padding: 12,
+          paddingLeft: 14,
           background: eventStyle.bg,
           color: eventStyle.text,
           border: "1px solid var(--border)",
+          borderLeft: `2px solid ${eventStyle.text}`,
         }}
       >
         <div style={{ fontWeight: 600, fontSize: 13 }}>{event.title}</div>
@@ -1084,7 +1113,7 @@ function EventCard({
           </div>
         )}
         <div className="mt-2 flex items-center gap-1.5" style={{ fontSize: 11, opacity: 0.8 }}>
-          <Clock className="h-3 w-3" />
+          <Clock className="h-3 w-3" aria-hidden="true" />
           {formatTime(event.startTime)} - {formatTime(event.endTime)}
         </div>
         {isHovered && (
@@ -1118,7 +1147,7 @@ function EventCard({
       <div
         className={cn("cursor-pointer transition-all duration-200", isHovered && "scale-[1.02] z-10")}
         style={{
-          borderRadius: 5,
+          borderRadius: "var(--radius-sm)",
           padding: "3px 8px",
           fontSize: 11,
           fontWeight: 600,
@@ -1179,7 +1208,7 @@ function MonthView({
       style={{
         background: "#ffffff",
         border: "1px solid var(--border)",
-        borderRadius: 12,
+        borderRadius: "var(--radius-lg)",
       }}
     >
       {/* Header de días de la semana */}
@@ -1218,32 +1247,27 @@ function MonthView({
           const isLastCol = (index + 1) % 7 === 0
           const isLastRow = index >= days.length - 7
 
+          const baseBg = isToday
+            ? "var(--accent-soft)"
+            : isCurrentMonth
+            ? "#ffffff"
+            : "rgba(0,0,0,0.02)"
+
           return (
             <div
               key={index}
-              className="min-h-20 sm:min-h-24 transition-colors"
+              className={cn(
+                "min-h-20 sm:min-h-24 transition-colors",
+                !isToday && "hover:bg-[var(--surface-2)]",
+              )}
               style={{
                 padding: 6,
-                background: isToday
-                  ? "var(--accent-soft)"
-                  : isCurrentMonth
-                  ? "#ffffff"
-                  : "rgba(0,0,0,0.02)",
+                background: baseBg,
                 borderRight: isLastCol ? "none" : "1px solid var(--border)",
                 borderBottom: isLastRow ? "none" : "1px solid var(--border)",
               }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => onDrop(day)}
-              onMouseEnter={(e) => {
-                if (!isToday) e.currentTarget.style.background = "rgba(0,0,0,0.02)"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = isToday
-                  ? "var(--accent-soft)"
-                  : isCurrentMonth
-                  ? "#ffffff"
-                  : "rgba(0,0,0,0.02)"
-              }}
             >
               {/* Número de día */}
               <div
@@ -1352,7 +1376,7 @@ function WeekView({
       style={{
         background: "#ffffff",
         border: "1px solid var(--border)",
-        borderRadius: 12,
+        borderRadius: "var(--radius-lg)",
       }}
     >
       {/* Header */}
@@ -1437,7 +1461,7 @@ function WeekView({
               return (
                 <div
                   key={`${day.toISOString()}-${hour}`}
-                  className="min-h-12 sm:min-h-16 transition-colors hover:bg-[rgba(0,0,0,0.02)]"
+                  className="min-h-12 sm:min-h-16 transition-colors hover:bg-[var(--surface-2)]"
                   style={{
                     padding: 4,
                     borderBottom: hour === 23 ? "none" : "1px solid var(--border-soft)",
@@ -1504,7 +1528,7 @@ function DayView({
       style={{
         background: "#ffffff",
         border: "1px solid var(--border)",
-        borderRadius: 12,
+        borderRadius: "var(--radius-lg)",
       }}
     >
       <div className="space-y-0">
@@ -1513,7 +1537,7 @@ function DayView({
           return (
             <div
               key={hour}
-              className="flex transition-colors hover:bg-[rgba(0,0,0,0.02)]"
+              className="flex transition-colors hover:bg-[var(--surface-2)]"
               style={{
                 borderBottom: hour === 23 ? "none" : "1px solid var(--border-soft)",
               }}
@@ -1594,7 +1618,7 @@ function ListView({
           key={date}
           style={{
             border: "1px solid var(--border)",
-            borderRadius: 12,
+            borderRadius: "var(--radius-lg)",
             background: "#ffffff",
             overflow: "hidden",
           }}
@@ -1623,7 +1647,7 @@ function ListView({
                 <div
                   key={event.id}
                   onClick={() => onEventClick(event)}
-                  className="cursor-pointer transition-colors hover:bg-[rgba(0,0,0,0.02)]"
+                  className="cursor-pointer transition-colors hover:bg-[var(--surface-2)]"
                   style={{
                     padding: "12px 14px",
                     borderTop: idx === 0 ? "none" : "1px solid var(--border-soft)",
@@ -1695,7 +1719,7 @@ function ListView({
                           className="inline-flex items-center gap-1"
                           style={{ fontSize: 12, color: "var(--ink-2)" }}
                         >
-                          <Clock className="h-3 w-3" />
+                          <Clock className="h-3 w-3" aria-hidden="true" />
                           {event.startTime.toLocaleTimeString("es-ES", {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -1715,7 +1739,7 @@ function ListView({
                                 style={{
                                   height: 18,
                                   padding: "0 8px",
-                                  borderRadius: 980,
+                                  borderRadius: "var(--radius-pill)",
                                   fontSize: 10,
                                   fontWeight: 600,
                                   border: "1px solid var(--border)",
@@ -1747,7 +1771,7 @@ function ListView({
             color: "var(--ink-3)",
             background: "#ffffff",
             border: "1px solid var(--border)",
-            borderRadius: 12,
+            borderRadius: "var(--radius-lg)",
           }}
         >
           No hay eventos
