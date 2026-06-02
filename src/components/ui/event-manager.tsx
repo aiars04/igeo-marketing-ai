@@ -22,6 +22,7 @@ import {
   X,
   CalendarDays,
   Megaphone,
+  MapPin,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -1333,6 +1334,132 @@ export function EventManager({
   )
 }
 
+// ── Tooltip enriquecido compartido (compact + default) ──
+const TOOLTIP_CHANNEL_COLORS: Record<string, { text: string; border: string; bg: string }> = {
+  linkedin:   { text: '#0071e3', border: 'rgba(0,113,227,0.2)',   bg: 'rgba(0,113,227,0.07)'   },
+  instagram:  { text: '#e8388c', border: 'rgba(232,62,140,0.2)',  bg: 'rgba(232,62,140,0.07)'  },
+  newsletter: { text: '#248a3d', border: 'rgba(52,199,89,0.25)',  bg: 'rgba(52,199,89,0.08)'   },
+  blog:       { text: '#b25000', border: 'rgba(255,159,10,0.25)', bg: 'rgba(255,159,10,0.08)'  },
+  x:          { text: '#6e6e73', border: 'rgba(0,0,0,0.15)',      bg: 'rgba(0,0,0,0.04)'       },
+  facebook:   { text: '#0071e3', border: 'rgba(0,113,227,0.2)',   bg: 'rgba(0,113,227,0.07)'   },
+}
+
+function EventTooltip({
+  event,
+  formatTime,
+  getDuration,
+}: {
+  event: Event
+  formatTime: (d: Date) => string
+  getDuration: () => string
+}) {
+  const dotColor = EVENT_STYLES[event.color]?.text ?? 'var(--ink-3)'
+
+  return (
+    <div className="absolute left-0 top-full z-50 mt-1" style={{ width: 288, minWidth: 240 }}>
+      <div
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+          padding: 12,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
+      >
+        {/* Título + dot color */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3 }}>
+            {event.title}
+          </span>
+          <span
+            aria-hidden="true"
+            style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: dotColor,
+              flexShrink: 0, marginTop: 3,
+            }}
+          />
+        </div>
+
+        {/* Separador */}
+        <div style={{ height: 1, background: 'var(--border)' }} />
+
+        {/* Hora / Todo el día */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-2)' }}>
+          <Clock size={12} aria-hidden="true" />
+          {event.allDay
+            ? <span>Todo el día</span>
+            : <span>{formatTime(event.startTime)} – {formatTime(event.endTime)} ({getDuration()})</span>
+          }
+        </div>
+
+        {/* Canal + Mercado (digital) */}
+        {event.eventType === 'digital' && event.channel && (() => {
+          const ch = event.channel.toLowerCase()
+          const c = TOOLTIP_CHANNEL_COLORS[ch] ?? { text: 'var(--ink-2)', border: 'var(--border)', bg: 'var(--surface-2)' }
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: '1px 7px',
+                borderRadius: 'var(--radius-sm)',
+                border: `1px solid ${c.border}`,
+                color: c.text, background: c.bg,
+              }}>
+                {event.channel}
+              </span>
+              {event.market && (
+                <span style={{ fontSize: 11, color: 'var(--ink-2)' }}>
+                  {DIGITAL_MARKETS.find(m => m.value === event.market)?.label ?? event.market}
+                </span>
+              )}
+            </div>
+          )
+        })()}
+
+        {/* Ubicación (presencial) */}
+        {event.eventType === 'presential' && event.location && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-2)' }}>
+            <MapPin size={12} aria-hidden="true" />
+            <span>{event.location}</span>
+          </div>
+        )}
+
+        {/* Categoría chip */}
+        {event.category && (
+          <span style={{
+            alignSelf: 'flex-start',
+            fontSize: 10, fontWeight: 600,
+            padding: '1px 7px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--surface-2)',
+            border: '1px solid var(--border)',
+            color: 'var(--ink-2)',
+          }}>
+            {event.category}
+          </span>
+        )}
+
+        {/* Descripción */}
+        {event.description && (
+          <p style={{
+            fontSize: 12, color: 'var(--ink-2)',
+            lineHeight: 1.5, margin: 0,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}>
+            {event.description}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function EventCard({
   event,
   onEventClick,
@@ -1392,68 +1519,7 @@ function EventCard({
           {event.title}
         </div>
         {isHovered && (
-          <div className="absolute left-0 top-full z-50 mt-1 w-64">
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-md)",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
-                padding: 12,
-              }}
-            >
-              <div className="space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className="font-semibold text-sm leading-tight">{event.title}</h4>
-                  <div aria-hidden="true" className={cn("h-3 w-3 rounded-full flex-shrink-0", colorClasses.bg)} />
-                </div>
-                {event.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">{event.description}</p>
-                )}
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" aria-hidden="true" />
-                  <span>
-                    {formatTime(event.startTime)} - {formatTime(event.endTime)}
-                  </span>
-                  <span className="text-[10px]">({getDuration()})</span>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {event.category && (
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      height: 18,
-                      padding: '0 7px',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: 10,
-                      fontWeight: 600,
-                      background: 'var(--surface-2)',
-                      border: '1px solid var(--border)',
-                      color: 'var(--ink-2)',
-                    }}>
-                      {event.category}
-                    </span>
-                  )}
-                  {event.tags?.map((tag) => (
-                    <span key={tag} style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      height: 18,
-                      padding: '0 7px',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: 10,
-                      fontWeight: 500,
-                      background: 'transparent',
-                      border: '1px solid var(--border)',
-                      color: 'var(--ink-2)',
-                    }}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          <EventTooltip event={event} formatTime={formatTime} getDuration={getDuration} />
         )}
       </div>
     )
@@ -1553,6 +1619,9 @@ function EventCard({
       >
         <div className="truncate">{event.title}</div>
       </div>
+      {isHovered && (
+        <EventTooltip event={event} formatTime={formatTime} getDuration={getDuration} />
+      )}
     </div>
   )
 }
