@@ -12,6 +12,7 @@ import {
   Settings,
   MessageSquarePlus,
   LogOut,
+  Users,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -19,15 +20,14 @@ type Profile = {
   user_id: string
   email: string
   full_name: string | null
-  role: 'superadmin' | 'admin' | 'director' | 'manager' | 'user'
+  role: 'admin' | 'manager' | 'user'
+  active?: boolean
 }
 
 const ROLE_LABEL: Record<Profile['role'], string> = {
-  superadmin: 'Superadmin',
-  admin:      'Admin',
-  director:   'Director',
-  manager:    'Manager',
-  user:       'Usuario',
+  admin:   'Admin',
+  manager: 'Manager',
+  user:    'Usuario',
 }
 
 function isActive(pathname: string, href: string) {
@@ -123,6 +123,16 @@ export function AppShell({
               <BookOpen />
               <span className="sidebar-label">Admin</span>
             </Link>
+            {profile && (profile.role === 'admin' || profile.role === 'manager') && (
+              <Link
+                className={`nav-link ${isActive(pathname, '/users') ? 'active' : ''}`}
+                href="/users"
+                title="Usuarios"
+              >
+                <Users />
+                <span className="sidebar-label">Usuarios</span>
+              </Link>
+            )}
             <Link
               className={`nav-link ${isActive(pathname, '/settings') ? 'active' : ''}`}
               href="/settings"

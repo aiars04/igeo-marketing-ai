@@ -2,6 +2,17 @@ export type Stage = 'ideas' | 'copy' | 'design' | 'scheduled' | 'analyzed'
 export type Channel = 'linkedin' | 'instagram' | 'facebook' | 'x' | 'blog' | 'email' | 'newsletter'
 export type Market = 'spain' | 'latam' | 'uk' | 'france' | 'italy' | 'portugal' | 'brasil'
 export type ContentStatus = 'pending' | 'in_progress' | 'approved' | 'rejected'
+export type UserRole = 'admin' | 'manager' | 'user'
+
+export interface Profile {
+  id:         string
+  email:      string
+  full_name:  string | null
+  role:       UserRole
+  active:     boolean
+  created_at: string
+  updated_at: string
+}
 
 export interface Database {
   public: {
@@ -35,6 +46,11 @@ export interface Database {
         Row: BrandContext
         Insert: Omit<BrandContext, 'id' | 'updated_at'>
         Update: Partial<Omit<BrandContext, 'id'>>
+      }
+      profiles: {
+        Row: Profile
+        Insert: Omit<Profile, 'created_at' | 'updated_at'>
+        Update: Partial<Omit<Profile, 'id' | 'created_at'>>
       }
     }
   }
