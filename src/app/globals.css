@@ -50,17 +50,6 @@
   --red-2:        #c0392b;
   --red-soft:     rgba(255, 59, 48, 0.08);
 
-  /* Blue legacy → mapea a accent */
-  --blue:        var(--accent);
-  --blue-2:      var(--accent-2);
-  --blue-soft:   var(--accent-soft);
-
-  /* ── CTA principal — azul Apple (era naranja) ── */
-  --orange:       var(--accent);
-  --orange-2:     var(--accent-2);
-  --orange-hover: #0077ed;
-  --orange-deep:  var(--accent);
-
   /* ── Sidebar dimensiones ── */
   --sidebar:      3.75rem;
   --sidebar-open: 15rem;
@@ -192,7 +181,7 @@ body::before { display: none; }
   white-space: nowrap;
 }
 .btn-primary:hover {
-  background: var(--orange-hover);
+  background: var(--accent-2);
   box-shadow: 0 2px 12px rgba(0, 113, 227, 0.30);
 }
 .btn-primary:active { transform: translateY(1px); }
@@ -765,76 +754,8 @@ textarea.input {
   color: var(--ink);
 }
 
-/* ════════════════════════════════════════════════════════
-   LEGACY aliases — para compatibilidad con código viejo
-   No tocar páginas que aún usen estas variables/clases
-   ════════════════════════════════════════════════════════ */
-:root {
-  /* Old surface naming */
-  --surface2: var(--surface-2);
-  --surface3: var(--surface-3);
-  --surface4: var(--surface-3);
-  --bg-elev:  var(--surface);
-  --bg-soft:  var(--surface);
-
-  /* Old text naming */
-  --text:     var(--ink);
-  --text2:    var(--ink-2);
-  --muted:    var(--ink-3);
-  --faint:    var(--ink-3);
-
-  /* Old border naming */
-  --line:     var(--border);
-  --line2:    var(--border-soft);
-  --line3:    var(--border-hover);
-  --border2:  var(--border);
-  --border3:  var(--border-hover);
-  --border-warm: rgba(249, 115, 22, 0.20);
-  --line-warm: rgba(249, 115, 22, 0.20);
-
-  /* Old semantic */
-  --success:    var(--green);
-  --success-2:  var(--green-2);
-  --warning:    var(--amber);
-  --warning-2:  var(--amber-2);
-  --danger:     var(--red);
-  --danger-2:   var(--red-2);
-
-  /* Old orange aliases */
-  --orange-3:  var(--orange-2);
-  --orange-4:  var(--orange-2);
-  --orange-tint: var(--accent-soft);
-
-  /* Old accent (was blue) — keep for legacy pages */
-  --accent2:   var(--accent-2);
-  --accent3:   var(--accent-3);
-  --blue-3:    var(--blue-2);
-}
-
-/* Legacy utility classes */
-.text-eyebrow, .text-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink-3);
-}
-.text-display, .font-display, .font-serif, .font-mono { font-family: var(--font-sans), sans-serif; }
-.gradient-orange { color: var(--orange); }
-.gradient-blue { color: var(--blue-2); }
-.btn-blue {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 36px; padding: 0 14px; border-radius: 8px;
-  font-size: 13px; font-weight: 600; color: #fff;
-  background: var(--blue); border: 1px solid var(--blue); cursor: pointer;
-  transition: filter 0.15s ease;
-}
-.btn-blue:hover { filter: brightness(1.1); }
-.stat-value {
-  font-size: 32px; font-weight: 800; color: var(--ink);
-  letter-spacing: -0.025em; font-variant-numeric: tabular-nums;
-}
-.divider-gradient { height: 1px; background: var(--border); }
+/* Font fallback helpers */
+.font-serif, .font-mono { font-family: var(--font-sans), sans-serif; }
 
 /* ════════════════════════════════════════════════════════
    APP SHELL — sidebar LIGHT mode Apple

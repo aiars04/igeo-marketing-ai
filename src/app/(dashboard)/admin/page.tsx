@@ -51,9 +51,9 @@ function FileIcon({ mimeType, size = 20 }: { mimeType: string; size?: number }) 
   const cat = fileCategory(mimeType)
   const props = { size, strokeWidth: 1.8 }
   if (cat === 'pdf')   return <FileText      {...props} style={{ color: 'var(--red-2)' }} />
-  if (cat === 'image') return <FileImage     {...props} style={{ color: 'var(--blue-2)' }} />
-  if (cat === 'word')  return <FileText      {...props} style={{ color: 'var(--blue)' }} />
-  if (cat === 'ppt')   return <Presentation  {...props} style={{ color: 'var(--orange-2)' }} />
+  if (cat === 'image') return <FileImage     {...props} style={{ color: 'var(--accent-2)' }} />
+  if (cat === 'word')  return <FileText      {...props} style={{ color: 'var(--accent)' }} />
+  if (cat === 'ppt')   return <Presentation  {...props} style={{ color: 'var(--amber-2)' }} />
   if (cat === 'excel') return <Sheet         {...props} style={{ color: 'var(--green-2)' }} />
   return <File {...props} style={{ color: 'var(--ink-2)' }} />
 }
