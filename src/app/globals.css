@@ -351,6 +351,60 @@ body::before { display: none; }
 .idea-action-reject:hover  { background: var(--red-soft);    color: var(--red); }
 .idea-action-convert:hover { background: var(--accent-soft); color: var(--accent); }
 
+/* Images — grid card */
+.image-card {
+  position: relative;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.image-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Images — menu trigger (botón "⋯" en la card) */
+.image-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-3);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.image-menu-trigger:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+/* Images — menu items del dropdown */
+.image-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+.image-menu-item:hover { background: var(--surface-2); }
+.image-menu-item-destructive { color: var(--red); }
+.image-menu-item-destructive:hover { background: var(--red-soft); color: var(--red); }
+
 /* ═══════════════ Card primitive (Apple light) ═══════════════ */
 .card {
   background: var(--surface);

@@ -1,11 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Image as ImageIcon, Sparkles, Plus, Check, MoreHorizontal, Loader2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Image as ImageIcon, Sparkles, Upload, Check, MoreHorizontal, Loader2, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { useToast, Toasts } from '@/components/ui/Toast'
-import type { Channel } from '@/types/database'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -57,43 +55,36 @@ function ImageMenu({
     <div ref={ref} className="relative">
       <button
         onClick={e => { e.stopPropagation(); setOpen(v => !v) }}
-        className="p-1.5 rounded-md transition-colors"
-        style={{ color: 'var(--ink-3)', background: 'transparent' }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)'; e.currentTarget.style.color = 'var(--ink)' }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-3)' }}
+        aria-label="Opciones de imagen"
+        className="image-menu-trigger"
       >
-        <MoreHorizontal size={12} />
+        <MoreHorizontal size={12} aria-hidden="true" />
       </button>
 
       {open && (
         <div
           className="absolute right-0 bottom-full mb-1 z-50 overflow-hidden py-1"
           style={{
-            background: 'var(--surface-3)',
+            background: 'var(--surface)',
             border: '1px solid var(--border)',
-            borderRadius: 8,
-            minWidth: 160,
-            boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
+            borderRadius: 'var(--radius-md)',
+            minWidth: 180,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
           }}
         >
           <button
             onClick={() => { onToggleApprove(img.id); setOpen(false) }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[12px] text-left transition-colors"
-            style={{ color: 'var(--ink)', background: 'transparent' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            className="image-menu-item"
           >
-            <Check size={12} style={{ color: 'var(--green-2)' }} />
+            <Check size={13} aria-hidden="true" style={{ color: 'var(--green-2)' }} />
             {img.approved ? 'Desaprobar' : 'Aprobar'}
           </button>
           <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
           <button
             onClick={() => { onDelete(img.id); setOpen(false) }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[12px] text-left transition-colors"
-            style={{ color: 'var(--red-2)', background: 'transparent' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-soft)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            className="image-menu-item image-menu-item-destructive"
           >
+            <Trash2 size={13} aria-hidden="true" />
             Eliminar
           </button>
         </div>
@@ -206,15 +197,15 @@ export default function ImagesPage() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => showToast('Próximamente: sube tus propios activos visuales', 'info')}
-            className="btn-secondary"
+            className="btn-pill-secondary"
           >
-            <Plus size={13} /> Subir imagen
+            <Upload size={13} aria-hidden="true" /> Subir imagen
           </button>
           <button
             onClick={() => { setGeneratePrompt(''); setGenerateModal({ open: true }) }}
-            className="btn-primary"
+            className="btn-cta"
           >
-            <Sparkles size={13} /> Generar imagen
+            <Sparkles size={13} aria-hidden="true" /> Generar imagen
           </button>
         </div>
       </div>
@@ -225,22 +216,14 @@ export default function ImagesPage() {
           {images.map(img => (
             <div
               key={img.id}
-              className="group relative overflow-hidden"
-              style={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 10,
-                transition: 'border-color 0.15s ease',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+              className="image-card group"
             >
               {/* Placeholder image */}
               <div
                 className="aspect-square flex items-center justify-center"
                 style={{ background: 'linear-gradient(135deg, var(--surface-3), var(--surface-2))' }}
               >
-                <ImageIcon size={32} style={{ color: 'var(--ink-3)', opacity: 0.4 }} />
+                <ImageIcon size={32} aria-hidden="true" style={{ color: 'var(--ink-3)', opacity: 0.4 }} />
               </div>
               {/* Overlay */}
               <div
@@ -250,7 +233,7 @@ export default function ImagesPage() {
                   transition: 'opacity 0.15s ease',
                 }}
               >
-                <p className="text-[11px] leading-snug line-clamp-2" style={{ color: 'var(--ink)' }}>
+                <p className="text-[11px] leading-snug line-clamp-2" style={{ color: '#ffffff' }}>
                   {img.prompt}
                 </p>
               </div>
@@ -260,8 +243,9 @@ export default function ImagesPage() {
                   <span
                     className="w-5 h-5 rounded-full flex items-center justify-center"
                     style={{ background: 'var(--green)' }}
+                    aria-label="Aprobada"
                   >
-                    <Check size={10} style={{ color: '#ffffff' }} strokeWidth={3} />
+                    <Check size={10} aria-hidden="true" style={{ color: '#ffffff' }} strokeWidth={3} />
                   </span>
                 )}
               </div>
@@ -291,7 +275,7 @@ export default function ImagesPage() {
       >
         {generateLoading ? (
           <div className="flex flex-col items-center justify-center py-8 gap-4">
-            <Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent-2)' }} />
+            <Loader2 size={28} className="animate-spin" aria-hidden="true" style={{ color: 'var(--accent-2)' }} />
             <div className="text-center">
               <p className="text-[14px] font-semibold" style={{ color: 'var(--ink)' }}>
                 Generando con IA…
@@ -326,9 +310,9 @@ export default function ImagesPage() {
               <button
                 onClick={handleGenerate}
                 disabled={!generatePrompt.trim()}
-                className="btn-primary flex-1 disabled:opacity-50"
+                className="btn-cta flex-1"
               >
-                <Sparkles size={13} />
+                <Sparkles size={13} aria-hidden="true" />
                 Generar imagen
               </button>
             </div>
