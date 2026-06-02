@@ -480,6 +480,18 @@ body::before { display: none; }
 .admin-doc-action:hover          { background: var(--surface-2);  color: var(--ink); }
 .admin-doc-action-delete:hover   { background: var(--red-soft);   color: var(--red); }
 
+/* Settings — list item hover */
+.settings-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s ease;
+}
+.settings-item:hover { border-color: var(--border-hover); }
+
 /* ═══════════════ Card primitive (Apple light) ═══════════════ */
 .card {
   background: var(--surface);
