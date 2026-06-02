@@ -11,6 +11,7 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Plus,
   Calendar,
   Clock,
@@ -65,6 +66,16 @@ const DIGITAL_MARKETS = [
 ] as const
 const COLOR_KEYS = ['blue', 'green', 'purple', 'orange', 'pink', 'red'] as const
 
+// Color automático según canal digital
+const CHANNEL_TO_COLOR: Record<string, string> = {
+  LinkedIn:   'blue',
+  Instagram:  'pink',
+  Newsletter: 'green',
+  Blog:       'orange',
+  X:          'purple',
+  Facebook:   'blue',
+}
+
 /** Detecta el tipo de evento al editar uno existente. */
 function detectEventType(ev: Event | null): 'presential' | 'digital' | null {
   if (!ev) return null
@@ -98,6 +109,48 @@ function Field({ label, optional = false, children }: { label: string; optional?
         )}
       </div>
       {children}
+    </div>
+  )
+}
+
+function SelectField({
+  value,
+  onChange,
+  children,
+}: {
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void
+  children: React.ReactNode
+}) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <select
+        value={value}
+        onChange={onChange}
+        className="input"
+        style={{
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          MozAppearance: 'none',
+          paddingRight: 32,
+          cursor: 'pointer',
+          width: '100%',
+        }}
+      >
+        {children}
+      </select>
+      <ChevronDown
+        size={14}
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          right: 12,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          pointerEvents: 'none',
+          color: 'var(--ink-3)',
+        }}
+      />
     </div>
   )
 }
@@ -318,6 +371,32 @@ export function EventManager({
     setIsCreating(false)
     setSelectedEvent(null)
     setEventType(null)
+  }
+
+  const selectEventType = (type: 'presential' | 'digital') => {
+    setEventType(type)
+    if (type === 'digital') {
+      setNewEvent((prev) => ({
+        ...prev,
+        // limpiar campos de presencial:
+        location: undefined,
+        // defaults digital:
+        channel: DIGITAL_CHANNELS[0],
+        market:  DIGITAL_MARKETS[0].value,
+        color:   CHANNEL_TO_COLOR[DIGITAL_CHANNELS[0]] ?? 'blue',
+      }))
+    } else {
+      setNewEvent((prev) => ({
+        ...prev,
+        // limpiar campos digital:
+        channel:     undefined,
+        market:      undefined,
+        pipelineRef: undefined,
+        // defaults presencial:
+        category: PRESENTIAL_KINDS[0],
+        color:    prev.color ?? 'blue',
+      }))
+    }
   }
   const canSave = Boolean(
     eventType &&
@@ -843,7 +922,6 @@ export function EventManager({
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
-          onMouseDown={(e) => { if (e.target === e.currentTarget) closeDialog() }}
         >
           <div
             className="relative w-full flex flex-col overflow-hidden animate-scale-in"
@@ -855,7 +933,6 @@ export function EventManager({
               borderRadius: 'var(--radius-lg)',
               boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
             }}
-            onMouseDown={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div
@@ -894,7 +971,7 @@ export function EventManager({
                         <button
                           key={t.key}
                           type="button"
-                          onClick={() => setEventType(t.key)}
+                          onClick={() => selectEventType(t.key)}
                           style={{
                             flex: 1,
                             padding: '14px 16px',
@@ -963,15 +1040,14 @@ export function EventManager({
                   {eventType === 'presential' && (
                     <>
                       <Field label="Tipo">
-                        <select
-                          className="input"
+                        <SelectField
                           value={formData.category ?? PRESENTIAL_KINDS[0]}
                           onChange={(e) => updateField({ category: e.target.value })}
                         >
                           {PRESENTIAL_KINDS.map((k) => (
                             <option key={k} value={k}>{k}</option>
                           ))}
-                        </select>
+                        </SelectField>
                       </Field>
                       <div className="grid grid-cols-2 gap-3">
                         <Field label="Inicio">
@@ -1007,26 +1083,27 @@ export function EventManager({
                     <>
                       <div className="grid grid-cols-2 gap-3">
                         <Field label="Canal">
-                          <select
-                            className="input"
+                          <SelectField
                             value={formData.channel ?? DIGITAL_CHANNELS[0]}
-                            onChange={(e) => updateField({ channel: e.target.value })}
+                            onChange={(e) => {
+                              const channel = e.target.value
+                              updateField({ channel, color: CHANNEL_TO_COLOR[channel] ?? 'blue' })
+                            }}
                           >
                             {DIGITAL_CHANNELS.map((c) => (
                               <option key={c} value={c}>{c}</option>
                             ))}
-                          </select>
+                          </SelectField>
                         </Field>
                         <Field label="Mercado">
-                          <select
-                            className="input"
+                          <SelectField
                             value={formData.market ?? DIGITAL_MARKETS[0].value}
                             onChange={(e) => updateField({ market: e.target.value })}
                           >
                             {DIGITAL_MARKETS.map((m) => (
                               <option key={m.value} value={m.value}>{m.label}</option>
                             ))}
-                          </select>
+                          </SelectField>
                         </Field>
                       </div>
                       <Field label="Fecha de publicación">
@@ -1098,34 +1175,36 @@ export function EventManager({
                     </div>
                   </Field>
 
-                  {/* SHARED — Color */}
-                  <Field label="Color">
-                    <div className="flex flex-wrap" style={{ gap: 8 }}>
-                      {COLOR_KEYS.map((c) => {
-                        const isSelected = (formData.color ?? colors[0].value) === c
-                        const style = EVENT_STYLES[c]
-                        return (
-                          <button
-                            key={c}
-                            type="button"
-                            onClick={() => updateField({ color: c })}
-                            aria-label={`Color ${c}`}
-                            aria-pressed={isSelected}
-                            style={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: 'var(--radius-sm)',
-                              background: style.bg,
-                              border: isSelected ? `2px solid ${style.text}` : '2px solid transparent',
-                              cursor: 'pointer',
-                              transition: 'border 0.15s ease',
-                              padding: 0,
-                            }}
-                          />
-                        )
-                      })}
-                    </div>
-                  </Field>
+                  {/* Color — solo presencial; digital usa color del canal */}
+                  {eventType === 'presential' && (
+                    <Field label="Color">
+                      <div className="flex flex-wrap" style={{ gap: 8 }}>
+                        {COLOR_KEYS.map((c) => {
+                          const isSelected = (formData.color ?? colors[0].value) === c
+                          const style = EVENT_STYLES[c]
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => updateField({ color: c })}
+                              aria-label={`Color ${c}`}
+                              aria-pressed={isSelected}
+                              style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: 'var(--radius-sm)',
+                                background: style.bg,
+                                border: isSelected ? `2px solid ${style.text}` : '2px solid transparent',
+                                cursor: 'pointer',
+                                transition: 'border 0.15s ease',
+                                padding: 0,
+                              }}
+                            />
+                          )
+                        })}
+                      </div>
+                    </Field>
+                  )}
 
                 </div>
               )}
@@ -1420,12 +1499,9 @@ function MonthView({
 
   const getEventsForDay = (date: Date) =>
     events.filter((event) => {
-      const eventDate = new Date(event.startTime)
-      return (
-        eventDate.getDate() === date.getDate() &&
-        eventDate.getMonth() === date.getMonth() &&
-        eventDate.getFullYear() === date.getFullYear()
-      )
+      const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+      const dayEnd   = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999)
+      return event.startTime <= dayEnd && event.endTime >= dayStart
     })
 
   const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
