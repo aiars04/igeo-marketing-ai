@@ -61,6 +61,7 @@
   --radius-pill: 980px;   /* pills, botones primarios, badges píldora */
 
   /* ── shadcn tokens (mapeados a la paleta Apple) ── */
+  --radius:                0.625rem;   /* 10px — base para componentes shadcn */
   --background:            #ffffff;
   --foreground:            #1d1d1f;
   --card:                  #ffffff;

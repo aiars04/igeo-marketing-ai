@@ -25,15 +25,16 @@ export function ChannelBadge({ channel, className }: ChannelBadgeProps) {
     <span
       className={cn('inline-flex items-center shrink-0', className)}
       style={{
-        padding: '2px 8px',
+        height: 22,
+        padding: '0 8px',
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700,
         letterSpacing: 0,
         color: colors.text,
         background: colors.bg,
         border: `1px solid ${colors.border}`,
-        borderRadius: 4,
-        lineHeight: 1.4,
+        borderRadius: 'var(--radius-sm)',
+        lineHeight: 1,
         whiteSpace: 'nowrap',
         textTransform: 'none',
       }}

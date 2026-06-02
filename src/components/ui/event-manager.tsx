@@ -20,7 +20,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
 import {
   ChevronLeft,
   ChevronRight,
@@ -1068,14 +1067,36 @@ function EventCard({
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {event.category && (
-                    <Badge variant="secondary" className="text-[10px] h-5">
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      height: 18,
+                      padding: '0 7px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      background: 'var(--surface-2)',
+                      border: '1px solid var(--border)',
+                      color: 'var(--ink-2)',
+                    }}>
                       {event.category}
-                    </Badge>
+                    </span>
                   )}
                   {event.tags?.map((tag) => (
-                    <Badge key={tag} variant="outline" className="text-[10px] h-5">
+                    <span key={tag} style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      height: 18,
+                      padding: '0 7px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: 10,
+                      fontWeight: 500,
+                      background: 'transparent',
+                      border: '1px solid var(--border)',
+                      color: 'var(--ink-2)',
+                    }}>
                       {tag}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               </div>
@@ -1119,14 +1140,36 @@ function EventCard({
         {isHovered && (
           <div className="mt-2 flex flex-wrap gap-1">
             {event.category && (
-              <Badge variant="secondary" className="text-xs">
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                height: 18,
+                padding: '0 7px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 10,
+                fontWeight: 600,
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
+                color: 'var(--ink-2)',
+              }}>
                 {event.category}
-              </Badge>
+              </span>
             )}
             {event.tags?.map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs">
+              <span key={tag} style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                height: 18,
+                padding: '0 7px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 10,
+                fontWeight: 500,
+                background: 'transparent',
+                border: '1px solid var(--border)',
+                color: 'var(--ink-2)',
+              }}>
                 {tag}
-              </Badge>
+              </span>
             ))}
           </div>
         )}
