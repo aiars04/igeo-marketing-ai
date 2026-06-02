@@ -24,13 +24,13 @@ const CHANNEL_LABELS: Record<Channel, string> = {
   x:'X (Twitter)', blog:'Blog', email:'Email', newsletter:'Newsletter',
 }
 const CHANNEL_COLOR: Record<Channel, { bg: string; text: string; dot: string; border: string }> = {
-  linkedin:   { bg: 'rgba(59,130,246,0.12)',  text: 'var(--blue-2)',    dot: '#3b82f6', border: 'rgba(59,130,246,0.30)'  },
-  instagram:  { bg: 'rgba(236,72,153,0.12)',  text: '#f472b6',          dot: '#ec4899', border: 'rgba(236,72,153,0.30)'  },
-  facebook:   { bg: 'rgba(147,197,253,0.12)', text: '#93c5fd',          dot: '#93c5fd', border: 'rgba(147,197,253,0.30)' },
-  x:          { bg: 'rgba(148,163,184,0.12)', text: '#94a3b8',          dot: '#94a3b8', border: 'rgba(148,163,184,0.30)' },
-  blog:       { bg: 'var(--green-soft)',      text: 'var(--green-2)',   dot: '#10b981', border: 'rgba(16,185,129,0.30)'  },
-  email:      { bg: 'var(--amber-soft)',      text: 'var(--amber-2)',   dot: '#f59e0b', border: 'rgba(245,158,11,0.30)'  },
-  newsletter: { bg: 'rgba(167,139,250,0.12)', text: '#a78bfa',          dot: '#a78bfa', border: 'rgba(167,139,250,0.30)' },
+  linkedin:   { bg: 'var(--accent-soft)',        text: 'var(--accent)',  dot: 'var(--accent)',  border: 'var(--accent-border)' },
+  instagram:  { bg: 'rgba(232, 62, 140, 0.12)',  text: '#e8388c',        dot: '#e8388c',        border: 'rgba(232, 62, 140, 0.30)' },
+  facebook:   { bg: 'rgba(147, 197, 253, 0.12)', text: '#3b82f6',        dot: '#3b82f6',        border: 'rgba(147, 197, 253, 0.30)' },
+  x:          { bg: 'rgba(148, 163, 184, 0.12)', text: '#64748b',        dot: '#64748b',        border: 'rgba(148, 163, 184, 0.30)' },
+  blog:       { bg: 'var(--amber-soft)',         text: 'var(--amber-2)', dot: 'var(--amber)',   border: 'rgba(255, 159, 10, 0.30)' },
+  email:      { bg: 'var(--green-soft)',         text: 'var(--green-2)', dot: 'var(--green)',   border: 'var(--green-border)' },
+  newsletter: { bg: 'var(--accent-soft)',        text: 'var(--accent)',  dot: 'var(--accent)',  border: 'var(--accent-border)' },
 }
 
 const ACCEPTED_TYPES = [
@@ -149,7 +149,7 @@ function DocumentsModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           className="absolute inset-0"
-          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+          style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
           onClick={onClose}
         />
 
@@ -160,18 +160,18 @@ function DocumentsModal({
             maxHeight: 'calc(100vh - 48px)',
             background: 'var(--surface)',
             border: '1px solid var(--border)',
-            borderRadius: 12,
-            boxShadow: '0 24px 64px rgba(0,0,0,0.55)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
           }}
         >
           {/* Header */}
           <div className="flex items-center justify-between shrink-0" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
             <div className="flex items-center gap-3">
               <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: colors.bg, border: `1px solid ${colors.border}` }}
+                className="w-9 h-9 flex items-center justify-center shrink-0"
+                style={{ background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 'var(--radius-md)' }}
               >
-                <FolderOpen size={17} style={{ color: colors.text }} />
+                <FolderOpen size={17} aria-hidden="true" style={{ color: colors.text }} />
               </div>
               <div>
                 <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
@@ -185,12 +185,10 @@ function DocumentsModal({
             </div>
             <button
               onClick={onClose}
-              className="rounded-md flex items-center justify-center"
-              style={{ width: 32, height: 32, color: 'var(--ink-2)', background: 'transparent', transition: 'all 0.15s ease' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)'; e.currentTarget.style.color = 'var(--ink)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-2)' }}
+              className="image-menu-trigger"
+              aria-label="Cerrar modal"
             >
-              <X size={15} />
+              <X size={14} aria-hidden="true" />
             </button>
           </div>
 
@@ -204,7 +202,7 @@ function DocumentsModal({
               style={{
                 border: `2px dashed ${dragging ? colors.dot : 'var(--border-hover)'}`,
                 background: dragging ? colors.bg : 'var(--surface-2)',
-                borderRadius: 12,
+                borderRadius: 'var(--radius-lg)',
                 transition: 'all 0.15s ease',
               }}
               onDragOver={e => { e.preventDefault(); setDragging(true) }}
@@ -224,13 +222,13 @@ function DocumentsModal({
               <div className="flex flex-col items-center justify-center py-8 gap-3">
                 {uploading ? (
                   <>
-                    <Loader2 size={28} className="animate-spin" style={{ color: colors.text }} />
+                    <Loader2 size={28} className="animate-spin" aria-hidden="true" style={{ color: colors.text }} />
                     <p className="text-[13px] font-medium" style={{ color: 'var(--ink-2)' }}>Subiendo…</p>
                   </>
                 ) : (
                   <>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: colors.bg }}>
-                      <Upload size={22} style={{ color: colors.text }} />
+                    <div className="w-12 h-12 flex items-center justify-center" style={{ background: colors.bg, borderRadius: 'var(--radius-md)' }}>
+                      <Upload size={22} aria-hidden="true" style={{ color: colors.text }} />
                     </div>
                     <div className="text-center">
                       <p className="text-[13px] font-semibold" style={{ color: 'var(--ink)' }}>
@@ -248,13 +246,13 @@ function DocumentsModal({
             {/* Error */}
             {uploadError && (
               <div
-                className="flex items-center gap-2 px-3 py-2.5 rounded-lg"
-                style={{ background: 'var(--red-soft)', border: '1px solid rgba(239,68,68,0.25)' }}
+                className="flex items-center gap-2 px-3 py-2.5"
+                style={{ background: 'var(--red-soft)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 'var(--radius-sm)' }}
               >
-                <AlertCircle size={14} style={{ color: 'var(--red-2)', flexShrink: 0 }} />
+                <AlertCircle size={14} aria-hidden="true" style={{ color: 'var(--red-2)', flexShrink: 0 }} />
                 <p className="text-[12px]" style={{ color: 'var(--red-2)' }}>{uploadError}</p>
-                <button className="ml-auto" onClick={() => setUploadError(null)}>
-                  <X size={12} style={{ color: 'var(--red-2)', opacity: 0.6 }} />
+                <button className="ml-auto" onClick={() => setUploadError(null)} aria-label="Cerrar error">
+                  <X size={12} aria-hidden="true" style={{ color: 'var(--red-2)', opacity: 0.6 }} />
                 </button>
               </div>
             )}
@@ -262,12 +260,12 @@ function DocumentsModal({
             {/* Document list */}
             {loading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 size={20} className="animate-spin" style={{ color: 'var(--ink-3)' }} />
+                <Loader2 size={20} className="animate-spin" aria-hidden="true" style={{ color: 'var(--ink-3)' }} />
               </div>
             ) : docs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-                <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ background: 'var(--surface-3)' }}>
-                  <FileText size={26} style={{ color: 'var(--ink-3)' }} />
+                <div className="w-14 h-14 flex items-center justify-center" style={{ background: 'var(--surface-3)', borderRadius: 'var(--radius-md)' }}>
+                  <FileText size={26} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />
                 </div>
                 <div>
                   <p className="text-[13px] font-semibold" style={{ color: 'var(--ink)' }}>Sin documentos aún</p>
@@ -287,13 +285,10 @@ function DocumentsModal({
                   return (
                     <div
                       key={doc.id}
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg"
-                      style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', transition: 'border-color 0.15s ease' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+                      className="admin-doc-item"
                     >
                       {/* Icon */}
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--surface-3)' }}>
+                      <div className="w-10 h-10 flex items-center justify-center shrink-0" style={{ background: 'var(--surface-3)', borderRadius: 'var(--radius-md)' }}>
                         <FileIcon mimeType={doc.mimeType} size={22} />
                       </div>
 
@@ -309,24 +304,19 @@ function DocumentsModal({
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           onClick={() => handlePreview(doc)}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium"
-                          style={{ color: 'var(--ink-2)', background: 'transparent', transition: 'all 0.15s ease' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)'; e.currentTarget.style.color = 'var(--ink)' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-2)' }}
+                          className="admin-doc-action"
+                          aria-label={`${canPreview ? 'Ver vista previa de' : 'Descargar'} ${doc.name}`}
                           title={canPreview ? 'Vista previa' : 'Descargar'}
                         >
-                          {canPreview ? <Eye size={13} /> : <Download size={13} />}
-                          <span className="hidden sm:inline">{canPreview ? 'Ver' : 'Descargar'}</span>
+                          {canPreview ? <Eye size={13} aria-hidden="true" /> : <Download size={13} aria-hidden="true" />}
                         </button>
                         <button
                           onClick={() => setDeleteConfirm(doc.id)}
-                          className="p-1.5 rounded-md"
-                          style={{ background: 'transparent', transition: 'background 0.15s ease' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-soft)' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                          className="admin-doc-action admin-doc-action-delete"
+                          aria-label={`Eliminar ${doc.name}`}
                           title="Eliminar"
                         >
-                          <Trash2 size={13} style={{ color: 'var(--red-2)', opacity: 0.7 }} />
+                          <Trash2 size={13} aria-hidden="true" />
                         </button>
                       </div>
                     </div>
@@ -343,12 +333,12 @@ function DocumentsModal({
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div
             className="absolute inset-0"
-            style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}
+            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
             onClick={() => { URL.revokeObjectURL(preview.url); setPreview(null) }}
           />
           <div
             className="relative flex flex-col overflow-hidden"
-            style={{ width: '90vw', maxWidth: 960, height: '90vh', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}
+            style={{ width: '90vw', maxWidth: 960, height: '90vh', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}
           >
             {/* Preview header */}
             <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -361,21 +351,18 @@ function DocumentsModal({
                 <a
                   href={preview.url}
                   download={preview.doc.name}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium"
-                  style={{ color: 'var(--ink-2)', background: 'transparent', transition: 'all 0.15s ease' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--ink)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-2)' }}
+                  className="btn-pill-secondary"
+                  style={{ height: 30, padding: '0 12px', fontSize: 12 }}
+                  aria-label={`Descargar ${preview.doc.name}`}
                 >
-                  <Download size={13} /> Descargar
+                  <Download size={13} aria-hidden="true" /> Descargar
                 </a>
                 <button
                   onClick={() => { URL.revokeObjectURL(preview.url); setPreview(null) }}
-                  className="p-1.5 rounded-md"
-                  style={{ background: 'transparent', color: 'var(--ink-2)', transition: 'all 0.15s ease' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--ink)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-2)' }}
+                  className="image-menu-trigger"
+                  aria-label="Cerrar vista previa"
                 >
-                  <X size={15} />
+                  <X size={14} aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -404,19 +391,19 @@ function DocumentsModal({
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <div
             className="absolute inset-0"
-            style={{ background: 'rgba(0,0,0,0.6)' }}
+            style={{ background: 'rgba(0,0,0,0.5)' }}
             onClick={() => setDeleteConfirm(null)}
           />
           <div
             className="relative w-full max-w-xs p-5 space-y-4"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 32px rgba(0,0,0,0.10)' }}
           >
             <div className="text-center space-y-2">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto"
                 style={{ background: 'var(--red-soft)' }}
               >
-                <Trash2 size={18} style={{ color: 'var(--red-2)' }} />
+                <Trash2 size={18} aria-hidden="true" style={{ color: 'var(--red-2)' }} />
               </div>
               <h3 className="text-[14px] font-bold" style={{ color: 'var(--ink)' }}>¿Eliminar documento?</h3>
               <p className="text-[12px]" style={{ color: 'var(--ink-2)' }}>
@@ -426,19 +413,10 @@ function DocumentsModal({
             <div className="flex gap-2">
               <button className="btn-secondary flex-1" onClick={() => setDeleteConfirm(null)}>Cancelar</button>
               <button
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-[13px] font-semibold"
-                style={{
-                  background: 'var(--red)',
-                  color: '#ffffff',
-                  border: '1px solid var(--red)',
-                  height: 36,
-                  transition: 'filter 0.15s ease',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.1)' }}
-                onMouseLeave={e => { e.currentTarget.style.filter = 'none' }}
+                className="btn-destructive flex-1"
                 onClick={() => handleDelete(deleteConfirm)}
               >
-                <Trash2 size={12} /> Eliminar
+                <Trash2 size={13} aria-hidden="true" /> Eliminar
               </button>
             </div>
           </div>
@@ -469,20 +447,20 @@ function ContentTypeCard({
 
   return (
     <div
-      className="overflow-hidden flex flex-col"
+      className={cn("overflow-hidden flex flex-col", ct.active && "card-hover")}
       style={{
-        background: 'var(--surface)',
-        border: `1px solid ${ct.active ? 'var(--border)' : 'var(--border-soft)'}`,
-        borderRadius: 12,
-        opacity: ct.active ? 1 : 0.55,
-        transition: 'border-color 0.15s ease',
+        borderRadius: 'var(--radius-lg)',
+        ...(ct.active ? {} : {
+          background: 'var(--surface)',
+          border: '1px solid var(--border-soft)',
+          opacity: 0.55,
+        }),
       }}
-      onMouseEnter={e => { if (ct.active) e.currentTarget.style.borderColor = 'var(--border-hover)' }}
-      onMouseLeave={e => { if (ct.active) e.currentTarget.style.borderColor = 'var(--border)' }}
     >
       {/* Header */}
       <div className="flex items-start gap-3 p-4 pb-3">
         <div
+          aria-hidden="true"
           className="w-2 h-2 rounded-full mt-1.5 shrink-0"
           style={{ background: colors.dot }}
         />
@@ -503,33 +481,29 @@ function ContentTypeCard({
         <div className="flex items-center gap-0.5 shrink-0">
           <button
             onClick={() => onToggle(ct.id)}
-            className="p-1.5 rounded-md"
-            style={{ background: 'transparent', transition: 'background 0.15s ease' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            className="admin-card-action admin-card-action-toggle"
+            aria-label={ct.active ? 'Desactivar' : 'Activar'}
             title={ct.active ? 'Desactivar' : 'Activar'}
           >
-            {ct.active ? <ToggleRight size={16} style={{ color: 'var(--orange-2)' }} /> : <ToggleLeft size={16} style={{ color: 'var(--ink-3)' }} />}
+            {ct.active
+              ? <ToggleRight size={16} aria-hidden="true" style={{ color: 'var(--accent)' }} />
+              : <ToggleLeft size={16} aria-hidden="true" />}
           </button>
           <button
             onClick={() => onEdit(ct)}
-            className="p-1.5 rounded-md"
-            style={{ background: 'transparent', transition: 'background 0.15s ease' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            className="admin-card-action"
+            aria-label="Editar tipo de contenido"
             title="Editar"
           >
-            <Pencil size={13} style={{ color: 'var(--ink-2)' }} />
+            <Pencil size={14} aria-hidden="true" />
           </button>
           <button
             onClick={() => onDelete(ct.id)}
-            className="p-1.5 rounded-md"
-            style={{ background: 'transparent', transition: 'background 0.15s ease' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-soft)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            className="admin-card-action admin-card-action-delete"
+            aria-label="Eliminar tipo de contenido"
             title="Eliminar"
           >
-            <Trash2 size={13} style={{ color: 'var(--red-2)', opacity: 0.7 }} />
+            <Trash2 size={14} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -545,12 +519,14 @@ function ContentTypeCard({
         >
           <button className="w-full flex items-center justify-between px-3 py-2 text-left" onClick={() => setExpanded(p => !p)}>
             <div className="flex items-center gap-2">
-              <Bot size={12} style={{ color: 'var(--ink-2)' }} />
+              <Bot size={12} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
               <span className="text-[11px] font-medium" style={{ color: 'var(--ink-2)' }}>
                 Instrucciones para la IA
               </span>
             </div>
-            {expanded ? <ChevronUp size={12} style={{ color: 'var(--ink-3)' }} /> : <ChevronDown size={12} style={{ color: 'var(--ink-3)' }} />}
+            {expanded
+              ? <ChevronUp size={12} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />
+              : <ChevronDown size={12} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />}
           </button>
           {expanded && (
             <div className="px-3 pb-3 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
@@ -575,15 +551,14 @@ function ContentTypeCard({
         <span className="text-[11px] tabular-nums" style={{ color: 'var(--ink-3)' }}>Creado {ct.createdAt}</span>
         <button
           onClick={() => onOpenDocs(ct)}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold"
-          style={{
-            background: docCount > 0 ? colors.bg : 'var(--surface-3)',
-            color:      docCount > 0 ? colors.text : 'var(--ink-2)',
-            border:     `1px solid ${docCount > 0 ? colors.border : 'var(--border)'}`,
-            transition: 'all 0.15s ease',
-          }}
+          className="btn-pill-secondary"
+          style={
+            docCount > 0
+              ? { height: 28, fontSize: 11, padding: '0 10px', background: colors.bg, color: colors.text, borderColor: colors.border }
+              : { height: 28, fontSize: 11, padding: '0 10px' }
+          }
         >
-          <FolderOpen size={11} />
+          <FolderOpen size={11} aria-hidden="true" />
           {docCount > 0 ? `${docCount} ${docCount === 1 ? 'documento' : 'documentos'}` : 'Añadir documentos'}
         </button>
       </div>
@@ -615,12 +590,18 @@ function ContentTypeModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0"
-        style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+        style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
         onClick={onClose}
       />
       <div
         className="relative w-full max-w-lg overflow-hidden flex flex-col"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, maxHeight: 'calc(100vh - 48px)', boxShadow: '0 24px 64px rgba(0,0,0,0.55)' }}
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          maxHeight: 'calc(100vh - 48px)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
+        }}
       >
         {/* Header */}
         <div
@@ -630,9 +611,9 @@ function ContentTypeModal({
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center"
-              style={{ background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.25)' }}
+              style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)' }}
             >
-              <BookOpen size={16} style={{ color: 'var(--orange-2)' }} />
+              <BookOpen size={16} aria-hidden="true" style={{ color: 'var(--accent)' }} />
             </div>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
@@ -643,12 +624,10 @@ function ContentTypeModal({
           </div>
           <button
             onClick={onClose}
-            className="rounded-md flex items-center justify-center"
-            style={{ width: 32, height: 32, color: 'var(--ink-2)', background: 'transparent', transition: 'all 0.15s ease' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)'; e.currentTarget.style.color = 'var(--ink)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-2)' }}
+            className="image-menu-trigger"
+            aria-label="Cerrar modal"
           >
-            <X size={15} />
+            <X size={14} aria-hidden="true" />
           </button>
         </div>
 
@@ -688,16 +667,16 @@ function ContentTypeModal({
             className="p-4 space-y-3"
             style={{
               background: 'var(--accent-soft)',
-              border: '1px solid rgba(99,102,241,0.25)',
-              borderRadius: 12,
+              border: '1px solid var(--accent-border)',
+              borderRadius: 'var(--radius-md)',
             }}
           >
             <div className="flex items-center gap-2 mb-1">
-              <Bot size={14} style={{ color: 'var(--accent-2)' }} />
+              <Bot size={14} aria-hidden="true" style={{ color: 'var(--accent-2)' }} />
               <span className="section-label" style={{ color: 'var(--accent-2)' }}>
                 Instrucciones para la IA
               </span>
-              <Sparkles size={11} style={{ color: 'var(--accent-2)' }} />
+              <Sparkles size={11} aria-hidden="true" style={{ color: 'var(--accent-2)' }} />
             </div>
             <div>
               <label className="section-label block mb-1.5">Proceso de creación</label>
@@ -731,11 +710,11 @@ function ContentTypeModal({
         >
           <button className="btn-secondary flex-1" onClick={onClose}>Cancelar</button>
           <button
-            className="btn-primary flex-1"
+            className="btn-cta flex-1"
             disabled={!canSave}
             onClick={() => { onSave(form); onClose() }}
           >
-            <Plus size={13} /> {isEdit ? 'Guardar cambios' : 'Crear tipo'}
+            <Plus size={13} aria-hidden="true" /> {isEdit ? 'Guardar cambios' : 'Crear tipo'}
           </button>
         </div>
       </div>
@@ -814,7 +793,9 @@ export default function AdminPage() {
             </p>
           </div>
         </div>
-        <button className="btn-primary shrink-0" onClick={openCreate}><Plus size={13} /> Nuevo tipo</button>
+        <button className="btn-cta shrink-0" onClick={openCreate}>
+          <Plus size={13} aria-hidden="true" /> Nuevo tipo
+        </button>
       </div>
 
       {/* ─── Stats ─── */}
@@ -830,8 +811,8 @@ export default function AdminPage() {
         ].map(s => (
           <div
             key={s.label}
-            className="flex items-baseline gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium tabular-nums"
-            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+            className="flex items-baseline gap-1.5 px-2.5 py-1 text-[11px] font-medium tabular-nums"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-pill)' }}
           >
             <span
               className="font-semibold text-[12.5px]"
@@ -843,10 +824,10 @@ export default function AdminPage() {
           </div>
         ))}
         <div
-          className="ml-auto flex items-center gap-2 px-2.5 py-1 rounded-md"
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+          className="ml-auto flex items-center gap-2 px-2.5 py-1"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-pill)' }}
         >
-          <Bot size={11} style={{ color: 'var(--ink-2)' }} />
+          <Bot size={11} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
           <span className="text-[11px]" style={{ color: 'var(--ink-2)' }}>
             Solo los tipos activos están disponibles en el calendario y la IA
           </span>
@@ -858,19 +839,21 @@ export default function AdminPage() {
         {types.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center animate-fade-up">
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center"
-              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+              className="w-12 h-12 flex items-center justify-center"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)' }}
             >
-              <BookOpen size={22} style={{ color: 'var(--ink-3)' }} />
+              <BookOpen size={22} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />
             </div>
             <div>
               <p className="text-[14px] font-semibold" style={{ color: 'var(--ink)' }}>Sin tipos de contenido</p>
               <p className="text-[12px] mt-1" style={{ color: 'var(--ink-2)' }}>Crea el primero para empezar a planificar contenido con IA</p>
             </div>
-            <button className="btn-primary" onClick={openCreate}><Plus size={13} /> Crear tipo</button>
+            <button className="btn-cta" onClick={openCreate}>
+              <Plus size={13} aria-hidden="true" /> Crear tipo
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 stagger">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {types.map(ct => (
               <ContentTypeCard
                 key={ct.id}
@@ -906,19 +889,19 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0"
-            style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
             onClick={() => setDeleteConfirm(null)}
           />
           <div
             className="relative w-full max-w-sm p-6 space-y-4"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 24px 64px rgba(0,0,0,0.55)' }}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 32px rgba(0,0,0,0.10)' }}
           >
             <div className="text-center space-y-2">
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto"
                 style={{ background: 'var(--red-soft)' }}
               >
-                <Trash2 size={22} style={{ color: 'var(--red-2)' }} />
+                <Trash2 size={22} aria-hidden="true" style={{ color: 'var(--red-2)' }} />
               </div>
               <h3 className="text-[15px] font-bold" style={{ color: 'var(--ink)' }}>¿Eliminar tipo?</h3>
               <p className="text-[12px]" style={{ color: 'var(--ink-2)' }}>
@@ -928,19 +911,10 @@ export default function AdminPage() {
             <div className="flex gap-2">
               <button className="btn-secondary flex-1" onClick={() => setDeleteConfirm(null)}>Cancelar</button>
               <button
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-[13px] font-semibold"
-                style={{
-                  background: 'var(--red)',
-                  color: '#ffffff',
-                  border: '1px solid var(--red)',
-                  height: 36,
-                  transition: 'filter 0.15s ease',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.1)' }}
-                onMouseLeave={e => { e.currentTarget.style.filter = 'none' }}
+                className="btn-destructive flex-1"
                 onClick={() => handleDelete(deleteConfirm)}
               >
-                <Trash2 size={13} /> Eliminar
+                <Trash2 size={13} aria-hidden="true" /> Eliminar
               </button>
             </div>
           </div>

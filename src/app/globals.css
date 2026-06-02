@@ -405,6 +405,81 @@ body::before { display: none; }
 .image-menu-item-destructive { color: var(--red); }
 .image-menu-item-destructive:hover { background: var(--red-soft); color: var(--red); }
 
+/* Botón destructivo primario */
+.btn-destructive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  background: var(--red);
+  color: #fff;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.btn-destructive:hover { filter: brightness(1.08); }
+.btn-destructive:disabled { opacity: 0.5; pointer-events: none; }
+.btn-destructive:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+/* Admin — card action buttons (toggle/edit/delete) */
+.admin-card-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-3);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.admin-card-action:hover         { background: var(--surface-2);   color: var(--ink); }
+.admin-card-action-toggle:hover  { background: var(--accent-soft); color: var(--accent); }
+.admin-card-action-delete:hover  { background: var(--red-soft);    color: var(--red); }
+
+/* Admin — document item hover */
+.admin-doc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  cursor: default;
+}
+.admin-doc-item:hover {
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+
+/* Admin — doc action buttons (preview, download, delete) */
+.admin-doc-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-3);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.admin-doc-action:hover          { background: var(--surface-2);  color: var(--ink); }
+.admin-doc-action-delete:hover   { background: var(--red-soft);   color: var(--red); }
+
 /* ═══════════════ Card primitive (Apple light) ═══════════════ */
 .card {
   background: var(--surface);
