@@ -983,7 +983,7 @@ export function EventManager({
                 </h2>
                 <p style={{ fontSize: 12, color: 'var(--ink-3)', margin: '2px 0 0' }}>
                   {eventType === 'presential' ? 'Evento presencial'
-                    : eventType === 'digital' ? 'Publicación digital'
+                    : eventType === 'digital' ? 'Publicación / Contenido'
                     : 'Selecciona el tipo de evento'}
                 </p>
               </div>
@@ -1002,7 +1002,7 @@ export function EventManager({
                   <div style={{ display: 'flex', gap: 12 }}>
                     {[
                       { key: 'presential' as const, icon: CalendarDays, label: 'Evento presencial', sublabel: 'Ferias, congresos, visitas' },
-                      { key: 'digital'    as const, icon: Megaphone,    label: 'Publicación digital', sublabel: 'Redes sociales y contenido' },
+                      { key: 'digital'    as const, icon: Megaphone,    label: 'Publicación / Contenido', sublabel: 'Redes sociales y contenido' },
                     ].map((t) => {
                       const Icon = t.icon
                       return (
