@@ -1,10 +1,6 @@
 "use client"
 
 import { useState, useCallback, useMemo, Fragment } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -12,14 +8,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import {
   ChevronLeft,
   ChevronRight,
@@ -31,6 +19,8 @@ import {
   Search,
   Filter,
   X,
+  CalendarDays,
+  Megaphone,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -52,6 +42,64 @@ export interface Event {
   category?: string
   attendees?: string[]
   tags?: string[]
+
+  // Nuevos campos: tipo de evento + específicos
+  eventType?: 'presential' | 'digital'
+  // Presencial:
+  location?: string
+  // Digital:
+  channel?: string
+  market?: string
+  pipelineRef?: string
+}
+
+// Tipo de evento + opciones por categoría
+const PRESENTIAL_KINDS = ['Feria', 'Congreso', 'Visita cliente', 'Otro'] as const
+const DIGITAL_CHANNELS = ['LinkedIn', 'Instagram', 'Newsletter', 'Blog', 'X', 'Facebook'] as const
+const DIGITAL_MARKETS = [
+  { value: 'spain',    label: '🇪🇸 España' },
+  { value: 'uk',       label: '🇬🇧 UK' },
+  { value: 'latam',    label: '🌎 LATAM' },
+  { value: 'france',   label: '🇫🇷 Francia' },
+  { value: 'portugal', label: '🇵🇹 Portugal' },
+] as const
+const COLOR_KEYS = ['blue', 'green', 'purple', 'orange', 'pink', 'red'] as const
+
+/** Detecta el tipo de evento al editar uno existente. */
+function detectEventType(ev: Event | null): 'presential' | 'digital' | null {
+  if (!ev) return null
+  if (ev.eventType) return ev.eventType
+  if (ev.channel) return 'digital'
+  if (ev.location) return 'presential'
+  if (ev.category === 'Acontecimiento' || ev.category === 'Reunión') return 'presential'
+  if (ev.category === 'Contenido') return 'digital'
+  return null
+}
+
+// Estilo común para labels de campos del modal
+const fieldLabelStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 600,
+  color: 'var(--ink-2)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  marginBottom: 6,
+}
+
+function Field({ label, optional = false, children }: { label: string; optional?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={fieldLabelStyle}>
+        {label}
+        {optional && (
+          <span style={{ fontWeight: 400, textTransform: 'none', color: 'var(--ink-3)', letterSpacing: 0, marginLeft: 6 }}>
+            (opcional)
+          </span>
+        )}
+      </div>
+      {children}
+    </div>
+  )
 }
 
 export interface EventManagerProps {
@@ -103,12 +151,12 @@ export function EventManager({
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [eventType, setEventType] = useState<'presential' | 'digital' | null>(null)
   const [draggedEvent, setDraggedEvent] = useState<Event | null>(null)
   const [newEvent, setNewEvent] = useState<Partial<Event>>({
     title: "",
     description: "",
     color: colors[0].value,
-    category: categories[0],
     tags: [],
   })
 
@@ -150,7 +198,7 @@ export function EventManager({
   }
 
   const handleCreateEvent = useCallback(() => {
-    if (!newEvent.title || !newEvent.startTime || !newEvent.endTime) return
+    if (!eventType || !newEvent.title || !newEvent.startTime || !newEvent.endTime) return
     const event: Event = {
       id: Math.random().toString(36).substr(2, 9),
       title: newEvent.title,
@@ -161,19 +209,24 @@ export function EventManager({
       category: newEvent.category,
       attendees: newEvent.attendees,
       tags: newEvent.tags || [],
+      eventType,
+      location:    eventType === 'presential' ? newEvent.location    : undefined,
+      channel:     eventType === 'digital'    ? newEvent.channel     : undefined,
+      market:      eventType === 'digital'    ? newEvent.market      : undefined,
+      pipelineRef: eventType === 'digital'    ? newEvent.pipelineRef : undefined,
     }
     setEvents((prev) => [...prev, event])
     onEventCreate?.(event)
     setIsDialogOpen(false)
     setIsCreating(false)
+    setEventType(null)
     setNewEvent({
       title: "",
       description: "",
       color: colors[0].value,
-      category: categories[0],
       tags: [],
     })
-  }, [newEvent, colors, categories, onEventCreate])
+  }, [newEvent, eventType, colors, onEventCreate])
 
   const handleUpdateEvent = useCallback(() => {
     if (!selectedEvent) return
@@ -253,6 +306,29 @@ export function EventManager({
       )
     }
   }
+
+  // ── Form data helpers para el modal ──
+  const formData: Partial<Event> = isCreating ? newEvent : (selectedEvent ?? {})
+  const updateField = (patch: Partial<Event>) => {
+    if (isCreating) setNewEvent(prev => ({ ...prev, ...patch }))
+    else setSelectedEvent(prev => prev ? { ...prev, ...patch } : null)
+  }
+  const closeDialog = () => {
+    setIsDialogOpen(false)
+    setIsCreating(false)
+    setSelectedEvent(null)
+    setEventType(null)
+  }
+  const canSave = Boolean(
+    eventType &&
+    formData.title?.trim() &&
+    formData.startTime &&
+    formData.endTime &&
+    (eventType !== 'presential' || formData.location?.trim()) &&
+    (eventType !== 'digital' || (formData.channel && formData.market))
+  )
+  const toLocalISO = (d: Date | undefined): string =>
+    d ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
@@ -388,6 +464,13 @@ export function EventManager({
           <button
             onClick={() => {
               setIsCreating(true)
+              setEventType(null)
+              setNewEvent({
+                title: "",
+                description: "",
+                color: colors[0].value,
+                tags: [],
+              })
               setIsDialogOpen(true)
             }}
             className="btn-cta w-full sm:w-auto"
@@ -701,6 +784,8 @@ export function EventManager({
           events={filteredEvents}
           onEventClick={(event) => {
             setSelectedEvent(event)
+            setEventType(detectEventType(event))
+            setIsCreating(false)
             setIsDialogOpen(true)
           }}
           onDragStart={handleDragStart}
@@ -715,6 +800,8 @@ export function EventManager({
           events={filteredEvents}
           onEventClick={(event) => {
             setSelectedEvent(event)
+            setEventType(detectEventType(event))
+            setIsCreating(false)
             setIsDialogOpen(true)
           }}
           onDragStart={handleDragStart}
@@ -729,6 +816,8 @@ export function EventManager({
           events={filteredEvents}
           onEventClick={(event) => {
             setSelectedEvent(event)
+            setEventType(detectEventType(event))
+            setIsCreating(false)
             setIsDialogOpen(true)
           }}
           onDragStart={handleDragStart}
@@ -742,241 +831,337 @@ export function EventManager({
           events={filteredEvents}
           onEventClick={(event) => {
             setSelectedEvent(event)
+            setEventType(detectEventType(event))
+            setIsCreating(false)
             setIsDialogOpen(true)
           }}
           getColorClasses={getColorClasses}
         />
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent
-          className="max-w-md max-h-[90vh] overflow-y-auto"
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-lg)",
-          }}
+      {isDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) closeDialog() }}
         >
-          <DialogHeader>
-            <DialogTitle>{isCreating ? "Crear evento" : "Detalle del evento"}</DialogTitle>
-            <DialogDescription>
-              {isCreating
-                ? "Añade un nuevo evento al calendario"
-                : "Visualiza y edita los detalles del evento"}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Título</Label>
-              <Input
-                id="title"
-                value={isCreating ? newEvent.title : selectedEvent?.title}
-                onChange={(e) =>
-                  isCreating
-                    ? setNewEvent((prev) => ({ ...prev, title: e.target.value }))
-                    : setSelectedEvent((prev) => (prev ? { ...prev, title: e.target.value } : null))
-                }
-                placeholder="Título del evento"
-              />
+          <div
+            className="relative w-full flex flex-col overflow-hidden animate-scale-in"
+            style={{
+              maxWidth: 520,
+              maxHeight: '90vh',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              className="flex items-center justify-between shrink-0"
+              style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}
+            >
+              <div>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', margin: 0, letterSpacing: '-0.01em' }}>
+                  {isCreating ? 'Crear evento' : 'Editar evento'}
+                </h2>
+                <p style={{ fontSize: 12, color: 'var(--ink-3)', margin: '2px 0 0' }}>
+                  {eventType === 'presential' ? 'Evento presencial'
+                    : eventType === 'digital' ? 'Publicación digital'
+                    : 'Selecciona el tipo de evento'}
+                </p>
+              </div>
+              <button className="image-menu-trigger" onClick={closeDialog} aria-label="Cerrar">
+                <X size={14} aria-hidden="true" />
+              </button>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Descripción</Label>
-              <Textarea
-                id="description"
-                value={isCreating ? newEvent.description : selectedEvent?.description}
-                onChange={(e) =>
-                  isCreating
-                    ? setNewEvent((prev) => ({ ...prev, description: e.target.value }))
-                    : setSelectedEvent((prev) => (prev ? { ...prev, description: e.target.value } : null))
-                }
-                placeholder="Descripción del evento"
-                rows={3}
-              />
-            </div>
+            {/* Body (scrollable) */}
+            <div className="overflow-y-auto flex-1" style={{ padding: 24 }}>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startTime">Inicio</Label>
-                <Input
-                  id="startTime"
-                  type="datetime-local"
-                  value={
-                    isCreating
-                      ? newEvent.startTime
-                        ? new Date(
-                            newEvent.startTime.getTime() -
-                              newEvent.startTime.getTimezoneOffset() * 60000,
-                          )
-                            .toISOString()
-                            .slice(0, 16)
-                        : ""
-                      : selectedEvent
-                      ? new Date(
-                          selectedEvent.startTime.getTime() -
-                            selectedEvent.startTime.getTimezoneOffset() * 60000,
-                        )
-                          .toISOString()
-                          .slice(0, 16)
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const date = new Date(e.target.value)
-                    if (isCreating) setNewEvent((prev) => ({ ...prev, startTime: date }))
-                    else setSelectedEvent((prev) => (prev ? { ...prev, startTime: date } : null))
-                  }}
-                />
-              </div>
+              {/* Type selector — solo al crear sin tipo */}
+              {isCreating && !eventType && (
+                <div>
+                  <div style={fieldLabelStyle}>Tipo de evento</div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    {[
+                      { key: 'presential' as const, icon: CalendarDays, label: 'Evento presencial', sublabel: 'Ferias, congresos, visitas' },
+                      { key: 'digital'    as const, icon: Megaphone,    label: 'Publicación digital', sublabel: 'Redes sociales y contenido' },
+                    ].map((t) => {
+                      const Icon = t.icon
+                      return (
+                        <button
+                          key={t.key}
+                          type="button"
+                          onClick={() => setEventType(t.key)}
+                          style={{
+                            flex: 1,
+                            padding: '14px 16px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border)',
+                            background: 'var(--surface-2)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            textAlign: 'left',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 8,
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)' }}
+                        >
+                          <Icon size={20} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{t.label}</div>
+                            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{t.sublabel}</div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
-              <div className="space-y-2">
-                <Label htmlFor="endTime">Fin</Label>
-                <Input
-                  id="endTime"
-                  type="datetime-local"
-                  value={
-                    isCreating
-                      ? newEvent.endTime
-                        ? new Date(
-                            newEvent.endTime.getTime() -
-                              newEvent.endTime.getTimezoneOffset() * 60000,
-                          )
-                            .toISOString()
-                            .slice(0, 16)
-                        : ""
-                      : selectedEvent
-                      ? new Date(
-                          selectedEvent.endTime.getTime() -
-                            selectedEvent.endTime.getTimezoneOffset() * 60000,
-                        )
-                          .toISOString()
-                          .slice(0, 16)
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const date = new Date(e.target.value)
-                    if (isCreating) setNewEvent((prev) => ({ ...prev, endTime: date }))
-                    else setSelectedEvent((prev) => (prev ? { ...prev, endTime: date } : null))
-                  }}
-                />
-              </div>
-            </div>
+              {/* Form — cuando eventType existe */}
+              {eventType && (
+                <div className="flex flex-col" style={{ gap: 16 }}>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="category">Categoría</Label>
-                <Select
-                  value={isCreating ? newEvent.category : selectedEvent?.category}
-                  onValueChange={(value) =>
-                    isCreating
-                      ? setNewEvent((prev) => ({ ...prev, category: value }))
-                      : setSelectedEvent((prev) => (prev ? { ...prev, category: value } : null))
-                  }
-                >
-                  <SelectTrigger id="category">
-                    <SelectValue placeholder="Selecciona categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="color">Color</Label>
-                <Select
-                  value={isCreating ? newEvent.color : selectedEvent?.color}
-                  onValueChange={(value) =>
-                    isCreating
-                      ? setNewEvent((prev) => ({ ...prev, color: value }))
-                      : setSelectedEvent((prev) => (prev ? { ...prev, color: value } : null))
-                  }
-                >
-                  <SelectTrigger id="color">
-                    <SelectValue placeholder="Selecciona color" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {colors.map((color) => (
-                      <SelectItem key={color.value} value={color.value}>
-                        <div className="flex items-center gap-2">
-                          <div className={cn("h-4 w-4 rounded", color.bg)} />
-                          {color.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Etiquetas</Label>
-              <div className="flex flex-wrap gap-2">
-                {availableTags.map((tag) => {
-                  const isSelected = isCreating
-                    ? newEvent.tags?.includes(tag)
-                    : selectedEvent?.tags?.includes(tag)
-                  return (
+                  {isCreating && (
                     <button
-                      key={tag}
                       type="button"
-                      onClick={() => toggleTag(tag, isCreating)}
-                      aria-pressed={isSelected}
+                      onClick={() => setEventType(null)}
                       style={{
-                        height: 26,
-                        padding: "0 12px",
-                        borderRadius: "var(--radius-pill)",
+                        alignSelf: 'flex-start',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--accent)',
                         fontSize: 12,
                         fontWeight: 500,
-                        background: isSelected ? "var(--accent)" : "var(--surface-2)",
-                        color: isSelected ? "#ffffff" : "var(--ink-2)",
-                        border: `1px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
-                        cursor: "pointer",
-                        transition: "all 0.15s ease",
+                        cursor: 'pointer',
+                        padding: 0,
                       }}
                     >
-                      {tag}
+                      ← Cambiar tipo de evento
                     </button>
-                  )
-                })}
-              </div>
+                  )}
+
+                  {/* Title */}
+                  <Field label={eventType === 'digital' ? 'Título' : 'Nombre del evento'}>
+                    <input
+                      autoFocus={isCreating}
+                      className="input"
+                      placeholder={eventType === 'digital'
+                        ? 'LinkedIn: Caso práctico — reducción de papeleo'
+                        : 'Feria TECNA Madrid 2026'}
+                      value={formData.title ?? ''}
+                      onChange={(e) => updateField({ title: e.target.value })}
+                    />
+                  </Field>
+
+                  {/* Presential-specific fields */}
+                  {eventType === 'presential' && (
+                    <>
+                      <Field label="Tipo">
+                        <select
+                          className="input"
+                          value={formData.category ?? PRESENTIAL_KINDS[0]}
+                          onChange={(e) => updateField({ category: e.target.value })}
+                        >
+                          {PRESENTIAL_KINDS.map((k) => (
+                            <option key={k} value={k}>{k}</option>
+                          ))}
+                        </select>
+                      </Field>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="Inicio">
+                          <input
+                            type="datetime-local"
+                            className="input"
+                            value={toLocalISO(formData.startTime)}
+                            onChange={(e) => updateField({ startTime: new Date(e.target.value) })}
+                          />
+                        </Field>
+                        <Field label="Fin">
+                          <input
+                            type="datetime-local"
+                            className="input"
+                            value={toLocalISO(formData.endTime)}
+                            onChange={(e) => updateField({ endTime: new Date(e.target.value) })}
+                          />
+                        </Field>
+                      </div>
+                      <Field label="Ubicación">
+                        <input
+                          className="input"
+                          placeholder="Madrid, España"
+                          value={formData.location ?? ''}
+                          onChange={(e) => updateField({ location: e.target.value })}
+                        />
+                      </Field>
+                    </>
+                  )}
+
+                  {/* Digital-specific fields */}
+                  {eventType === 'digital' && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="Canal">
+                          <select
+                            className="input"
+                            value={formData.channel ?? DIGITAL_CHANNELS[0]}
+                            onChange={(e) => updateField({ channel: e.target.value })}
+                          >
+                            {DIGITAL_CHANNELS.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                        </Field>
+                        <Field label="Mercado">
+                          <select
+                            className="input"
+                            value={formData.market ?? DIGITAL_MARKETS[0].value}
+                            onChange={(e) => updateField({ market: e.target.value })}
+                          >
+                            {DIGITAL_MARKETS.map((m) => (
+                              <option key={m.value} value={m.value}>{m.label}</option>
+                            ))}
+                          </select>
+                        </Field>
+                      </div>
+                      <Field label="Fecha de publicación">
+                        <input
+                          type="datetime-local"
+                          className="input"
+                          value={toLocalISO(formData.startTime)}
+                          onChange={(e) => {
+                            const date = new Date(e.target.value)
+                            // Digital: endTime = startTime + 30min por defecto si no existe
+                            const endTime = formData.endTime ?? new Date(date.getTime() + 30 * 60000)
+                            updateField({ startTime: date, endTime })
+                          }}
+                        />
+                      </Field>
+                      <Field label="Enlace al pipeline" optional>
+                        <input
+                          className="input"
+                          placeholder="ID o referencia del contenido en pipeline"
+                          value={formData.pipelineRef ?? ''}
+                          onChange={(e) => updateField({ pipelineRef: e.target.value })}
+                        />
+                      </Field>
+                    </>
+                  )}
+
+                  {/* SHARED — Descripción */}
+                  <Field label="Descripción" optional>
+                    <textarea
+                      className="input"
+                      style={{ height: 'auto', padding: '10px 12px', minHeight: 80, resize: 'vertical' }}
+                      rows={3}
+                      placeholder={eventType === 'digital'
+                        ? 'Copy o descripción del contenido...'
+                        : 'Detalles del evento...'}
+                      value={formData.description ?? ''}
+                      onChange={(e) => updateField({ description: e.target.value })}
+                    />
+                  </Field>
+
+                  {/* SHARED — Etiquetas */}
+                  <Field label="Etiquetas" optional>
+                    <div className="flex flex-wrap gap-2">
+                      {availableTags.map((tag) => {
+                        const isSelected = formData.tags?.includes(tag) ?? false
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => toggleTag(tag, isCreating)}
+                            aria-pressed={isSelected}
+                            style={{
+                              height: 26,
+                              padding: '0 12px',
+                              borderRadius: 'var(--radius-pill)',
+                              fontSize: 12,
+                              fontWeight: 500,
+                              background: isSelected ? 'var(--accent)' : 'var(--surface-2)',
+                              color: isSelected ? '#ffffff' : 'var(--ink-2)',
+                              border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            {tag}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </Field>
+
+                  {/* SHARED — Color */}
+                  <Field label="Color">
+                    <div className="flex flex-wrap" style={{ gap: 8 }}>
+                      {COLOR_KEYS.map((c) => {
+                        const isSelected = (formData.color ?? colors[0].value) === c
+                        const style = EVENT_STYLES[c]
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => updateField({ color: c })}
+                            aria-label={`Color ${c}`}
+                            aria-pressed={isSelected}
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 'var(--radius-sm)',
+                              background: style.bg,
+                              border: isSelected ? `2px solid ${style.text}` : '2px solid transparent',
+                              cursor: 'pointer',
+                              transition: 'border 0.15s ease',
+                              padding: 0,
+                            }}
+                          />
+                        )
+                      })}
+                    </div>
+                  </Field>
+
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div
+              className="flex items-center shrink-0"
+              style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', gap: 8 }}
+            >
+              {!isCreating && selectedEvent && (
+                <button
+                  type="button"
+                  className="btn-destructive"
+                  style={{ marginRight: 'auto' }}
+                  onClick={() => handleDeleteEvent(selectedEvent.id)}
+                >
+                  Eliminar
+                </button>
+              )}
+              <div style={{ flex: 1 }} />
+              <button type="button" className="btn-secondary" onClick={closeDialog}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-cta"
+                disabled={!canSave}
+                onClick={isCreating ? handleCreateEvent : handleUpdateEvent}
+              >
+                {isCreating ? 'Crear evento' : 'Guardar cambios'}
+              </button>
             </div>
           </div>
-
-          <DialogFooter>
-            {!isCreating && (
-              <Button
-                variant="destructive"
-                onClick={() => selectedEvent && handleDeleteEvent(selectedEvent.id)}
-              >
-                Eliminar
-              </Button>
-            )}
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => {
-                setIsDialogOpen(false)
-                setIsCreating(false)
-                setSelectedEvent(null)
-              }}
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              className="btn-cta"
-              onClick={isCreating ? handleCreateEvent : handleUpdateEvent}
-            >
-              {isCreating ? "Crear" : "Guardar"}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   )
 }
