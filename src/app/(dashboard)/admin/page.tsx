@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  Plus, Pencil, Trash2, Bot, Sparkles,
+  Plus, Pencil, Trash2, Bot,
   ToggleLeft, ToggleRight, BookOpen, X,
   ChevronDown, ChevronUp, FileText, FileImage,
   Presentation, Sheet, File, Upload, Eye,
   Download, AlertCircle, Loader2, FolderOpen,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { useContentTypes, type ContentType } from '@/lib/content-types-store'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import {
@@ -447,31 +446,41 @@ function ContentTypeCard({
 
   return (
     <div
-      className={cn("overflow-hidden flex flex-col", ct.active && "card-hover")}
+      className="overflow-hidden flex flex-col"
       style={{
-        borderRadius: 'var(--radius-lg)',
-        ...(ct.active ? {} : {
-          background: 'var(--surface)',
-          border: '1px solid var(--border-soft)',
-          opacity: 0.55,
-        }),
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderLeft: `3px solid ${colors.text}`,
+        borderRadius: 'var(--radius-md)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        transition: 'border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease',
+        opacity: ct.active ? 1 : 0.55,
+      }}
+      onMouseEnter={e => {
+        if (!ct.active) return
+        e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'
+        e.currentTarget.style.transform = 'translateY(-1px)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'
+        e.currentTarget.style.transform = 'translateY(0)'
       }}
     >
       {/* ── Bloque 1: badge canal + acciones ── */}
-      <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-3">
+      <div className="flex items-center justify-between gap-2" style={{ padding: '16px 16px 10px' }}>
         <span
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide uppercase"
+          className="inline-flex items-center"
           style={{
-            background: colors.bg,
-            color: colors.text,
+            fontSize: 11,
+            fontWeight: 700,
+            padding: '2px 8px',
+            borderRadius: 'var(--radius-sm)',
             border: `1px solid ${colors.border}`,
+            color: colors.text,
+            background: colors.bg,
+            letterSpacing: 0,
           }}
         >
-          <span
-            aria-hidden="true"
-            className="w-1.5 h-1.5 rounded-full"
-            style={{ background: colors.dot }}
-          />
           {CHANNEL_LABELS[ct.channel]}
         </span>
         <div className="flex items-center gap-0.5 shrink-0">
@@ -505,14 +514,14 @@ function ContentTypeCard({
       </div>
 
       {/* ── Bloque 2: título + descripción ── */}
-      <div className="px-5 pb-5">
+      <div style={{ padding: '0 16px 14px' }}>
         <h3
-          className="leading-tight"
           style={{
-            fontSize: 16,
-            fontWeight: 700,
-            letterSpacing: '-0.015em',
+            fontSize: 14,
+            fontWeight: 600,
+            lineHeight: 1.4,
             color: 'var(--ink)',
+            letterSpacing: '-0.01em',
           }}
         >
           {ct.name}
@@ -520,10 +529,9 @@ function ContentTypeCard({
         <p
           className="line-clamp-2"
           style={{
-            fontSize: 13,
-            fontWeight: 400,
-            lineHeight: 1.55,
+            fontSize: 12,
             color: 'var(--ink-2)',
+            lineHeight: 1.5,
             marginTop: 6,
           }}
         >
@@ -531,40 +539,56 @@ function ContentTypeCard({
         </p>
       </div>
 
-      {/* ── Bloque 3: instrucciones IA (sin caja interna, ocupa todo el ancho) ── */}
+      {/* ── Bloque 3: instrucciones IA — sin caja, eyebrow uppercase ── */}
       <div style={{ borderTop: '1px solid var(--border)' }}>
         <button
-          className="w-full flex items-center justify-between px-5 py-3.5 text-left transition-colors hover:bg-[var(--surface-2)]"
           onClick={() => setExpanded(p => !p)}
           aria-expanded={expanded}
+          className="w-full text-left transition-colors hover:bg-[var(--surface-2)]"
+          style={{
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+          }}
         >
-          <div className="flex items-center gap-2">
-            <Bot size={13} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
-            <span className="text-[12px] font-semibold" style={{ color: 'var(--ink-2)' }}>
-              Instrucciones para la IA
-            </span>
-          </div>
-          {expanded
-            ? <ChevronUp size={14} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />
-            : <ChevronDown size={14} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />}
-        </button>
-        {expanded && (
-          <div
-            className="px-5 pb-5 space-y-4"
+          <span
             style={{
-              borderTop: '1px solid var(--border)',
-              background: 'var(--surface-2)',
+              fontSize: 11,
+              fontWeight: 600,
+              color: 'var(--ink-3)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
             }}
           >
-            <div className="pt-4">
-              <span className="section-label block mb-1.5">Proceso</span>
-              <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
+            <Bot size={12} aria-hidden="true" />
+            Instrucciones IA
+          </span>
+          {expanded
+            ? <ChevronUp size={12} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />
+            : <ChevronDown size={12} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />}
+        </button>
+        {expanded && (
+          <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ink-3)' }}>
+                Proceso
+              </span>
+              <p style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.5, marginTop: 4 }}>
                 {ct.process}
               </p>
             </div>
             <div>
-              <span className="section-label block mb-1.5">Estilo iGEO</span>
-              <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ink-3)' }}>
+                Estilo iGEO
+              </span>
+              <p style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.5, marginTop: 4 }}>
                 {ct.style}
               </p>
             </div>
@@ -572,20 +596,12 @@ function ContentTypeCard({
         )}
       </div>
 
-      {/* ── Bloque 4: footer limpio — metadato + acción docs ── */}
+      {/* ── Bloque 4: footer ── */}
       <div
-        className="px-5 py-3.5 mt-auto flex items-center justify-between"
-        style={{ borderTop: '1px solid var(--border)' }}
+        className="mt-auto flex items-center justify-between"
+        style={{ borderTop: '1px solid var(--border)', padding: '10px 16px' }}
       >
-        <span
-          className="tabular-nums"
-          style={{
-            fontSize: 11,
-            fontWeight: 500,
-            color: 'var(--ink-3)',
-            letterSpacing: '0.01em',
-          }}
-        >
+        <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
           Creado {ct.createdAt}
         </span>
         <button
@@ -593,17 +609,12 @@ function ContentTypeCard({
           className="btn-pill-secondary"
           style={
             docCount > 0
-              ? {
-                  height: 28, fontSize: 11, padding: '0 10px',
-                  background: colors.bg, color: colors.text, borderColor: colors.border,
-                }
-              : { height: 28, fontSize: 11, padding: '0 10px' }
+              ? { height: 26, fontSize: 11, padding: '0 10px', background: colors.bg, color: colors.text, borderColor: colors.border }
+              : { height: 26, fontSize: 11, padding: '0 10px' }
           }
         >
           <FolderOpen size={11} aria-hidden="true" />
-          {docCount > 0
-            ? `${docCount} ${docCount === 1 ? 'documento' : 'documentos'}`
-            : 'Añadir documentos'}
+          {docCount > 0 ? `${docCount} doc${docCount > 1 ? 's' : ''}` : 'Documentos'}
         </button>
       </div>
     </div>
@@ -676,7 +687,7 @@ function ContentTypeModal({
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto flex-1 p-5 space-y-4">
+        <div className="overflow-y-auto flex-1 p-5" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label className="section-label block mb-1.5">Nombre</label>
             <input
@@ -708,20 +719,19 @@ function ContentTypeModal({
             />
           </div>
           <div
-            className="p-4 space-y-3"
+            className="p-4"
             style={{
               background: 'var(--accent-soft)',
               border: '1px solid var(--accent-border)',
               borderRadius: 'var(--radius-md)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
             }}
           >
-            <div className="flex items-center gap-2 mb-1">
-              <Bot size={14} aria-hidden="true" style={{ color: 'var(--accent-2)' }} />
-              <span className="section-label" style={{ color: 'var(--accent-2)' }}>
-                Instrucciones para la IA
-              </span>
-              <Sparkles size={11} aria-hidden="true" style={{ color: 'var(--accent-2)' }} />
-            </div>
+            <span className="section-label" style={{ color: 'var(--accent-2)' }}>
+              Instrucciones IA
+            </span>
             <div>
               <label className="section-label block mb-1.5">Proceso de creación</label>
               <p className="text-[11px] mb-1.5" style={{ color: 'var(--ink-2)' }}>Pasos que seguirá la IA para generar el contenido.</p>
