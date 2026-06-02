@@ -32,16 +32,16 @@ const KIND_CONFIG: Record<ToastKind, {
   icon: React.ReactNode
 }> = {
   success: {
-    borderColor: '#10b981',
-    icon: <CheckCircle2 size={15} style={{ color: '#10b981' }} />,
+    borderColor: 'var(--green)',
+    icon: <CheckCircle2 size={15} aria-hidden="true" style={{ color: 'var(--green)' }} />,
   },
   error: {
-    borderColor: '#f43f5e',
-    icon: <AlertCircle size={15} style={{ color: '#f43f5e' }} />,
+    borderColor: 'var(--red)',
+    icon: <AlertCircle size={15} aria-hidden="true" style={{ color: 'var(--red)' }} />,
   },
   info: {
-    borderColor: '#38bdf8',
-    icon: <Info size={15} style={{ color: '#38bdf8' }} />,
+    borderColor: 'var(--accent)',
+    icon: <Info size={15} aria-hidden="true" style={{ color: 'var(--accent)' }} />,
   },
 }
 
@@ -55,12 +55,14 @@ function ToastItem({ toast, remove }: { toast: ToastData; remove: (id: string) =
 
   return (
     <div
-      className="animate-fade-in flex items-center gap-3 rounded-xl px-4 py-3 shadow-2xl"
+      className="animate-fade-in flex items-center gap-3 px-4 py-3"
       style={{
         background: 'var(--surface)',
-        border: '1px solid var(--border2)',
+        border: '1px solid var(--border)',
         borderLeft: `3px solid ${cfg.borderColor}`,
-        color: 'var(--text)',
+        color: 'var(--ink)',
+        borderRadius: 'var(--radius-md)',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
         minWidth: 260,
         maxWidth: 380,
       }}
@@ -68,11 +70,13 @@ function ToastItem({ toast, remove }: { toast: ToastData; remove: (id: string) =
       <span className="flex-shrink-0">{cfg.icon}</span>
       <span className="flex-1 text-[13px] leading-snug">{toast.message}</span>
       <button
+        type="button"
         onClick={() => remove(toast.id)}
-        className="flex-shrink-0 rounded-md p-0.5 transition-colors hover:bg-white/10"
-        style={{ color: 'var(--muted)' }}
+        className="flex-shrink-0 rounded-[var(--radius-sm)] p-0.5 transition-colors hover:bg-[var(--surface-2)]"
+        style={{ color: 'var(--ink-3)' }}
+        aria-label="Cerrar notificación"
       >
-        <X size={13} />
+        <X size={13} aria-hidden="true" />
       </button>
     </div>
   )

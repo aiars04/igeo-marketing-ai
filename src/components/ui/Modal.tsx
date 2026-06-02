@@ -28,7 +28,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in"
       style={{
-        background: 'rgba(0,0,0,0.6)',
+        background: 'rgba(0,0,0,0.4)',
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
       }}
@@ -43,8 +43,8 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
           maxWidth,
           background: 'var(--surface)',
           border: '1px solid var(--border)',
-          borderRadius: 12,
-          boxShadow: '0 24px 64px rgba(0,0,0,0.55)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
           maxHeight: '88vh',
         }}
         onMouseDown={e => e.stopPropagation()}
@@ -71,23 +71,10 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
           </h2>
           <button
             onClick={onClose}
-            className="rounded-md transition-colors shrink-0 flex items-center justify-center"
-            style={{
-              width: 32, height: 32,
-              color: 'var(--ink-2)',
-              background: 'transparent',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'var(--surface-3)'
-              e.currentTarget.style.color = 'var(--ink)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = 'var(--ink-2)'
-            }}
+            className="image-menu-trigger"
             aria-label="Cerrar"
           >
-            <X size={17} />
+            <X size={14} aria-hidden="true" />
           </button>
         </div>
 
