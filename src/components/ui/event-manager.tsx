@@ -51,7 +51,6 @@ export interface Event {
   // Digital:
   channel?: string
   market?: string
-  pipelineRef?: string
 }
 
 // Tipo de evento + opciones por categoría
@@ -157,7 +156,7 @@ function SelectField({
 
 export interface EventManagerProps {
   events?: Event[]
-  onEventCreate?: (event: Omit<Event, "id">) => void
+  onEventCreate?: (event: Event) => void
   onEventUpdate?: (id: string, event: Partial<Event>) => void
   onEventDelete?: (id: string) => void
   categories?: string[]
@@ -188,7 +187,7 @@ const EVENT_STYLES: Record<string, { bg: string; text: string }> = {
 }
 
 export function EventManager({
-  events: initialEvents = [],
+  events = [],
   onEventCreate,
   onEventUpdate,
   onEventDelete,
@@ -198,7 +197,6 @@ export function EventManager({
   className,
   availableTags = ["Importante", "Urgente", "Trabajo", "Personal", "Equipo", "Cliente"],
 }: EventManagerProps) {
-  const [events, setEvents] = useState<Event[]>(initialEvents)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [view, setView] = useState<"month" | "week" | "day" | "list">(defaultView)
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
@@ -263,12 +261,10 @@ export function EventManager({
       attendees: newEvent.attendees,
       tags: newEvent.tags || [],
       eventType,
-      location:    eventType === 'presential' ? newEvent.location    : undefined,
-      channel:     eventType === 'digital'    ? newEvent.channel     : undefined,
-      market:      eventType === 'digital'    ? newEvent.market      : undefined,
-      pipelineRef: eventType === 'digital'    ? newEvent.pipelineRef : undefined,
+      location: eventType === 'presential' ? newEvent.location : undefined,
+      channel:  eventType === 'digital'    ? newEvent.channel  : undefined,
+      market:   eventType === 'digital'    ? newEvent.market   : undefined,
     }
-    setEvents((prev) => [...prev, event])
     onEventCreate?.(event)
     setIsDialogOpen(false)
     setIsCreating(false)
@@ -283,18 +279,19 @@ export function EventManager({
 
   const handleUpdateEvent = useCallback(() => {
     if (!selectedEvent) return
-    setEvents((prev) => prev.map((e) => (e.id === selectedEvent.id ? selectedEvent : e)))
     onEventUpdate?.(selectedEvent.id, selectedEvent)
     setIsDialogOpen(false)
     setSelectedEvent(null)
+    setEventType(null)
   }, [selectedEvent, onEventUpdate])
 
   const handleDeleteEvent = useCallback(
     (id: string) => {
-      setEvents((prev) => prev.filter((e) => e.id !== id))
       onEventDelete?.(id)
       setIsDialogOpen(false)
+      setIsCreating(false)
       setSelectedEvent(null)
+      setEventType(null)
     },
     [onEventDelete],
   )
@@ -310,7 +307,6 @@ export function EventManager({
       if (hour !== undefined) newStartTime.setHours(hour, 0, 0, 0)
       const newEndTime = new Date(newStartTime.getTime() + duration)
       const updatedEvent = { ...draggedEvent, startTime: newStartTime, endTime: newEndTime }
-      setEvents((prev) => prev.map((e) => (e.id === draggedEvent.id ? updatedEvent : e)))
       onEventUpdate?.(draggedEvent.id, updatedEvent)
       setDraggedEvent(null)
     },
@@ -389,9 +385,8 @@ export function EventManager({
       setNewEvent((prev) => ({
         ...prev,
         // limpiar campos digital:
-        channel:     undefined,
-        market:      undefined,
-        pipelineRef: undefined,
+        channel: undefined,
+        market:  undefined,
         // defaults presencial:
         category: PRESENTIAL_KINDS[0],
         color:    prev.color ?? 'blue',
@@ -1117,14 +1112,6 @@ export function EventManager({
                             const endTime = formData.endTime ?? new Date(date.getTime() + 30 * 60000)
                             updateField({ startTime: date, endTime })
                           }}
-                        />
-                      </Field>
-                      <Field label="Enlace al pipeline" optional>
-                        <input
-                          className="input"
-                          placeholder="ID o referencia del contenido en pipeline"
-                          value={formData.pipelineRef ?? ''}
-                          onChange={(e) => updateField({ pipelineRef: e.target.value })}
                         />
                       </Field>
                     </>

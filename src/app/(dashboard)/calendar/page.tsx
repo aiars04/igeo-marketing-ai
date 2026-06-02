@@ -149,8 +149,7 @@ export default function CalendarPage() {
       <EventManager
         events={events}
         onEventCreate={(ev) => {
-          const newEv: Event = { ...ev, id: Math.random().toString(36).slice(2, 11) }
-          setEvents(prev => [...prev, newEv])
+          setEvents(prev => [...prev, ev])
         }}
         onEventUpdate={(id, partial) => {
           setEvents(prev =>
