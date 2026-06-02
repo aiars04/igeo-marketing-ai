@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { EventManager, type Event } from '@/components/ui/event-manager'
+import { addPipelineItem, calendarEventToContentItem } from '@/lib/stores/pipeline-store'
+import { useToast, Toasts } from '@/components/ui/Toast'
 
 const STORAGE_KEY = 'igeo_cal_events_v2'
 
@@ -98,6 +100,7 @@ function deserialize(raw: string | null): Event[] | null {
 export default function CalendarPage() {
   const [events, setEvents] = useState<Event[]>(INITIAL_EVENTS)
   const [hydrated, setHydrated] = useState(false)
+  const { items: toasts, show: showToast, remove: removeToast } = useToast()
 
   // Cargar de localStorage al montar
   useEffect(() => {
@@ -150,6 +153,12 @@ export default function CalendarPage() {
         events={events}
         onEventCreate={(ev) => {
           setEvents(prev => [...prev, ev])
+          // Si es evento digital → crear tarjeta en pipeline (fase Ideas)
+          if (ev.eventType === 'digital') {
+            const item = calendarEventToContentItem(ev)
+            addPipelineItem(item)
+            showToast('Evento creado · Tarjeta añadida a Pipeline (Ideas)', 'success')
+          }
         }}
         onEventUpdate={(id, partial) => {
           setEvents(prev =>
@@ -163,6 +172,8 @@ export default function CalendarPage() {
         availableTags={['Importante', 'Urgente', 'Trabajo', 'Cliente', 'Equipo', 'Personal']}
         defaultView="month"
       />
+
+      <Toasts items={toasts} remove={removeToast} />
     </div>
   )
 }

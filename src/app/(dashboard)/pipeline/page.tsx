@@ -7,6 +7,11 @@ import { cn, STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import type { ContentItem, Stage, Channel } from '@/types/database'
+import {
+  loadPipelineItems,
+  savePipelineItems,
+  PIPELINE_CHANGED_EVENT,
+} from '@/lib/stores/pipeline-store'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -73,20 +78,26 @@ export default function PipelinePage() {
 
   // ── LocalStorage persistence ───────────────────────────────────────────────
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('igeo_pipeline_v1')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) setItems(parsed)
-      }
-    } catch {}
+    const saved = loadPipelineItems()
+    if (saved.length > 0) setItems(saved)
     setHydrated(true)
   }, [])
 
   useEffect(() => {
     if (!hydrated) return
-    try { localStorage.setItem('igeo_pipeline_v1', JSON.stringify(items)) } catch {}
+    savePipelineItems(items)
   }, [items, hydrated])
+
+  // ── Sincronización cross-tab / cross-página vía evento custom ──────────────
+  useEffect(() => {
+    const onChanged = () => {
+      const next = loadPipelineItems()
+      // evitar bucle: solo aplicar si difiere realmente del estado actual
+      setItems(prev => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
+    }
+    window.addEventListener(PIPELINE_CHANGED_EVENT, onChanged)
+    return () => window.removeEventListener(PIPELINE_CHANGED_EVENT, onChanged)
+  }, [])
   const [filterChannels, setFilterChannels] = useState<Channel[]>([])
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)

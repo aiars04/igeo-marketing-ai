@@ -458,7 +458,7 @@ function ContentTypeCard({
       }}
     >
       {/* Header */}
-      <div className="flex items-start gap-3 p-4 pb-3">
+      <div className="flex items-start gap-3 p-5 pb-4">
         <div
           aria-hidden="true"
           className="w-2 h-2 rounded-full mt-1.5 shrink-0"
@@ -466,7 +466,7 @@ function ContentTypeCard({
         />
         <div className="flex-1 min-w-0">
           <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold mb-1.5"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold mb-2"
             style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}
           >
             {CHANNEL_LABELS[ct.channel]}
@@ -474,7 +474,7 @@ function ContentTypeCard({
           <h3 className="text-[14px] font-semibold leading-snug" style={{ color: 'var(--ink)' }}>
             {ct.name}
           </h3>
-          <p className="text-[12px] mt-1.5 leading-relaxed line-clamp-2" style={{ color: 'var(--ink-2)' }}>
+          <p className="text-[12px] mt-2 leading-relaxed line-clamp-2" style={{ color: 'var(--ink-2)' }}>
             {ct.description}
           </p>
         </div>
@@ -509,7 +509,7 @@ function ContentTypeCard({
       </div>
 
       {/* IA instructions expandable */}
-      <div className="px-4 pb-2">
+      <div className="px-5 pb-3">
         <div
           className="overflow-hidden rounded-md"
           style={{
@@ -517,7 +517,7 @@ function ContentTypeCard({
             border: '1px solid var(--border)',
           }}
         >
-          <button className="w-full flex items-center justify-between px-3 py-2 text-left" onClick={() => setExpanded(p => !p)}>
+          <button className="w-full flex items-center justify-between px-4 py-3 text-left" onClick={() => setExpanded(p => !p)}>
             <div className="flex items-center gap-2">
               <Bot size={12} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
               <span className="text-[11px] font-medium" style={{ color: 'var(--ink-2)' }}>
@@ -529,7 +529,7 @@ function ContentTypeCard({
               : <ChevronDown size={12} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />}
           </button>
           {expanded && (
-            <div className="px-3 pb-3 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="px-4 pb-4 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
               <div className="pt-2.5">
                 <span className="section-label block mb-1">Proceso</span>
                 <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>{ct.process}</p>
@@ -545,7 +545,7 @@ function ContentTypeCard({
 
       {/* Footer — docs button */}
       <div
-        className="px-4 py-3 mt-auto flex items-center justify-between"
+        className="px-5 py-4 mt-auto flex items-center justify-between"
         style={{ borderTop: '1px solid var(--border)' }}
       >
         <span className="text-[11px] tabular-nums" style={{ color: 'var(--ink-3)' }}>Creado {ct.createdAt}</span>
@@ -853,7 +853,7 @@ export default function AdminPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {types.map(ct => (
               <ContentTypeCard
                 key={ct.id}
