@@ -457,27 +457,23 @@ function ContentTypeCard({
         }),
       }}
     >
-      {/* Header */}
-      <div className="flex items-start gap-3 p-5 pb-4">
-        <div
-          aria-hidden="true"
-          className="w-2 h-2 rounded-full mt-1.5 shrink-0"
-          style={{ background: colors.dot }}
-        />
-        <div className="flex-1 min-w-0">
+      {/* ── Bloque 1: badge canal + acciones ── */}
+      <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-3">
+        <span
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide uppercase"
+          style={{
+            background: colors.bg,
+            color: colors.text,
+            border: `1px solid ${colors.border}`,
+          }}
+        >
           <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold mb-2"
-            style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}
-          >
-            {CHANNEL_LABELS[ct.channel]}
-          </span>
-          <h3 className="text-[14px] font-semibold leading-snug" style={{ color: 'var(--ink)' }}>
-            {ct.name}
-          </h3>
-          <p className="text-[12px] mt-2 leading-relaxed line-clamp-2" style={{ color: 'var(--ink-2)' }}>
-            {ct.description}
-          </p>
-        </div>
+            aria-hidden="true"
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: colors.dot }}
+          />
+          {CHANNEL_LABELS[ct.channel]}
+        </span>
         <div className="flex items-center gap-0.5 shrink-0">
           <button
             onClick={() => onToggle(ct.id)}
@@ -508,58 +504,106 @@ function ContentTypeCard({
         </div>
       </div>
 
-      {/* IA instructions expandable */}
-      <div className="px-5 pb-3">
-        <div
-          className="overflow-hidden rounded-md"
+      {/* ── Bloque 2: título + descripción ── */}
+      <div className="px-5 pb-5">
+        <h3
+          className="leading-tight"
           style={{
-            background: 'var(--surface-2)',
-            border: '1px solid var(--border)',
+            fontSize: 16,
+            fontWeight: 700,
+            letterSpacing: '-0.015em',
+            color: 'var(--ink)',
           }}
         >
-          <button className="w-full flex items-center justify-between px-4 py-3 text-left" onClick={() => setExpanded(p => !p)}>
-            <div className="flex items-center gap-2">
-              <Bot size={12} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
-              <span className="text-[11px] font-medium" style={{ color: 'var(--ink-2)' }}>
-                Instrucciones para la IA
-              </span>
-            </div>
-            {expanded
-              ? <ChevronUp size={12} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />
-              : <ChevronDown size={12} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />}
-          </button>
-          {expanded && (
-            <div className="px-4 pb-4 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
-              <div className="pt-2.5">
-                <span className="section-label block mb-1">Proceso</span>
-                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>{ct.process}</p>
-              </div>
-              <div>
-                <span className="section-label block mb-1">Estilo iGEO</span>
-                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>{ct.style}</p>
-              </div>
-            </div>
-          )}
-        </div>
+          {ct.name}
+        </h3>
+        <p
+          className="line-clamp-2"
+          style={{
+            fontSize: 13,
+            fontWeight: 400,
+            lineHeight: 1.55,
+            color: 'var(--ink-2)',
+            marginTop: 6,
+          }}
+        >
+          {ct.description}
+        </p>
       </div>
 
-      {/* Footer — docs button */}
+      {/* ── Bloque 3: instrucciones IA (sin caja interna, ocupa todo el ancho) ── */}
+      <div style={{ borderTop: '1px solid var(--border)' }}>
+        <button
+          className="w-full flex items-center justify-between px-5 py-3.5 text-left transition-colors hover:bg-[var(--surface-2)]"
+          onClick={() => setExpanded(p => !p)}
+          aria-expanded={expanded}
+        >
+          <div className="flex items-center gap-2">
+            <Bot size={13} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
+            <span className="text-[12px] font-semibold" style={{ color: 'var(--ink-2)' }}>
+              Instrucciones para la IA
+            </span>
+          </div>
+          {expanded
+            ? <ChevronUp size={14} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />
+            : <ChevronDown size={14} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />}
+        </button>
+        {expanded && (
+          <div
+            className="px-5 pb-5 space-y-4"
+            style={{
+              borderTop: '1px solid var(--border)',
+              background: 'var(--surface-2)',
+            }}
+          >
+            <div className="pt-4">
+              <span className="section-label block mb-1.5">Proceso</span>
+              <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
+                {ct.process}
+              </p>
+            </div>
+            <div>
+              <span className="section-label block mb-1.5">Estilo iGEO</span>
+              <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
+                {ct.style}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Bloque 4: footer limpio — metadato + acción docs ── */}
       <div
-        className="px-5 py-4 mt-auto flex items-center justify-between"
+        className="px-5 py-3.5 mt-auto flex items-center justify-between"
         style={{ borderTop: '1px solid var(--border)' }}
       >
-        <span className="text-[11px] tabular-nums" style={{ color: 'var(--ink-3)' }}>Creado {ct.createdAt}</span>
+        <span
+          className="tabular-nums"
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: 'var(--ink-3)',
+            letterSpacing: '0.01em',
+          }}
+        >
+          Creado {ct.createdAt}
+        </span>
         <button
           onClick={() => onOpenDocs(ct)}
           className="btn-pill-secondary"
           style={
             docCount > 0
-              ? { height: 28, fontSize: 11, padding: '0 10px', background: colors.bg, color: colors.text, borderColor: colors.border }
+              ? {
+                  height: 28, fontSize: 11, padding: '0 10px',
+                  background: colors.bg, color: colors.text, borderColor: colors.border,
+                }
               : { height: 28, fontSize: 11, padding: '0 10px' }
           }
         >
           <FolderOpen size={11} aria-hidden="true" />
-          {docCount > 0 ? `${docCount} ${docCount === 1 ? 'documento' : 'documentos'}` : 'Añadir documentos'}
+          {docCount > 0
+            ? `${docCount} ${docCount === 1 ? 'documento' : 'documentos'}`
+            : 'Añadir documentos'}
         </button>
       </div>
     </div>

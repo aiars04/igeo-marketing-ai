@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo, Fragment } from "react"
+import { useState, useCallback, useMemo, useEffect, Fragment } from "react"
 import {
   Select,
   SelectContent,
@@ -43,6 +43,7 @@ export interface Event {
   category?: string
   attendees?: string[]
   tags?: string[]
+  allDay?: boolean
 
   // Nuevos campos: tipo de evento + específicos
   eventType?: 'presential' | 'digital'
@@ -204,6 +205,7 @@ export function EventManager({
   const [isCreating, setIsCreating] = useState(false)
   const [eventType, setEventType] = useState<'presential' | 'digital' | null>(null)
   const [draggedEvent, setDraggedEvent] = useState<Event | null>(null)
+  const [allDay, setAllDay] = useState(false)
   const [newEvent, setNewEvent] = useState<Partial<Event>>({
     title: "",
     description: "",
@@ -248,18 +250,41 @@ export function EventManager({
     setSearchQuery("")
   }
 
+  // Sincronizar allDay cuando se abre el modal (creación o edición)
+  useEffect(() => {
+    if (!isDialogOpen) return
+    if (isCreating) setAllDay(false)
+    else if (selectedEvent) setAllDay(selectedEvent.allDay ?? false)
+    // sólo al abrir; dentro del modal lo controla el usuario
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDialogOpen])
+
   const handleCreateEvent = useCallback(() => {
-    if (!eventType || !newEvent.title || !newEvent.startTime || !newEvent.endTime) return
+    if (!eventType || !newEvent.title || !newEvent.startTime) return
+    if (!allDay && !newEvent.endTime) return
+
+    const isAllDay = eventType === 'presential' && allDay
+    const startTime = isAllDay
+      ? new Date(new Date(newEvent.startTime).setHours(0, 0, 0, 0))
+      : newEvent.startTime
+    const endBase = isAllDay
+      ? (newEvent.endTime ?? newEvent.startTime) // fin opcional → mismo día
+      : newEvent.endTime!
+    const endTime = isAllDay
+      ? new Date(new Date(endBase).setHours(23, 59, 59, 999))
+      : endBase
+
     const event: Event = {
       id: Math.random().toString(36).substr(2, 9),
       title: newEvent.title,
       description: newEvent.description,
-      startTime: newEvent.startTime,
-      endTime: newEvent.endTime,
+      startTime,
+      endTime,
       color: newEvent.color || colors[0].value,
       category: newEvent.category,
       attendees: newEvent.attendees,
       tags: newEvent.tags || [],
+      allDay: isAllDay || undefined,
       eventType,
       location: eventType === 'presential' ? newEvent.location : undefined,
       channel:  eventType === 'digital'    ? newEvent.channel  : undefined,
@@ -269,21 +294,34 @@ export function EventManager({
     setIsDialogOpen(false)
     setIsCreating(false)
     setEventType(null)
+    setAllDay(false)
     setNewEvent({
       title: "",
       description: "",
       color: colors[0].value,
       tags: [],
     })
-  }, [newEvent, eventType, colors, onEventCreate])
+  }, [newEvent, eventType, allDay, colors, onEventCreate])
 
   const handleUpdateEvent = useCallback(() => {
     if (!selectedEvent) return
-    onEventUpdate?.(selectedEvent.id, selectedEvent)
+    const isAllDay = selectedEvent.eventType === 'presential' && allDay
+    const patched: Event = isAllDay
+      ? {
+          ...selectedEvent,
+          allDay: true,
+          startTime: new Date(new Date(selectedEvent.startTime).setHours(0, 0, 0, 0)),
+          endTime: new Date(
+            new Date(selectedEvent.endTime ?? selectedEvent.startTime).setHours(23, 59, 59, 999),
+          ),
+        }
+      : { ...selectedEvent, allDay: undefined }
+    onEventUpdate?.(patched.id, patched)
     setIsDialogOpen(false)
     setSelectedEvent(null)
     setEventType(null)
-  }, [selectedEvent, onEventUpdate])
+    setAllDay(false)
+  }, [selectedEvent, allDay, onEventUpdate])
 
   const handleDeleteEvent = useCallback(
     (id: string) => {
@@ -292,6 +330,7 @@ export function EventManager({
       setIsCreating(false)
       setSelectedEvent(null)
       setEventType(null)
+      setAllDay(false)
     },
     [onEventDelete],
   )
@@ -367,6 +406,7 @@ export function EventManager({
     setIsCreating(false)
     setSelectedEvent(null)
     setEventType(null)
+    setAllDay(false)
   }
 
   const selectEventType = (type: 'presential' | 'digital') => {
@@ -397,12 +437,14 @@ export function EventManager({
     eventType &&
     formData.title?.trim() &&
     formData.startTime &&
-    formData.endTime &&
+    (allDay ? true : formData.endTime) &&
     (eventType !== 'presential' || formData.location?.trim()) &&
     (eventType !== 'digital' || (formData.channel && formData.market))
   )
   const toLocalISO = (d: Date | undefined): string =>
     d ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""
+  const toLocalDate = (d: Date | undefined): string =>
+    d ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10) : ""
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
@@ -1044,24 +1086,83 @@ export function EventManager({
                           ))}
                         </SelectField>
                       </Field>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Field label="Inicio">
-                          <input
-                            type="datetime-local"
-                            className="input"
-                            value={toLocalISO(formData.startTime)}
-                            onChange={(e) => updateField({ startTime: new Date(e.target.value) })}
-                          />
-                        </Field>
-                        <Field label="Fin">
-                          <input
-                            type="datetime-local"
-                            className="input"
-                            value={toLocalISO(formData.endTime)}
-                            onChange={(e) => updateField({ endTime: new Date(e.target.value) })}
-                          />
-                        </Field>
+                      {/* Toggle "Todo el día" */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={allDay}
+                          onClick={() => setAllDay(v => !v)}
+                          style={{
+                            width: 36, height: 20,
+                            borderRadius: 'var(--radius-pill)',
+                            background: allDay ? 'var(--accent)' : 'var(--surface-3)',
+                            border: 'none', cursor: 'pointer',
+                            position: 'relative',
+                            transition: 'background 0.15s ease',
+                          }}
+                        >
+                          <span style={{
+                            position: 'absolute',
+                            top: 2, left: allDay ? 18 : 2,
+                            width: 16, height: 16,
+                            borderRadius: '50%', background: '#fff',
+                            transition: 'left 0.15s ease',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                          }} />
+                        </button>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink-2)' }}>
+                          Todo el día
+                        </span>
                       </div>
+
+                      {allDay ? (
+                        <div className="grid grid-cols-2 gap-3">
+                          <Field label="Fecha inicio">
+                            <input
+                              type="date"
+                              className="input"
+                              value={toLocalDate(formData.startTime)}
+                              onChange={(e) => {
+                                const [y, m, d] = e.target.value.split('-').map(Number)
+                                if (!y) return
+                                updateField({ startTime: new Date(y, m - 1, d, 0, 0, 0, 0) })
+                              }}
+                            />
+                          </Field>
+                          <Field label="Fecha fin (opcional)">
+                            <input
+                              type="date"
+                              className="input"
+                              value={toLocalDate(formData.endTime)}
+                              onChange={(e) => {
+                                const [y, m, d] = e.target.value.split('-').map(Number)
+                                if (!y) { updateField({ endTime: undefined }); return }
+                                updateField({ endTime: new Date(y, m - 1, d, 23, 59, 59, 999) })
+                              }}
+                            />
+                          </Field>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          <Field label="Inicio">
+                            <input
+                              type="datetime-local"
+                              className="input"
+                              value={toLocalISO(formData.startTime)}
+                              onChange={(e) => updateField({ startTime: new Date(e.target.value) })}
+                            />
+                          </Field>
+                          <Field label="Fin">
+                            <input
+                              type="datetime-local"
+                              className="input"
+                              value={toLocalISO(formData.endTime)}
+                              onChange={(e) => updateField({ endTime: new Date(e.target.value) })}
+                            />
+                          </Field>
+                        </div>
+                      )}
                       <Field label="Ubicación">
                         <input
                           className="input"
