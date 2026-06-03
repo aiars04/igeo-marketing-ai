@@ -58,13 +58,17 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
           }}
         >
           <h2
-            className="truncate pr-3"
             style={{
               fontSize: 18,
               fontWeight: 700,
               color: 'var(--ink)',
               letterSpacing: '-0.01em',
               lineHeight: 1.3,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              paddingRight: 12,
             }}
           >
             {title}
