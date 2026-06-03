@@ -392,7 +392,7 @@ export default function IdeasPage() {
             <div
               key={s.label}
               className="flex items-baseline gap-1.5 px-3 py-1.5 text-[11px] font-medium tabular-nums"
-              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-pill)' }}
+              style={{ background: 'var(--surface-2)', border: 'none', borderRadius: 'var(--radius-pill)' }}
             >
               <span className="font-semibold text-[12.5px]" style={{ color: s.color }}>{s.value}</span>
               <span style={{ color: 'var(--ink-2)' }}>{s.label}</span>

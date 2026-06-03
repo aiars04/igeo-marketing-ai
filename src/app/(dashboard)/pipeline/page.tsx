@@ -26,9 +26,9 @@ function StatPill({
   variant?: 'default' | 'amber' | 'emerald'
 }) {
   const styles = {
-    default: { bg: 'var(--surface-2)',  border: 'var(--border)',           color: 'var(--ink-2)' },
-    amber:   { bg: 'var(--amber-soft)', border: 'rgba(255, 159, 10, 0.25)', color: '#b25000'      },
-    emerald: { bg: 'var(--green-soft)', border: 'var(--green-border)',     color: '#248a3d'      },
+    default: { bg: 'var(--surface-2)',  color: 'var(--ink-2)' },
+    amber:   { bg: 'var(--amber-soft)', color: '#b25000'      },
+    emerald: { bg: 'var(--green-soft)', color: '#248a3d'      },
   }[variant]
 
   return (
@@ -38,7 +38,7 @@ function StatPill({
         height: 24,
         padding: '0 10px',
         background: styles.bg,
-        border: `1px solid ${styles.border}`,
+        border: 'none',
         borderRadius: 'var(--radius-pill)',
         fontSize: 11,
         fontWeight: 600,

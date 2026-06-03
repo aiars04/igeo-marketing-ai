@@ -872,7 +872,7 @@ export default function AdminPage() {
           <div
             key={s.label}
             className="flex items-baseline gap-1.5 px-3 py-1.5 text-[11px] font-medium tabular-nums"
-            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-pill)' }}
+            style={{ background: 'var(--surface-2)', border: 'none', borderRadius: 'var(--radius-pill)' }}
           >
             <span
               className="font-semibold text-[12.5px]"
@@ -885,7 +885,7 @@ export default function AdminPage() {
         ))}
         <div
           className="ml-auto flex items-center gap-2 px-3 py-1.5"
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-pill)' }}
+          style={{ background: 'var(--surface-2)', border: 'none', borderRadius: 'var(--radius-pill)' }}
         >
           <Bot size={11} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
           <span className="text-[11px]" style={{ color: 'var(--ink-2)' }}>
