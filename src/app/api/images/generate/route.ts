@@ -1,6 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Buffer } from 'node:buffer'
-import { genai, IMAGEN_MODEL, ENHANCER_MODEL, IMAGEN_DIMENSIONS, type AspectRatio } from '@/lib/gemini'
+import { genai, ENHANCER_MODEL, IMAGEN_DIMENSIONS, type AspectRatio } from '@/lib/gemini'
+
+// Cascada Ultra → Base; ante errores de capacidad probamos el siguiente
+const MODELS_FALLBACK = [
+  'imagen-4.0-ultra-generate-001',
+  'imagen-4.0-generate-001',
+]
+
+async function generateWithFallback(prompt: string, aspectRatio: string): Promise<{ imageBytes: string; modelUsed: string }> {
+  for (const model of MODELS_FALLBACK) {
+    try {
+      const response = await genai.models.generateImages({
+        model,
+        prompt,
+        config: {
+          numberOfImages: 1,
+          outputMimeType: 'image/png',
+          aspectRatio,
+        },
+      })
+      const imageBytes = response.generatedImages?.[0]?.image?.imageBytes
+      if (imageBytes) return { imageBytes, modelUsed: model }
+      // Si no devolvió bytes pero tampoco lanzó, seguimos al siguiente modelo
+      console.warn(`Model ${model} returned no image, trying next...`)
+    } catch (err: unknown) {
+      const e = err as { status?: string; code?: number; message?: string }
+      const status = e.status ?? ''
+      const code = e.code ?? 0
+      const msg = (e.message ?? '').toLowerCase()
+      // Solo hace fallback en errores de capacidad/disponibilidad
+      if (
+        status === 'RESOURCE_EXHAUSTED' ||
+        code === 429 || code === 503 || code === 404 ||
+        msg.includes('not found') || msg.includes('quota') || msg.includes('exhausted') || msg.includes('unavailable')
+      ) {
+        console.warn(`Model ${model} unavailable (${status || code || 'unknown'}), trying next...`)
+        continue
+      }
+      // Otros errores (prompt bloqueado, auth, etc.) los propaga
+      throw err
+    }
+  }
+  throw new Error('All image generation models are currently unavailable')
+}
 
 // ── Enhancer: enriquece el prompt usando Gemini Flash antes de Imagen 4 Ultra ─
 async function enhancePromptForChannel(originalPrompt: string, aspectRatio: string): Promise<string> {
@@ -72,21 +115,9 @@ export async function POST(req: NextRequest) {
     // 3a) Enriquecer el prompt con Gemini Flash (degradación silenciosa si falla)
     const enhancedPrompt = await enhancePromptForChannel(prompt, aspectRatio)
 
-    // 3b) Llamar a Imagen 4 Ultra con el prompt enriquecido
-    const response = await genai.models.generateImages({
-      model: IMAGEN_MODEL,
-      prompt: enhancedPrompt,
-      config: {
-        numberOfImages: 1,
-        outputMimeType: 'image/png',
-        aspectRatio,
-      },
-    })
-
-    const imageBase64 = response.generatedImages?.[0]?.image?.imageBytes
-    if (!imageBase64) {
-      return NextResponse.json({ error: 'no_image_returned' }, { status: 502 })
-    }
+    // 3b) Llamar Imagen 4 con cascada Ultra → Base
+    const { imageBytes: imageBase64, modelUsed } = await generateWithFallback(enhancedPrompt, aspectRatio)
+    console.log(`Image generated with model: ${modelUsed}`)
 
     // 4) Subir a Supabase Storage
     const filename = `${user.id}/${Date.now()}-${aspectRatio.replace(':', 'x')}.png`
