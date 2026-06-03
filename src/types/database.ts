@@ -117,6 +117,7 @@ export interface Idea {
   market: Market
   source: 'human' | 'ai'
   status: 'pending' | 'accepted' | 'rejected' | 'converted'
+  created_by: string | null
   created_at: string
 }
 
