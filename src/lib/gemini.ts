@@ -10,11 +10,12 @@ export const genai = new GoogleGenAI({ apiKey })
 
 export const IMAGEN_MODEL = 'imagen-4.0-generate-001'
 
+// Resolución máxima soportada por Imagen 4 para cada aspect ratio
 export const IMAGEN_DIMENSIONS: Record<string, { width: number; height: number }> = {
-  '1:1':  { width: 1024, height: 1024 },
-  '16:9': { width: 1344, height: 768  },
-  '9:16': { width: 768,  height: 1344 },
-  '4:5':  { width: 896,  height: 1120 },
+  '1:1':  { width: 1024, height: 1024 }, // máximo cuadrado
+  '16:9': { width: 1408, height: 792  }, // máximo landscape
+  '9:16': { width: 792,  height: 1408 }, // máximo portrait
+  '4:5':  { width: 896,  height: 1120 }, // máximo feed Instagram
 }
 
 export type AspectRatio = keyof typeof IMAGEN_DIMENSIONS

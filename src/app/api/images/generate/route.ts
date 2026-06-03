@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Buffer } from 'node:buffer'
+import { SafetyFilterLevel } from '@google/genai'
 import { genai, IMAGEN_MODEL, IMAGEN_DIMENSIONS, type AspectRatio } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
@@ -38,14 +39,16 @@ export async function POST(req: NextRequest) {
   const size = IMAGEN_DIMENSIONS[aspectRatio]
 
   try {
-    // 3) Llamar a Imagen 4
+    // 3) Llamar a Imagen 4 con calidad máxima
     const response = await genai.models.generateImages({
       model: IMAGEN_MODEL,
       prompt,
       config: {
         numberOfImages: 1,
-        outputMimeType: 'image/png',
+        outputMimeType: 'image/png',                       // PNG = lossless
         aspectRatio,
+        enhancePrompt: true,                               // Google reescribe el prompt para mejor calidad
+        safetyFilterLevel: SafetyFilterLevel.BLOCK_ONLY_HIGH, // menos restricciones para más detalle
       },
     })
 
