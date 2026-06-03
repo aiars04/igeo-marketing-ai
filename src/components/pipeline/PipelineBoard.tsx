@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Plus, Sparkles, MoreHorizontal, Calendar,
   Lightbulb, PenLine, Layers, Zap, BarChart2,
   CheckCircle2, CheckCheck, ChevronRight, ArrowRight, Trash2,
-  ImageIcon,
+  ImageIcon, RefreshCw, Loader2,
 } from 'lucide-react'
 import { cn, STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
@@ -52,7 +52,8 @@ interface BoardProps {
   onMove:         (id: string, newStage: Stage) => void
   onDelete:       (id: string) => void
   onApprove:      (id: string, currentStage: Stage) => void
-  itemImageMap?:  Record<string, string>  // content_item_id → URL pública de la primera imagen
+  onItemUpdated?: (item: ContentItem) => void   // callback tras generate/save content
+  itemImageMap?:  Record<string, string>
 }
 
 // ─── StatusDot ───────────────────────────────────────────────────────────────
@@ -261,7 +262,7 @@ function stripMarkdown(text: string): string {
 }
 
 function ContentDetailModal({
-  item, imageUrl, onClose, onApprove, onMove, onDelete,
+  item, imageUrl, onClose, onApprove, onMove, onDelete, onItemUpdated,
 }: {
   item: ContentItem
   imageUrl: string | null
@@ -269,6 +270,7 @@ function ContentDetailModal({
   onApprove: (id: string, s: Stage) => void
   onMove: (id: string, s: Stage) => void
   onDelete: (id: string) => void
+  onItemUpdated?: (item: ContentItem) => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const stageCfg = STAGE_CONFIG[item.stage as Stage]
@@ -276,6 +278,64 @@ function ContentDetailModal({
   const next = idx < STAGES.length - 1 ? STAGES[idx + 1] : null
   const nextCfg = next ? STAGE_CONFIG[next] : null
   const needsApproval = APPROVAL_STAGES.includes(item.stage as Stage) && !item.human_approved
+
+  // ── Generación / edición de contenido ──────────────────────────────────────
+  const [editContent, setEditContent] = useState<string>(item.content ?? '')
+  const [generating, setGenerating] = useState(false)
+  const [savingContent, setSavingContent] = useState(false)
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false)
+  const [genError, setGenError] = useState<string | null>(null)
+
+  // Sync editContent cuando el item cambia (regenerar trae content nuevo)
+  useEffect(() => {
+    setEditContent(item.content ?? '')
+    setConfirmRegenerate(false)
+  }, [item.id, item.content])
+
+  const canGenerate = item.stage === 'ideas' || item.stage === 'copy'
+  const isDirty = (editContent ?? '') !== (item.content ?? '')
+
+  const handleGenerate = useCallback(async (regenerate = false) => {
+    setGenError(null)
+    setGenerating(true)
+    try {
+      const res = await fetch(`/api/content-items/${item.id}/generate`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ regenerate }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setGenError(j.error ?? `HTTP ${res.status}`)
+        return
+      }
+      const data = await res.json() as { item: ContentItem }
+      onItemUpdated?.(data.item)
+      setConfirmRegenerate(false)
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : 'unknown')
+    } finally {
+      setGenerating(false)
+    }
+  }, [item.id, onItemUpdated])
+
+  const handleSaveContent = useCallback(async () => {
+    setSavingContent(true)
+    try {
+      const res = await fetch(`/api/content-items/${item.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editContent }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setGenError(j.error ?? `HTTP ${res.status}`)
+        return
+      }
+      const updated = await res.json() as ContentItem
+      onItemUpdated?.(updated)
+    } finally {
+      setSavingContent(false)
+    }
+  }, [item.id, editContent, onItemUpdated])
 
   return (
     <Modal open onClose={onClose} title={item.title} size="lg">
@@ -420,7 +480,7 @@ function ContentDetailModal({
         </MetaRow>
       </div>
 
-      {/* ── Sección Contenido ── */}
+      {/* ── Sección Contenido (con generación IA) ── */}
       <div
         style={{
           background: 'var(--surface-2)',
@@ -429,58 +489,153 @@ function ContentDetailModal({
           marginBottom: 16,
         }}
       >
-        <p
-          className="uppercase"
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            color: 'var(--ink-3)',
-            marginBottom: 10,
-          }}
-        >
-          {item.content ? 'Contenido' : 'Propuesta'}
-        </p>
-        {item.content ? (
+        <div className="flex items-center justify-between mb-2.5">
           <p
+            className="uppercase"
             style={{
-              fontSize: 14,
-              lineHeight: 1.6,
-              color: 'var(--ink)',
-              whiteSpace: 'pre-wrap',
-              display: '-webkit-box',
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
+              color: 'var(--ink-3)',
             }}
           >
-            {stripMarkdown(item.content)}
+            {item.content ? 'Contenido' : 'Propuesta'}
           </p>
+          {item.ai_generated && item.content && (
+            <span
+              className="inline-flex items-center"
+              style={{
+                fontSize: 10, fontWeight: 600,
+                gap: 4, padding: '2px 8px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--accent-soft)',
+                color: 'var(--accent-2)',
+              }}
+            >
+              <Sparkles size={10} aria-hidden="true" /> IA
+            </span>
+          )}
+        </div>
+
+        {generating ? (
+          /* Loading state */
+          <div className="flex flex-col items-center justify-center gap-3 py-6">
+            <Loader2 size={22} className="animate-spin" aria-hidden="true" style={{ color: 'var(--accent-2)' }} />
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+              Generando con Gemini…
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--ink-2)' }}>
+              Aplicando proceso e instrucciones del content_type ({item.channel}).
+            </p>
+          </div>
+        ) : item.content ? (
+          /* Textarea editable + botones */
+          <div className="flex flex-col gap-2">
+            <textarea
+              value={editContent}
+              onChange={e => setEditContent(e.target.value)}
+              rows={12}
+              className="input"
+              style={{
+                height: 'auto',
+                padding: 12,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                fontSize: 13,
+                lineHeight: 1.6,
+                resize: 'vertical',
+                minHeight: 200,
+                whiteSpace: 'pre-wrap',
+              }}
+              disabled={savingContent}
+            />
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                {confirmRegenerate ? (
+                  <div className="flex items-center gap-2">
+                    <span style={{ fontSize: 12, color: 'var(--red-2)' }}>
+                      ¿Sobrescribir el contenido actual?
+                    </span>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setConfirmRegenerate(false)}
+                      style={{ height: 28, fontSize: 11, padding: '0 10px' }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      className="btn-destructive"
+                      onClick={() => handleGenerate(true)}
+                      style={{ height: 28, fontSize: 11, padding: '0 10px' }}
+                    >
+                      <RefreshCw size={11} aria-hidden="true" /> Sí, regenerar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="btn-pill-secondary"
+                    onClick={() => setConfirmRegenerate(true)}
+                    disabled={savingContent || generating}
+                  >
+                    <RefreshCw size={12} aria-hidden="true" /> Regenerar
+                  </button>
+                )}
+              </div>
+              <button
+                className="btn-cta"
+                onClick={handleSaveContent}
+                disabled={!isDirty || savingContent || generating}
+                style={{ height: 32, fontSize: 12 }}
+              >
+                {savingContent
+                  ? <><Loader2 size={12} className="animate-spin" aria-hidden="true" /> Guardando…</>
+                  : 'Guardar cambios'}
+              </button>
+            </div>
+            {genError && (
+              <p style={{ fontSize: 11, color: 'var(--red-2)', marginTop: 4 }}>
+                Error: {genError}
+              </p>
+            )}
+          </div>
         ) : (
+          /* Empty state — botón Generar IA si la fase aplica */
           <div>
             <p style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5, color: 'var(--ink)', marginBottom: 12 }}>
               {item.title}
             </p>
-            <div
-              className="inline-flex items-center"
-              style={{
-                gap: 6,
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 12,
-                fontWeight: 600,
-                background: withAlpha(stageCfg.accentHex, 0.08),
-                border: `1px solid ${withAlpha(stageCfg.accentHex, 0.21)}`,
-                color: stageCfg.accentHex,
-              }}
-            >
-              <Sparkles size={12} aria-hidden="true" />
-              {item.stage === 'ideas' ? 'Pendiente de aprobar y pasar a redacción'
-                : item.stage === 'copy' ? 'Pendiente de redactar el contenido completo'
-                : item.stage === 'design' ? 'Pendiente de crear los visuales'
-                : item.stage === 'scheduled' ? 'Programado vía PostiZ'
-                : 'Análisis en progreso'}
-            </div>
+            {canGenerate ? (
+              <div className="flex flex-col items-start gap-2">
+                <button className="btn-cta" onClick={() => handleGenerate(false)}>
+                  <Sparkles size={13} aria-hidden="true" />
+                  Generar contenido con IA
+                </button>
+                <p style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                  Usará el content_type activo del canal <strong>{item.channel}</strong> con Gemini (8-30s).
+                </p>
+                {genError && (
+                  <p style={{ fontSize: 11, color: 'var(--red-2)' }}>
+                    Error: {genError}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div
+                className="inline-flex items-center"
+                style={{
+                  gap: 6,
+                  padding: '8px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: withAlpha(stageCfg.accentHex, 0.08),
+                  border: `1px solid ${withAlpha(stageCfg.accentHex, 0.21)}`,
+                  color: stageCfg.accentHex,
+                }}
+              >
+                <Sparkles size={12} aria-hidden="true" />
+                {item.stage === 'design' ? 'Pendiente de crear los visuales'
+                  : item.stage === 'scheduled' ? 'Programado vía PostiZ'
+                  : 'Análisis en progreso'}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1002,7 +1157,7 @@ function Column({
 // BOARD — scroll horizontal funcional, gap 16px entre columnas
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, itemImageMap }: BoardProps) {
+export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, onItemUpdated, itemImageMap }: BoardProps) {
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1044,6 +1199,10 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
           onApprove={(id, s) => { onApprove(id, s) }}
           onMove={(id, s)    => { onMove(id, s) }}
           onDelete={(id)     => { onDelete(id); setSelectedItem(null) }}
+          onItemUpdated={(updated) => {
+            setSelectedItem(updated)
+            onItemUpdated?.(updated)
+          }}
         />
       )}
     </>

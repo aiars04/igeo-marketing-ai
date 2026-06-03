@@ -1,114 +1,109 @@
-import { useState, useEffect } from 'react'
-import type { Channel } from '@/types/database'
+/**
+ * Content types store — respaldado por Supabase via /api/content-types
+ * (antes localStorage 'igeo_content_types_v1'). Mantiene la misma API
+ * surface que /admin consume para minimizar cambios.
+ */
+import { useState, useEffect, useCallback } from 'react'
+import type { Channel, ContentType as DbContentType } from '@/types/database'
 
-/* ─── Types ─── */
+/* ─── Type usado por /admin (mismo shape que antes, snake_case BD ↔ alias camelCase) ─── */
 export type ContentType = {
   id: string
   name: string
   channel: Channel
-  description: string   // qué produce este tipo de contenido
-  process: string       // cómo crearlo — la IA lee esto
-  style: string         // tono, formato, longitud — estilo iGEO
+  description: string
+  process: string
+  style: string
   active: boolean
-  createdAt: string
+  createdAt: string   // alias camelCase de created_at (no rompe /admin)
 }
 
-const STORAGE_KEY = 'igeo_content_types_v1'
+function fromDb(db: DbContentType): ContentType {
+  return {
+    id: db.id,
+    name: db.name,
+    channel: db.channel,
+    description: db.description,
+    process: db.process,
+    style: db.style,
+    active: db.active,
+    createdAt: (db.created_at ?? '').slice(0, 10),
+  }
+}
 
-/* ─── Defaults ─── */
-export const DEFAULT_CONTENT_TYPES: ContentType[] = [
-  {
-    id: 'ct_1',
-    name: 'Post LinkedIn iGEO',
-    channel: 'linkedin',
-    description: 'Publicación profesional en LinkedIn para posicionar iGEO como referente en digitalización del sector de servicios medioambientales.',
-    process: 'Identifica un pain point del sector → Conecta con funcionalidad iGEO → CTA al demo o artículo.',
-    style: 'Tono profesional pero cercano. Emojis moderados. Incluir estadística o dato del sector cuando sea posible. 150-300 palabras.',
-    active: true,
-    createdAt: '2026-05-01',
-  },
-  {
-    id: 'ct_2',
-    name: 'Carrusel Instagram',
-    channel: 'instagram',
-    description: 'Carrusel educativo de 5-8 slides que explica un proceso de trabajo o funcionalidad de iGEO de forma visual.',
-    process: 'Slide 1: problema/pregunta gancho → Slides 2-6: solución paso a paso → Slide final: CTA.',
-    style: 'Visual, colores corporativos iGEO (naranja #EA580C y azul). Texto corto por slide. Tono didáctico y accesible.',
-    active: true,
-    createdAt: '2026-05-01',
-  },
-  {
-    id: 'ct_3',
-    name: 'Newsletter mensual',
-    channel: 'newsletter',
-    description: 'Email mensual con resumen de novedades de iGEO, artículo del sector y próximos eventos.',
-    process: 'Intro personal → Novedad destacada iGEO → Artículo/insight del sector → Evento próximo → CTA.',
-    style: 'Tono cálido y editorial. Estructura clara con secciones. Longitud media (400-600 palabras).',
-    active: true,
-    createdAt: '2026-05-01',
-  },
-  {
-    id: 'ct_4',
-    name: 'Hilo X',
-    channel: 'x',
-    description: 'Hilo de 5-10 tweets sobre un tema técnico o tendencia del sector medioambiental.',
-    process: 'Tweet 1 (gancho con cifra o pregunta) → Tweets 2-8 (desarrollo del tema) → Tweet final (conclusión + CTA).',
-    style: 'Directo, con datos y referencias. Cada tweet funciona de forma independiente. Sin florituras. Máximo 280 chars por tweet.',
-    active: true,
-    createdAt: '2026-05-01',
-  },
-  {
-    id: 'ct_5',
-    name: 'Artículo de blog',
-    channel: 'blog',
-    description: 'Artículo SEO sobre digitalización del sector de servicios medioambientales, control de plagas o legionella.',
-    process: 'Intro con problema → Desarrollo en secciones H2/H3 → Casos de uso iGEO → Conclusión + CTA.',
-    style: 'Tono experto y divulgativo. 800-1500 palabras. Incluir palabras clave del sector. Evitar jerga excesivamente técnica.',
-    active: true,
-    createdAt: '2026-05-01',
-  },
-]
+/* ─── Defaults (fallback solo si la API falla) ─── */
+export const DEFAULT_CONTENT_TYPES: ContentType[] = []
 
 /* ─── Hook ─── */
 export function useContentTypes() {
-  const [types, setTypes] = useState<ContentType[]>(DEFAULT_CONTENT_TYPES)
+  const [types, setTypes] = useState<ContentType[]>([])
   const [hydrated, setHydrated] = useState(false)
 
+  // Carga inicial desde API
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) setTypes(parsed)
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/content-types')
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json() as DbContentType[]
+        if (!cancelled) setTypes(data.map(fromDb))
+      } catch (e) {
+        console.error('Error loading content types:', e)
+      } finally {
+        if (!cancelled) setHydrated(true)
       }
-    } catch {}
-    setHydrated(true)
+    })()
+    return () => { cancelled = true }
   }, [])
 
-  useEffect(() => {
-    if (!hydrated) return
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(types)) } catch {}
-  }, [types, hydrated])
+  const add = useCallback(async (t: Omit<ContentType, 'id' | 'createdAt'>) => {
+    const res = await fetch('/api/content-types', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: t.name, channel: t.channel,
+        description: t.description, process: t.process, style: t.style,
+        active: t.active,
+      }),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      console.error('add content type failed:', j.error ?? res.statusText)
+      return
+    }
+    const created = await res.json() as DbContentType
+    setTypes(prev => [...prev, fromDb(created)])
+  }, [])
 
-  const add = (t: Omit<ContentType, 'id' | 'createdAt'>) => {
-    setTypes(prev => [...prev, {
-      ...t,
-      id: `ct_${Date.now()}`,
-      createdAt: new Date().toISOString().split('T')[0],
-    }])
-  }
+  const update = useCallback(async (id: string, changes: Partial<Omit<ContentType, 'id' | 'createdAt'>>) => {
+    const res = await fetch(`/api/content-types/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(changes),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      console.error('update content type failed:', j.error ?? res.statusText)
+      return
+    }
+    const updated = await res.json() as DbContentType
+    setTypes(prev => prev.map(t => t.id === id ? fromDb(updated) : t))
+  }, [])
 
-  const update = (id: string, changes: Partial<Omit<ContentType, 'id' | 'createdAt'>>) => {
-    setTypes(prev => prev.map(t => t.id === id ? { ...t, ...changes } : t))
-  }
-
-  const remove = (id: string) => {
+  const remove = useCallback(async (id: string) => {
+    const res = await fetch(`/api/content-types/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      console.error('delete content type failed:', j.error ?? res.statusText)
+      return
+    }
     setTypes(prev => prev.filter(t => t.id !== id))
-  }
+  }, [])
 
-  const toggle = (id: string) => {
-    setTypes(prev => prev.map(t => t.id === id ? { ...t, active: !t.active } : t))
-  }
+  const toggle = useCallback(async (id: string) => {
+    const t = types.find(x => x.id === id)
+    if (!t) return
+    await update(id, { active: !t.active })
+  }, [types, update])
 
   return { types, add, update, remove, toggle, hydrated }
 }

@@ -143,3 +143,16 @@ export interface BrandContext {
   market: Market
   updated_at: string
 }
+
+export interface ContentType {
+  id:          string
+  name:        string
+  channel:     Channel
+  description: string
+  process:     string
+  style:       string
+  active:      boolean
+  created_by:  string | null
+  created_at:  string
+  updated_at:  string
+}

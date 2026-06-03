@@ -318,6 +318,7 @@ export default function PipelinePage() {
             onMove={handleMove}
             onDelete={handleDelete}
             onApprove={handleApprove}
+            onItemUpdated={(updated) => setItems(prev => prev.map(i => i.id === updated.id ? updated : i))}
             itemImageMap={itemImageMap}
           />
         )}
