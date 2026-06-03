@@ -1,6 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Buffer } from 'node:buffer'
-import { genai, IMAGEN_MODEL, IMAGEN_DIMENSIONS, type AspectRatio } from '@/lib/gemini'
+import { genai, IMAGEN_MODEL, ENHANCER_MODEL, IMAGEN_DIMENSIONS, type AspectRatio } from '@/lib/gemini'
+
+// ── Enhancer: enriquece el prompt usando Gemini Flash antes de Imagen 4 Ultra ─
+async function enhancePromptForChannel(originalPrompt: string, aspectRatio: string): Promise<string> {
+  const contextMap: Record<string, string> = {
+    '1:1':  'Instagram feed post or LinkedIn square image',
+    '16:9': 'LinkedIn banner, blog hero image or YouTube thumbnail',
+    '9:16': 'Instagram Stories or Reels vertical format',
+    '4:5':  'Instagram feed portrait post',
+  }
+  const context = contextMap[aspectRatio] ?? 'professional social media content'
+
+  const systemPrompt = `You are a professional prompt engineer for AI image generation.
+Enhance the following image prompt to produce high-quality, professional commercial photography.
+Add relevant technical photography terms, lighting descriptions, composition details, and style keywords.
+Keep the original intent but make it more detailed and technically precise.
+Output ONLY the enhanced prompt, nothing else. Maximum 200 words.
+Context: This image will be used for ${context}.`
+
+  try {
+    const res = await genai.models.generateContent({
+      model: ENHANCER_MODEL,
+      contents: [{ role: 'user', parts: [{ text: `Original prompt: ${originalPrompt}` }] }],
+      config: { systemInstruction: systemPrompt, maxOutputTokens: 300 },
+    })
+    const enhanced = res.text?.trim()
+    return enhanced && enhanced.length > 10 ? enhanced : originalPrompt
+  } catch (e) {
+    console.warn('Prompt enhancer failed, falling back to original:', e instanceof Error ? e.message : e)
+    return originalPrompt
+  }
+}
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
 
@@ -38,10 +69,13 @@ export async function POST(req: NextRequest) {
   const size = IMAGEN_DIMENSIONS[aspectRatio]
 
   try {
-    // 3) Llamar a Imagen 4 (PNG lossless, resolución máxima por ratio)
+    // 3a) Enriquecer el prompt con Gemini Flash (degradación silenciosa si falla)
+    const enhancedPrompt = await enhancePromptForChannel(prompt, aspectRatio)
+
+    // 3b) Llamar a Imagen 4 Ultra con el prompt enriquecido
     const response = await genai.models.generateImages({
       model: IMAGEN_MODEL,
-      prompt,
+      prompt: enhancedPrompt,
       config: {
         numberOfImages: 1,
         outputMimeType: 'image/png',
