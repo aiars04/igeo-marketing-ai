@@ -11,7 +11,7 @@ export async function GET() {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('content_assets')
-    .select('id, storage_path, prompt, approved, created_at, aspect_ratio, width, height, created_by, content_item_id')
+    .select('id, storage_path, prompt, approved, created_at, aspect_ratio, width, height, created_by, content_item_id, carousel_id, position')
     .order('created_at', { ascending: false })
     .limit(100)
 
@@ -28,6 +28,8 @@ export async function GET() {
     height: number | null
     created_by: string | null
     content_item_id: string | null
+    carousel_id: string | null
+    position: number | null
   }>
 
   const assets = rows.map(a => ({

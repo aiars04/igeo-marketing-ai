@@ -1,0 +1,201 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { Buffer } from 'node:buffer'
+import { randomUUID } from 'node:crypto'
+import { genai, IMAGEN_BASE_MODEL, IMAGEN_DIMENSIONS, type AspectRatio } from '@/lib/gemini'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
+import type { Profile } from '@/types/database'
+
+const BUCKET = 'content-assets'
+const ALLOWED_RATIOS = Object.keys(IMAGEN_DIMENSIONS) as AspectRatio[]
+const MIN_N = 2
+const MAX_N = 4
+
+export const runtime = 'nodejs'
+export const maxDuration = 180 // hasta 3 min (curated 4× Ultra puede tardar)
+
+// ── Fallback Ultra → Base por prompt (reutiliza patrón del endpoint /generate) ─
+const FALLBACK_MODELS = ['imagen-4.0-ultra-generate-001', 'imagen-4.0-generate-001']
+
+async function generateOneWithFallback(prompt: string, aspectRatio: AspectRatio): Promise<{ imageBytes: string; modelUsed: string }> {
+  for (const model of FALLBACK_MODELS) {
+    try {
+      const response = await genai.models.generateImages({
+        model, prompt, config: { numberOfImages: 1, outputMimeType: 'image/png', aspectRatio },
+      })
+      const bytes = response.generatedImages?.[0]?.image?.imageBytes
+      if (bytes) return { imageBytes: bytes, modelUsed: model }
+      console.warn(`Model ${model} returned no image, trying next...`)
+    } catch (err: unknown) {
+      const e = err as { status?: string; code?: number; message?: string }
+      const status = e.status ?? ''
+      const code = e.code ?? 0
+      const msg = (e.message ?? '').toLowerCase()
+      if (
+        status === 'RESOURCE_EXHAUSTED' ||
+        code === 429 || code === 503 || code === 404 ||
+        msg.includes('not found') || msg.includes('quota') || msg.includes('exhausted') || msg.includes('unavailable')
+      ) {
+        console.warn(`Model ${model} unavailable (${status || code}), trying next...`)
+        continue
+      }
+      throw err
+    }
+  }
+  throw new Error('All image generation models are currently unavailable')
+}
+
+// ── Variantes: 1 sola llamada al modelo Base con numberOfImages = N ───────────
+async function generateVariants(prompt: string, n: number, aspectRatio: AspectRatio): Promise<string[]> {
+  const response = await genai.models.generateImages({
+    model: IMAGEN_BASE_MODEL,
+    prompt,
+    config: { numberOfImages: n, outputMimeType: 'image/png', aspectRatio },
+  })
+  const out: string[] = []
+  for (const g of response.generatedImages ?? []) {
+    if (g.image?.imageBytes) out.push(g.image.imageBytes)
+  }
+  if (out.length === 0) throw new Error('no_images_returned')
+  return out
+}
+
+export async function POST(req: NextRequest) {
+  // 1) Auth
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  const admin = createAdminClient()
+  const { data: profile } = await admin
+    .from('profiles').select('id, role, active').eq('id', user.id)
+    .single<Pick<Profile, 'id' | 'role' | 'active'>>()
+  if (!profile || !profile.active) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  // 2) Validar body
+  let body: { mode?: string; prompts?: string[]; aspectRatio?: string }
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
+
+  const mode = body.mode === 'variants' || body.mode === 'curated' ? body.mode : null
+  if (!mode) return NextResponse.json({ error: 'invalid_mode (variants|curated)' }, { status: 400 })
+
+  const prompts = Array.isArray(body.prompts) ? body.prompts.map(p => (p ?? '').trim()).filter(Boolean) : []
+  if (prompts.length === 0) return NextResponse.json({ error: 'prompts_required' }, { status: 400 })
+
+  const aspectRatio: AspectRatio =
+    (ALLOWED_RATIOS.includes(body.aspectRatio as AspectRatio) ? body.aspectRatio : '1:1') as AspectRatio
+  const size = IMAGEN_DIMENSIONS[aspectRatio]
+
+  // Validar N según modo
+  if (mode === 'variants') {
+    if (prompts.length !== 1) return NextResponse.json({ error: 'variants_mode_requires_exactly_1_prompt' }, { status: 400 })
+  }
+  // Para curated, prompts.length define N (2-4). Para variants, validamos un campo extra:
+  let nImages: number
+  if (mode === 'variants') {
+    const reqN = Math.floor(Number((body as { count?: number }).count ?? 4))
+    if (reqN < MIN_N || reqN > MAX_N) return NextResponse.json({ error: `count must be ${MIN_N}-${MAX_N}` }, { status: 400 })
+    nImages = reqN
+  } else {
+    if (prompts.length < MIN_N || prompts.length > MAX_N) {
+      return NextResponse.json({ error: `prompts length must be ${MIN_N}-${MAX_N}` }, { status: 400 })
+    }
+    nImages = prompts.length
+  }
+
+  try {
+    // 3) Generación
+    const imagesBase64: string[] = []
+    const promptsForRow: string[] = [] // prompt asociado a cada imagen (mismo en variants, distinto en curated)
+
+    if (mode === 'variants') {
+      const bytes = await generateVariants(prompts[0], nImages, aspectRatio)
+      for (let i = 0; i < bytes.length; i++) {
+        imagesBase64.push(bytes[i])
+        promptsForRow.push(prompts[0])
+      }
+      // Si el modelo devolvió menos de N (raro), reflejamos lo que vino
+      if (imagesBase64.length === 0) {
+        return NextResponse.json({ error: 'no_images_returned' }, { status: 502 })
+      }
+    } else {
+      // curated: secuencial, 1 call por slide
+      for (let i = 0; i < prompts.length; i++) {
+        const { imageBytes, modelUsed } = await generateOneWithFallback(prompts[i], aspectRatio)
+        console.log(`Carousel curated slide ${i + 1}/${prompts.length} → ${modelUsed}`)
+        imagesBase64.push(imageBytes)
+        promptsForRow.push(prompts[i])
+      }
+    }
+
+    // 4) Subir cada imagen + insertar fila
+    const carouselId = randomUUID()
+    const ts = Date.now()
+    const inserted: Array<{
+      id: string; url: string; prompt: string; position: number;
+      carousel_id: string; aspect_ratio: AspectRatio;
+      approved: boolean; created_at: string; width: number; height: number;
+    }> = []
+
+    for (let i = 0; i < imagesBase64.length; i++) {
+      const filename = `${user.id}/${ts}-c${carouselId.slice(0, 8)}-${i}-${aspectRatio.replace(':', 'x')}.png`
+      const buffer = Buffer.from(imagesBase64[i], 'base64')
+
+      const { error: upErr } = await admin.storage
+        .from(BUCKET)
+        .upload(filename, buffer, { contentType: 'image/png', upsert: false })
+      if (upErr) {
+        return NextResponse.json({ error: `storage: ${upErr.message}`, partial_carousel_id: carouselId, completed_slides: inserted.length }, { status: 500 })
+      }
+
+      const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(filename)
+
+      const insertRow = {
+        storage_path: filename,
+        prompt: promptsForRow[i],
+        approved: false,
+        created_by: user.id,
+        aspect_ratio: aspectRatio,
+        width: size.width,
+        height: size.height,
+        mime_type: 'image/png',
+        asset_type: 'image',
+        carousel_id: carouselId,
+        position: i,
+      }
+      const { data: asset, error: dbErr } = await admin
+        .from('content_assets')
+        .insert(insertRow as never)
+        .select('id, created_at')
+        .single<{ id: string; created_at: string }>()
+      if (dbErr || !asset) {
+        return NextResponse.json({ error: `db: ${dbErr?.message ?? 'no_asset'}`, partial_carousel_id: carouselId, completed_slides: inserted.length }, { status: 500 })
+      }
+
+      inserted.push({
+        id: asset.id,
+        url: urlData.publicUrl,
+        prompt: promptsForRow[i],
+        position: i,
+        carousel_id: carouselId,
+        aspect_ratio: aspectRatio,
+        approved: false,
+        created_at: asset.created_at,
+        width: size.width,
+        height: size.height,
+      })
+    }
+
+    return NextResponse.json({
+      carousel_id: carouselId,
+      mode,
+      aspectRatio,
+      assets: inserted,
+    })
+  } catch (err: unknown) {
+    console.error('Carousel generation error:', err)
+    const message = err instanceof Error ? err.message : 'carousel_generation_failed'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}

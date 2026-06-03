@@ -99,12 +99,14 @@ export interface ContentItem {
 
 export interface ContentAsset {
   id: string
-  content_item_id: string
+  content_item_id: string | null
   storage_path: string
   asset_type: string
   prompt: string | null
   approved: boolean
   created_at: string
+  carousel_id: string | null
+  position: number | null
 }
 
 export interface Idea {

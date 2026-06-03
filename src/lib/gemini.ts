@@ -10,6 +10,8 @@ export const genai = new GoogleGenAI({ apiKey })
 
 // Nombre verificado vía models.list() — Imagen 4 Ultra (calidad máxima)
 export const IMAGEN_MODEL = 'imagen-4.0-ultra-generate-001'
+// Base: soporta numberOfImages 1..4 (Ultra no). Usado en modo "variantes" del carrusel.
+export const IMAGEN_BASE_MODEL = 'imagen-4.0-generate-001'
 export const ENHANCER_MODEL = 'gemini-2.0-flash'
 
 // Resolución máxima soportada por Imagen 4 para cada aspect ratio
