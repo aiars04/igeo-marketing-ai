@@ -8,7 +8,8 @@ if (!apiKey) {
 
 export const genai = new GoogleGenAI({ apiKey })
 
-export const IMAGEN_MODEL = 'imagen-4-ultra-generate-001'
+// Nombre verificado vía models.list() — Imagen 4 Ultra (calidad máxima)
+export const IMAGEN_MODEL = 'imagen-4.0-ultra-generate-001'
 export const ENHANCER_MODEL = 'gemini-2.0-flash'
 
 // Resolución máxima soportada por Imagen 4 para cada aspect ratio
