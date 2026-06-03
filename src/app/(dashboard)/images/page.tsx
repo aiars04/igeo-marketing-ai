@@ -17,7 +17,6 @@ interface ImageAsset {
   aspect_ratio: string | null
   width: number | null
   height: number | null
-  channel: string | null
   created_by: string | null
 }
 

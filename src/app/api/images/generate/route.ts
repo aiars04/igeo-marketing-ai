@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(filename)
 
-    // 5) Insertar en content_assets
+    // 5) Insertar en content_assets (solo columnas existentes en la tabla)
     const insertRow = {
       storage_path: filename,
       prompt,
@@ -78,7 +78,6 @@ export async function POST(req: NextRequest) {
       height: size.height,
       mime_type: 'image/png',
       asset_type: 'image',
-      channel: body.channel ?? null,
     }
     const { data: asset, error: dbError } = await admin
       .from('content_assets')
