@@ -15,12 +15,17 @@ export function calendarEventToContentItemInput(event: CalendarEvent): Partial<C
       ? event.startTime.toISOString()
       : new Date(event.startTime as unknown as string).toISOString()
 
+  // Normalizar a lowercase para que coincida con el enum Channel/Market del backend.
+  // Defensa contra eventos legacy guardados con 'LinkedIn', 'Instagram', etc.
+  const channelRaw = (event.channel ?? 'linkedin') as string
+  const marketRaw = (event.market ?? 'spain') as string
+
   return {
     calendar_item_id: event.id,
     stage: 'ideas',
     title: event.title,
-    channel: (event.channel as Channel) ?? 'linkedin',
-    market: (event.market as Market) ?? 'spain',
+    channel: channelRaw.toLowerCase() as Channel,
+    market: marketRaw.toLowerCase() as Market,
     scheduled_at: startISO,
     ai_generated: false,
   }

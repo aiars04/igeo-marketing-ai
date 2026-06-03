@@ -57,7 +57,17 @@ export interface Event {
 
 // Tipo de evento + opciones por categoría
 const PRESENTIAL_KINDS = ['Feria', 'Congreso', 'Visita cliente', 'Otro'] as const
-const DIGITAL_CHANNELS = ['LinkedIn', 'Instagram', 'Newsletter', 'Blog', 'X', 'Facebook'] as const
+// Canales digitales — valores en lowercase (matchean el enum Channel del backend).
+// Labels capitalizados se aplican solo al renderizar en la UI vía DIGITAL_CHANNEL_LABEL.
+const DIGITAL_CHANNELS = ['linkedin', 'instagram', 'newsletter', 'blog', 'x', 'facebook'] as const
+const DIGITAL_CHANNEL_LABEL: Record<typeof DIGITAL_CHANNELS[number], string> = {
+  linkedin:   'LinkedIn',
+  instagram:  'Instagram',
+  newsletter: 'Newsletter',
+  blog:       'Blog',
+  x:          'X',
+  facebook:   'Facebook',
+}
 const DIGITAL_MARKETS = [
   { value: 'spain',    label: '🇪🇸 España' },
   { value: 'uk',       label: '🇬🇧 UK' },
@@ -69,12 +79,12 @@ const COLOR_KEYS = ['blue', 'green', 'purple', 'orange', 'pink', 'red'] as const
 
 // Color automático según canal digital
 const CHANNEL_TO_COLOR: Record<string, string> = {
-  LinkedIn:   'blue',
-  Instagram:  'pink',
-  Newsletter: 'green',
-  Blog:       'orange',
-  X:          'purple',
-  Facebook:   'blue',
+  linkedin:   'blue',
+  instagram:  'pink',
+  newsletter: 'green',
+  blog:       'orange',
+  x:          'purple',
+  facebook:   'blue',
 }
 
 /** Detecta el tipo de evento al editar uno existente. */
@@ -1188,7 +1198,7 @@ export function EventManager({
                             }}
                           >
                             {DIGITAL_CHANNELS.map((c) => (
-                              <option key={c} value={c}>{c}</option>
+                              <option key={c} value={c}>{DIGITAL_CHANNEL_LABEL[c]}</option>
                             ))}
                           </SelectField>
                         </Field>
@@ -1408,7 +1418,7 @@ function EventTooltip({
                 border: `1px solid ${c.border}`,
                 color: c.text, background: c.bg,
               }}>
-                {event.channel}
+                {DIGITAL_CHANNEL_LABEL[ch as keyof typeof DIGITAL_CHANNEL_LABEL] ?? event.channel}
               </span>
               {event.market && (
                 <span style={{ fontSize: 11, color: 'var(--ink-2)' }}>
