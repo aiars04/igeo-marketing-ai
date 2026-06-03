@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { EventManager, type Event } from '@/components/ui/event-manager'
-import { addPipelineItem, calendarEventToContentItem } from '@/lib/stores/pipeline-store'
+import { addPipelineItemFromCalendar } from '@/lib/stores/pipeline-store'
 import { useToast, Toasts } from '@/components/ui/Toast'
 
 const STORAGE_KEY = 'igeo_cal_events_v2'
@@ -151,13 +151,18 @@ export default function CalendarPage() {
 
       <EventManager
         events={events}
-        onEventCreate={(ev) => {
+        onEventCreate={async (ev) => {
           setEvents(prev => [...prev, ev])
           // Si es evento digital → crear tarjeta en pipeline (fase Ideas)
           if (ev.eventType === 'digital') {
-            const item = calendarEventToContentItem(ev)
-            addPipelineItem(item)
-            showToast('Evento creado · Tarjeta añadida a Pipeline (Ideas)', 'success')
+            const result = await addPipelineItemFromCalendar(ev)
+            if (result.ok) {
+              showToast('Evento creado · Tarjeta añadida a Pipeline (Ideas)', 'success')
+            } else if (result.duplicate) {
+              showToast('Evento creado (ya existía la tarjeta en Pipeline)', 'info')
+            } else {
+              showToast(`Evento creado, pero falló el Pipeline: ${result.error ?? 'error'}`, 'error')
+            }
           }
         }}
         onEventUpdate={(id, partial) => {

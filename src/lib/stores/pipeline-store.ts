@@ -1,74 +1,53 @@
-import type { ContentItem } from '@/types/database'
+/**
+ * Pipeline store — ahora respaldado por Supabase via /api/content-items
+ * (antes localStorage). Mantiene el evento custom 'pipeline:changed' para
+ * que otras páginas (calendario) puedan notificar cambios al pipeline abierto.
+ */
+import type { ContentItem, Channel, Market } from '@/types/database'
 import type { Event as CalendarEvent } from '@/components/ui/event-manager'
 
-const KEY = 'igeo_pipeline_v1'
 const EVENT_NAME = 'pipeline:changed'
 
-export function loadPipelineItems(): ContentItem[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = localStorage.getItem(KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-export function savePipelineItems(items: ContentItem[]): void {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(KEY, JSON.stringify(items))
-    window.dispatchEvent(new CustomEvent(EVENT_NAME))
-  } catch {}
-}
-
-export function addPipelineItem(item: ContentItem): void {
-  const items = loadPipelineItems()
-  // dedup por calendar_item_id si existe
-  if (item.calendar_item_id && items.some(i => i.calendar_item_id === item.calendar_item_id)) return
-  savePipelineItems([item, ...items])
-}
-
-export function removePipelineItemsByCalendarId(calendarId: string): void {
-  const items = loadPipelineItems()
-  savePipelineItems(
-    items.map(i =>
-      i.calendar_item_id === calendarId
-        ? { ...i, calendar_item_id: null } // huérfano, vida propia
-        : i,
-    ),
-  )
-}
-
-export function calendarEventToContentItem(event: CalendarEvent): ContentItem {
-  const today = new Date().toISOString().split('T')[0]
+/** Mapea un Evento del calendario a un payload listo para POST /api/content-items. */
+export function calendarEventToContentItemInput(event: CalendarEvent): Partial<ContentItem> {
   const startISO =
     event.startTime instanceof Date
       ? event.startTime.toISOString()
       : new Date(event.startTime as unknown as string).toISOString()
 
   return {
-    id: Math.random().toString(36).slice(2, 11),
     calendar_item_id: event.id,
     stage: 'ideas',
     title: event.title,
-    channel: (event.channel as ContentItem['channel']) ?? 'linkedin',
-    market: (event.market as ContentItem['market']) ?? 'spain',
-    campaign: null,
-    content: null,
-    status: 'pending',
-    ai_generated: false,
-    clarity_pass: null,
-    clarity_summary: null,
-    human_approved: false,
-    approved_by: null,
-    approved_at: null,
+    channel: (event.channel as Channel) ?? 'linkedin',
+    market: (event.market as Market) ?? 'spain',
     scheduled_at: startISO,
-    published_at: null,
-    postiz_id: null,
-    created_at: today,
-    updated_at: today,
+    ai_generated: false,
   }
 }
 
-export { EVENT_NAME as PIPELINE_CHANGED_EVENT, KEY as PIPELINE_STORAGE_KEY }
+/** Crea un ítem del pipeline desde el calendario. Dedup vía calendar_item_id en server. */
+export async function addPipelineItemFromCalendar(event: CalendarEvent): Promise<{ ok: boolean; duplicate?: boolean; error?: string }> {
+  if (typeof window === 'undefined') return { ok: false, error: 'server' }
+  try {
+    const payload = calendarEventToContentItemInput(event)
+    const res = await fetch('/api/content-items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (res.status === 409) {
+      return { ok: false, duplicate: true }
+    }
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      return { ok: false, error: j.error ?? `HTTP ${res.status}` }
+    }
+    window.dispatchEvent(new CustomEvent(EVENT_NAME))
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'unknown' }
+  }
+}
+
+export { EVENT_NAME as PIPELINE_CHANGED_EVENT }

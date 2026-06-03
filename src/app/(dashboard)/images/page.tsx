@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import {
   Image as ImageIcon, Sparkles, Upload, Check, MoreHorizontal, Loader2, Trash2,
-  Download, Copy, RefreshCw, Calendar as CalendarIcon, Maximize2, AlertCircle, Search,
+  Download, Copy, RefreshCw, Calendar as CalendarIcon, Maximize2, AlertCircle, Search, X,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { useToast, Toasts } from '@/components/ui/Toast'
@@ -21,6 +21,14 @@ interface ImageAsset {
   width: number | null
   height: number | null
   created_by: string | null
+  content_item_id: string | null
+}
+
+interface PipelineItemLite {
+  id: string
+  title: string
+  channel: string
+  stage: string
 }
 
 const RATIOS = [
@@ -162,6 +170,11 @@ export default function ImagesPage() {
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Pipeline items (para asignación)
+  const [pipelineItems, setPipelineItems] = useState<PipelineItemLite[]>([])
+  const [assignTarget, setAssignTarget] = useState<string>('')
+  const [assigning, setAssigning] = useState(false)
+
   // Filters
   const [filter, setFilter] = useState<FilterMode>('all')
   const [search, setSearch] = useState('')
@@ -264,18 +277,52 @@ export default function ImagesPage() {
     }
   }
 
+  // Pipeline items — cargar lista al abrir el modal de detalle
+  const fetchPipelineItems = async () => {
+    try {
+      const res = await fetch('/api/content-items')
+      if (!res.ok) return
+      const data = await res.json() as PipelineItemLite[]
+      setPipelineItems(data)
+    } catch {}
+  }
+
   // Detail modal
   const openDetail = (img: ImageAsset) => {
     setDetailImage(img)
     setDetailPrompt(img.prompt ?? '')
     setDetailConfirmDelete(false)
     setCopiedPrompt(false)
+    setAssignTarget(img.content_item_id ?? '')
+    // Cargar lista de items del pipeline para el dropdown
+    fetchPipelineItems()
+  }
+
+  // Asignar/desasignar imagen al pipeline
+  const handleAssign = async () => {
+    if (!detailImage) return
+    setAssigning(true)
+    const newTarget = assignTarget || null
+    const res = await fetch(`/api/images/${detailImage.id}/assign`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content_item_id: newTarget }),
+    })
+    setAssigning(false)
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      showToast(`Error asignando: ${j.error ?? res.statusText}`, 'error')
+      return
+    }
+    setImages(prev => prev.map(i => i.id === detailImage.id ? { ...i, content_item_id: newTarget } : i))
+    setDetailImage(prev => prev ? { ...prev, content_item_id: newTarget } : null)
+    showToast(newTarget ? 'Imagen asignada al ítem' : 'Imagen desasignada', 'success')
   }
   const closeDetail = () => {
-    if (detailRegenerating) return
+    if (detailRegenerating || assigning) return
     setDetailImage(null)
     setDetailPrompt('')
     setDetailConfirmDelete(false)
+    setAssignTarget('')
   }
 
   const handleRegenerate = async () => {
@@ -528,7 +575,7 @@ export default function ImagesPage() {
             <p className="text-[12px]">Prueba a ampliar el filtro o cambiar la búsqueda.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {filtered.map(img => (
               <div
                 key={img.id}
@@ -790,6 +837,50 @@ export default function ImagesPage() {
                     : <><AlertCircle size={11} aria-hidden="true" /> Pendiente</>}
                 </span>
               </div>
+            </div>
+
+            {/* Asignar al pipeline */}
+            <div>
+              <span className="section-label block mb-1.5">Asignar a ítem del pipeline</span>
+              <div className="flex items-center gap-2">
+                <select
+                  className="input flex-1"
+                  value={assignTarget}
+                  onChange={e => setAssignTarget(e.target.value)}
+                  disabled={assigning || pipelineItems.length === 0}
+                >
+                  <option value="">— Sin asignar —</option>
+                  {pipelineItems.map(it => (
+                    <option key={it.id} value={it.id}>
+                      [{it.stage}] {it.channel} · {it.title.length > 60 ? it.title.slice(0, 60) + '…' : it.title}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn-cta"
+                  onClick={handleAssign}
+                  disabled={assigning || assignTarget === (detailImage.content_item_id ?? '')}
+                  title={assignTarget ? 'Asignar al ítem seleccionado' : 'Desasignar'}
+                >
+                  {assigning
+                    ? <Loader2 size={13} className="animate-spin" aria-hidden="true" />
+                    : assignTarget ? <Check size={13} aria-hidden="true" /> : <X size={13} aria-hidden="true" />}
+                  {assigning ? 'Guardando…' : assignTarget ? 'Asignar' : 'Desasignar'}
+                </button>
+              </div>
+              {detailImage.content_item_id && (
+                <p className="text-[11px] mt-1.5" style={{ color: 'var(--ink-3)' }}>
+                  Asignada actualmente a:{' '}
+                  <span style={{ color: 'var(--ink)', fontWeight: 600 }}>
+                    {pipelineItems.find(p => p.id === detailImage.content_item_id)?.title ?? detailImage.content_item_id.slice(0, 8)}
+                  </span>
+                </p>
+              )}
+              {pipelineItems.length === 0 && (
+                <p className="text-[11px] mt-1.5" style={{ color: 'var(--ink-3)' }}>
+                  No hay ítems en el pipeline todavía. Crea uno desde /pipeline.
+                </p>
+              )}
             </div>
 
             {/* Editar prompt + regenerar — solo si tenía prompt original (imágenes IA) */}

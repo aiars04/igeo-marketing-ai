@@ -81,6 +81,7 @@ export interface ContentItem {
   market: Market
   campaign: string | null
   content: string | null
+  description: string | null
   status: ContentStatus
   ai_generated: boolean
   clarity_pass: boolean | null
@@ -91,6 +92,7 @@ export interface ContentItem {
   scheduled_at: string | null
   published_at: string | null
   postiz_id: string | null
+  created_by: string | null
   created_at: string
   updated_at: string
 }

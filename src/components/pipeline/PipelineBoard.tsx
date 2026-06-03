@@ -6,6 +6,7 @@ import {
   Plus, Sparkles, MoreHorizontal, Calendar,
   Lightbulb, PenLine, Layers, Zap, BarChart2,
   CheckCircle2, CheckCheck, ChevronRight, ArrowRight, Trash2,
+  ImageIcon,
 } from 'lucide-react'
 import { cn, STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
@@ -51,6 +52,7 @@ interface BoardProps {
   onMove:         (id: string, newStage: Stage) => void
   onDelete:       (id: string) => void
   onApprove:      (id: string, currentStage: Stage) => void
+  itemImageMap?:  Record<string, string>  // content_item_id → URL pública de la primera imagen
 }
 
 // ─── StatusDot ───────────────────────────────────────────────────────────────
@@ -259,9 +261,10 @@ function stripMarkdown(text: string): string {
 }
 
 function ContentDetailModal({
-  item, onClose, onApprove, onMove, onDelete,
+  item, imageUrl, onClose, onApprove, onMove, onDelete,
 }: {
   item: ContentItem
+  imageUrl: string | null
   onClose: () => void
   onApprove: (id: string, s: Stage) => void
   onMove: (id: string, s: Stage) => void
@@ -350,6 +353,30 @@ function ContentDetailModal({
           )
         })}
       </div>
+
+      {/* ── Thumbnail imagen asignada (si existe) ── */}
+      {imageUrl && (
+        <div
+          style={{
+            marginBottom: 20,
+            borderRadius: 'var(--radius-md)',
+            overflow: 'hidden',
+            border: '1px solid var(--border)',
+            background: 'var(--surface-2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            maxHeight: 240,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt={`Imagen asignada a ${item.title}`}
+            style={{ maxWidth: '100%', maxHeight: 240, objectFit: 'contain', display: 'block' }}
+          />
+        </div>
+      )}
 
       {/* ── Chips de estado debajo del stepper — h26, gap8, mismo estilo base ── */}
       <div className="flex flex-wrap" style={{ gap: 8, marginBottom: 24 }}>
@@ -629,9 +656,10 @@ function ContentDetailModal({
 // ═══════════════════════════════════════════════════════════════════════════
 
 function Card({
-  item, onMove, onApprove, onSelect,
+  item, hasImage, onMove, onApprove, onSelect,
 }: {
   item: ContentItem
+  hasImage?: boolean
   onMove: (id: string, s: Stage) => void
   onApprove: (id: string, s: Stage) => void
   onSelect: (item: ContentItem) => void
@@ -660,9 +688,27 @@ function Card({
         }
       }}
     >
-      {/* ── Fila superior: badge canal + ES + status dot + menu ── */}
+      {/* ── Fila superior: badge canal + (icono imagen) + ES + status dot + menu ── */}
       <div className="flex items-center justify-between gap-2">
-        <ChannelBadge channel={item.channel as Channel} />
+        <div className="flex items-center gap-1.5 min-w-0">
+          <ChannelBadge channel={item.channel as Channel} />
+          {hasImage && (
+            <span
+              className="inline-flex items-center justify-center shrink-0"
+              style={{
+                width: 18, height: 18,
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--accent-soft)',
+                border: '1px solid var(--accent-border)',
+                color: 'var(--accent-2)',
+              }}
+              title="Tiene imagen asignada"
+              aria-label="Tiene imagen asignada"
+            >
+              <ImageIcon size={11} aria-hidden="true" />
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2 shrink-0">
           <span
             style={{
@@ -804,7 +850,7 @@ function Card({
 // ═══════════════════════════════════════════════════════════════════════════
 
 function Column({
-  stage, items, filterChannels, onAdd, onMove, onApprove, onSelectItem, index,
+  stage, items, filterChannels, onAdd, onMove, onApprove, onSelectItem, index, itemImageMap,
 }: {
   stage: Stage
   items: ContentItem[]
@@ -814,6 +860,7 @@ function Column({
   onApprove: (id: string, s: Stage) => void
   onSelectItem: (item: ContentItem) => void
   index: number
+  itemImageMap?: Record<string, string>
 }) {
   const cfg = STAGE_CONFIG[stage]
   const Icon = STAGE_ICONS[stage]
@@ -908,6 +955,7 @@ function Column({
           <Card
             key={item.id}
             item={item}
+            hasImage={Boolean(itemImageMap?.[item.id])}
             onMove={onMove}
             onApprove={onApprove}
             onSelect={onSelectItem}
@@ -954,7 +1002,7 @@ function Column({
 // BOARD — scroll horizontal funcional, gap 16px entre columnas
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove }: BoardProps) {
+export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, itemImageMap }: BoardProps) {
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -983,6 +1031,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
             onApprove={onApprove}
             onSelectItem={setSelectedItem}
             index={idx}
+            itemImageMap={itemImageMap}
           />
         ))}
       </div>
@@ -990,6 +1039,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
       {selectedItem && (
         <ContentDetailModal
           item={selectedItem}
+          imageUrl={itemImageMap?.[selectedItem.id] ?? null}
           onClose={() => setSelectedItem(null)}
           onApprove={(id, s) => { onApprove(id, s) }}
           onMove={(id, s)    => { onMove(id, s) }}
