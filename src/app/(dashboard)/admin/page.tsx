@@ -739,7 +739,7 @@ function ContentTypeModal({
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto flex-1 p-5" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="overflow-y-auto flex-1 p-5" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
             <label className="section-label block mb-1.5">Nombre</label>
             <input
@@ -771,14 +771,14 @@ function ContentTypeModal({
             />
           </div>
           <div
-            className="p-4"
+            className="p-5"
             style={{
               background: 'var(--accent-soft)',
               border: '1px solid var(--accent-border)',
               borderRadius: 'var(--radius-md)',
               display: 'flex',
               flexDirection: 'column',
-              gap: 14,
+              gap: 20,
             }}
           >
             <span className="section-label" style={{ color: 'var(--accent-2)' }}>
@@ -795,7 +795,7 @@ function ContentTypeModal({
                 onChange={e => set('process', e.target.value)}
                 style={{ minHeight: 140, resize: 'vertical' }}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
                 <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Mínimo 30 caracteres recomendados</span>
                 <span style={{ fontSize: 11, color: form.process.length < 30 ? '#b25000' : 'var(--ink-3)', fontWeight: form.process.length < 30 ? 600 : 400 }}>
                   {form.process.length} chars
@@ -813,7 +813,7 @@ function ContentTypeModal({
                 onChange={e => set('style', e.target.value)}
                 style={{ minHeight: 140, resize: 'vertical' }}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
                 <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Mínimo 20 caracteres recomendados</span>
                 <span style={{ fontSize: 11, color: form.style.length < 20 ? '#b25000' : 'var(--ink-3)', fontWeight: form.style.length < 20 ? 600 : 400 }}>
                   {form.style.length} chars
@@ -827,7 +827,7 @@ function ContentTypeModal({
               onClick={handleTestPrompt}
               disabled={form.process.trim().length < 30 || form.style.trim().length < 20 || testingPrompt}
               className="btn-pill-secondary"
-              style={{ alignSelf: 'flex-start', height: 30, fontSize: 12 }}
+              style={{ alignSelf: 'flex-start', height: 30, fontSize: 12, marginTop: 4 }}
             >
               {testingPrompt
                 ? <><Loader2 size={12} className="animate-spin" aria-hidden="true" /> Probando…</>
