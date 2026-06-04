@@ -68,8 +68,7 @@ export function useContentTypes() {
     })
     if (!res.ok) {
       const j = await res.json().catch(() => ({}))
-      console.error('add content type failed:', j.error ?? res.statusText)
-      return
+      throw new Error(j.error ?? res.statusText)
     }
     const created = await res.json() as DbContentType
     setTypes(prev => [...prev, fromDb(created)])
@@ -82,8 +81,7 @@ export function useContentTypes() {
     })
     if (!res.ok) {
       const j = await res.json().catch(() => ({}))
-      console.error('update content type failed:', j.error ?? res.statusText)
-      return
+      throw new Error(j.error ?? res.statusText)
     }
     const updated = await res.json() as DbContentType
     setTypes(prev => prev.map(t => t.id === id ? fromDb(updated) : t))
@@ -93,8 +91,7 @@ export function useContentTypes() {
     const res = await fetch(`/api/content-types/${id}`, { method: 'DELETE' })
     if (!res.ok) {
       const j = await res.json().catch(() => ({}))
-      console.error('delete content type failed:', j.error ?? res.statusText)
-      return
+      throw new Error(j.error ?? res.statusText)
     }
     setTypes(prev => prev.filter(t => t.id !== id))
   }, [])

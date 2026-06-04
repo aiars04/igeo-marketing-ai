@@ -136,11 +136,15 @@ export interface AnalyticsSnapshot {
   created_at: string
 }
 
+export type BrandMarket = Market | 'all'
+
 export interface BrandContext {
-  id: string
-  key: string
-  content: string
-  market: Market
+  id:         string
+  key:        string
+  content:    string
+  market:     BrandMarket
+  created_by: string | null
+  created_at: string
   updated_at: string
 }
 

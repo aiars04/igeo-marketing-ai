@@ -6,8 +6,9 @@ import {
   ToggleLeft, ToggleRight, BookOpen, X,
   ChevronDown, ChevronUp, FileText, FileImage,
   Presentation, Sheet, File, Upload, Eye,
-  Download, AlertCircle, Loader2, FolderOpen,
+  Download, AlertCircle, Loader2, FolderOpen, Sparkles, Compass,
 } from 'lucide-react'
+import { BrandContextEditor } from '@/components/admin/BrandContextEditor'
 import { useContentTypes, type ContentType } from '@/lib/content-types-store'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import {
@@ -629,17 +630,68 @@ function ContentTypeModal({
 }: {
   open: boolean
   onClose: () => void
-  onSave: (data: Omit<ContentType, 'id' | 'createdAt'>) => void
+  onSave: (data: Omit<ContentType, 'id' | 'createdAt'>) => Promise<void> | void
   initial?: ContentType | null
 }) {
   const [form, setForm] = useState(initial ?? EMPTY_FORM)
   const isEdit = !!initial
 
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [testingPrompt, setTestingPrompt] = useState(false)
+  const [testResult, setTestResult] = useState<string | null>(null)
+  const [testError, setTestError] = useState<string | null>(null)
+
   useEffect(() => { setForm(initial ?? EMPTY_FORM) }, [initial])
+  useEffect(() => {
+    // Reset estado transitorio al abrir/cambiar
+    setSaveError(null); setTestResult(null); setTestError(null)
+  }, [initial, open])
 
   if (!open) return null
   const set = (k: keyof typeof EMPTY_FORM, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
-  const canSave = form.name.trim() && form.description.trim() && form.process.trim() && form.style.trim()
+  const canSave =
+    form.name.trim().length >= 3 &&
+    form.description.trim().length >= 10 &&
+    form.process.trim().length >= 30 &&
+    form.style.trim().length >= 20
+
+  const handleSaveClick = async () => {
+    setSaveError(null)
+    setSaving(true)
+    try {
+      await Promise.resolve(onSave(form))
+      onClose()
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Error desconocido al guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleTestPrompt = async () => {
+    setTestError(null)
+    setTestResult(null)
+    setTestingPrompt(true)
+    try {
+      const res = await fetch('/api/content-types/test', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          process: form.process,
+          style: form.style,
+          channel: form.channel,
+          example_title: `Ejemplo de ${form.name || 'contenido'} para iGEO`,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) setTestError(data.error ?? `HTTP ${res.status}`)
+      else setTestResult(data.preview)
+    } catch (e) {
+      setTestError(e instanceof Error ? e.message : 'Error en la prueba')
+    } finally {
+      setTestingPrompt(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -736,39 +788,116 @@ function ContentTypeModal({
               <label className="section-label block mb-1.5">Proceso de creación</label>
               <p className="text-[11px] mb-1.5" style={{ color: 'var(--ink-2)' }}>Pasos que seguirá la IA para generar el contenido.</p>
               <textarea
-                rows={3}
+                rows={7}
                 className="input"
                 placeholder="Ej: Identifica un pain point del sector → conecta con funcionalidad iGEO → CTA al demo."
                 value={form.process}
                 onChange={e => set('process', e.target.value)}
+                style={{ minHeight: 140, resize: 'vertical' }}
               />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Mínimo 30 caracteres recomendados</span>
+                <span style={{ fontSize: 11, color: form.process.length < 30 ? '#b25000' : 'var(--ink-3)', fontWeight: form.process.length < 30 ? 600 : 400 }}>
+                  {form.process.length} chars
+                </span>
+              </div>
             </div>
             <div>
               <label className="section-label block mb-1.5">Estilo iGEO</label>
               <p className="text-[11px] mb-1.5" style={{ color: 'var(--ink-2)' }}>Tono, formato, longitud y reglas de estilo de la marca.</p>
               <textarea
-                rows={3}
+                rows={7}
                 className="input"
                 placeholder="Ej: Tono profesional pero cercano. Emojis moderados. 150-300 palabras."
                 value={form.style}
                 onChange={e => set('style', e.target.value)}
+                style={{ minHeight: 140, resize: 'vertical' }}
               />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Mínimo 20 caracteres recomendados</span>
+                <span style={{ fontSize: 11, color: form.style.length < 20 ? '#b25000' : 'var(--ink-3)', fontWeight: form.style.length < 20 ? 600 : 400 }}>
+                  {form.style.length} chars
+                </span>
+              </div>
             </div>
+
+            {/* Probar prompt */}
+            <button
+              type="button"
+              onClick={handleTestPrompt}
+              disabled={form.process.trim().length < 30 || form.style.trim().length < 20 || testingPrompt}
+              className="btn-pill-secondary"
+              style={{ alignSelf: 'flex-start', height: 30, fontSize: 12 }}
+            >
+              {testingPrompt
+                ? <><Loader2 size={12} className="animate-spin" aria-hidden="true" /> Probando…</>
+                : <><Sparkles size={12} aria-hidden="true" /> Probar prompt</>}
+            </button>
+
+            {testError && (
+              <div style={{
+                padding: '8px 10px',
+                background: 'var(--red-soft)',
+                border: '1px solid rgba(239,68,68,0.25)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 12, color: 'var(--red-2)',
+              }}>
+                Error: {testError}
+              </div>
+            )}
+
+            {testResult && (
+              <div style={{
+                padding: 12,
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderLeft: '3px solid var(--accent)',
+                borderRadius: 'var(--radius-md)',
+              }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '0.06em', color: 'var(--accent-2)',
+                }}>
+                  Preview generado (Gemini Flash)
+                </span>
+                <p style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.6, marginTop: 8, whiteSpace: 'pre-wrap' }}>
+                  {testResult}
+                </p>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Error de guardado inline */}
+        {saveError && (
+          <div
+            style={{
+              margin: '0 24px 12px',
+              padding: '10px 12px',
+              background: 'var(--red-soft)',
+              border: '1px solid rgba(239,68,68,0.25)',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: 12, color: 'var(--red-2)',
+            }}
+          >
+            {saveError}
+          </div>
+        )}
 
         {/* Footer */}
         <div
           className="flex gap-2 shrink-0"
           style={{ padding: '16px 24px', borderTop: '1px solid var(--border)' }}
         >
-          <button className="btn-secondary flex-1" onClick={onClose}>Cancelar</button>
+          <button className="btn-secondary flex-1" onClick={onClose} disabled={saving}>Cancelar</button>
           <button
             className="btn-cta flex-1"
-            disabled={!canSave}
-            onClick={() => { onSave(form); onClose() }}
+            disabled={!canSave || saving}
+            onClick={handleSaveClick}
           >
-            <Plus size={13} aria-hidden="true" /> {isEdit ? 'Guardar cambios' : 'Crear tipo'}
+            {saving
+              ? <><Loader2 size={13} className="animate-spin" aria-hidden="true" /> Guardando…</>
+              : <><Plus size={13} aria-hidden="true" /> {isEdit ? 'Guardar cambios' : 'Crear tipo'}</>}
           </button>
         </div>
       </div>
@@ -781,6 +910,7 @@ export default function AdminPage() {
   const { types, add, update, remove, toggle } = useContentTypes()
   const { items: toasts, show: toast, remove: removeToast } = useToast()
 
+  const [tab, setTab] = useState<'types' | 'brand'>('types')
   const [modalOpen, setModalOpen]         = useState(false)
   const [editTarget, setEditTarget]       = useState<ContentType | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -809,9 +939,14 @@ export default function AdminPage() {
   const openCreate = () => { setEditTarget(null); setModalOpen(true) }
   const openEdit   = (ct: ContentType) => { setEditTarget(ct); setModalOpen(true) }
 
-  const handleSave = (data: Omit<ContentType, 'id' | 'createdAt'>) => {
-    if (editTarget) { update(editTarget.id, data); toast('Tipo actualizado', 'success') }
-    else            { add(data);                   toast('Tipo creado', 'success') }
+  const handleSave = async (data: Omit<ContentType, 'id' | 'createdAt'>) => {
+    if (editTarget) {
+      await update(editTarget.id, data)
+      toast('Tipo actualizado', 'success')
+    } else {
+      await add(data)
+      toast('Tipo creado', 'success')
+    }
   }
 
   const handleDelete = (id: string) => { remove(id); setDeleteConfirm(null); toast('Tipo eliminado', 'success') }
@@ -847,12 +982,55 @@ export default function AdminPage() {
             </p>
           </div>
         </div>
-        <button className="btn-cta shrink-0" onClick={openCreate}>
-          <Plus size={13} aria-hidden="true" /> Nuevo tipo
-        </button>
+        {tab === 'types' && (
+          <button className="btn-cta shrink-0" onClick={openCreate}>
+            <Plus size={13} aria-hidden="true" /> Nuevo tipo
+          </button>
+        )}
       </div>
 
-      {/* ─── Stats ─── */}
+      {/* ─── Tab bar ─── */}
+      <div
+        className="flex items-center gap-1 px-6 shrink-0"
+        style={{
+          borderBottom: '1px solid var(--border)',
+          paddingTop: 6,
+        }}
+      >
+        {([
+          { value: 'types', label: 'Tipos de contenido', icon: BookOpen },
+          { value: 'brand', label: 'Estrategia & Marca', icon: Compass },
+        ] as const).map(t => {
+          const active = tab === t.value
+          const Icon = t.icon
+          return (
+            <button
+              key={t.value}
+              onClick={() => setTab(t.value)}
+              className="inline-flex items-center gap-2"
+              style={{
+                height: 36,
+                padding: '0 14px',
+                fontSize: 12.5,
+                fontWeight: active ? 700 : 500,
+                color: active ? 'var(--accent)' : 'var(--ink-2)',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: `2px solid ${active ? 'var(--accent)' : 'transparent'}`,
+                cursor: 'pointer',
+                marginBottom: -1,
+                transition: 'color 0.12s ease, border-color 0.12s ease',
+              }}
+            >
+              <Icon size={13} aria-hidden="true" />
+              {t.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ─── Stats (solo en tab Tipos) ─── */}
+      {tab === 'types' && (
       <div
         className="flex gap-2 px-6 shrink-0 flex-wrap items-center"
         style={{
@@ -893,8 +1071,10 @@ export default function AdminPage() {
           </span>
         </div>
       </div>
+      )}
 
-      {/* ─── Grid ─── */}
+      {/* ─── Grid (solo en tab Tipos) ─── */}
+      {tab === 'types' && (
       <div className="flex-1 overflow-y-auto px-6 py-5">
         {types.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center animate-fade-up">
@@ -928,6 +1108,20 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+      )}
+
+      {/* ─── Tab Estrategia & Marca ─── */}
+      {tab === 'brand' && (
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div style={{ marginBottom: 24 }}>
+            <p style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, maxWidth: 760 }}>
+              Estos bloques se inyectan automáticamente como contexto al generar contenido con IA desde el pipeline.
+              Define cómo es iGEO, cómo habla, qué dice y qué no debe decir nunca.
+            </p>
+          </div>
+          <BrandContextEditor canEdit={true} />
+        </div>
+      )}
 
       {/* ─── Modals ─── */}
       <ContentTypeModal

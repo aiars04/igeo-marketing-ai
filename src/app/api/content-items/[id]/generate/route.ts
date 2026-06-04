@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { genai } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import type { ContentItem, ContentType, Profile, Channel, Market } from '@/types/database'
+import type { ContentItem, ContentType, BrandContext, Profile, Channel, Market } from '@/types/database'
 
 const MARKET_LANG: Record<Market, string> = {
   spain:    'español (España, voseo/tuteo neutro)',
@@ -71,14 +71,47 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     .returns<ContentType[]>()
   const ct = ctRows?.[0] ?? null
 
+  // 4b) Cargar brand_context: bloques relevantes para canal + mercado del item
+  const marketBlockKey =
+    item.market === 'spain' || item.market === 'latam' ? 'market_spain_latam'
+    : item.market === 'uk' ? 'market_uk'
+    : null
+
+  const channelBlockKey = `channel_${item.channel}` // channel_linkedin, channel_instagram, ...
+
+  const wantedKeys: string[] = [
+    'brand_identity',
+    'tone_of_voice',
+    'approved_claims',
+    'no_decir',
+    channelBlockKey,
+    ...(marketBlockKey ? [marketBlockKey] : []),
+  ]
+
+  const { data: brandRows } = await admin
+    .from('brand_context')
+    .select('*')
+    .in('key', wantedKeys)
+    .in('market', ['all', item.market])
+    .returns<BrandContext[]>()
+
+  // Ordenar siguiendo el orden de `wantedKeys` (en vez de orden alfabético/BD)
+  const brandBlocks = (brandRows ?? []).slice().sort((a, b) =>
+    wantedKeys.indexOf(a.key) - wantedKeys.indexOf(b.key),
+  )
+
+  const brandSection = brandBlocks.length > 0
+    ? `\n\n════ CONTEXTO DE MARCA iGEO ════\n${brandBlocks.map(b => b.content).join('\n\n')}`
+    : ''
+
   // 5) Construir prompts
   const systemPrompt = ct
-    ? `${SYSTEM_BASE}
+    ? `${SYSTEM_BASE}${brandSection}
 
-INSTRUCCIONES ESPECÍFICAS PARA ESTE CONTENIDO (${ct.name}):
+════ INSTRUCCIONES ESPECÍFICAS PARA ESTE CONTENIDO (${ct.name}) ════
 PROCESO: ${ct.process}
 ESTILO: ${ct.style}`
-    : `${SYSTEM_BASE}
+    : `${SYSTEM_BASE}${brandSection}
 
 (No hay content_type configurado para canal ${item.channel}. Usa criterio general de marketing B2B.)`
 
