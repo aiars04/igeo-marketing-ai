@@ -71,7 +71,7 @@ export default async function SettingsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto" style={{ padding: '32px 40px' }}>
         <div className="max-w-3xl mx-auto space-y-6">
 
           {/* Integraciones — solo admin */}
@@ -156,7 +156,7 @@ export default async function SettingsPage() {
                       }}
                       aria-hidden="true"
                     >
-                      {mk.label.slice(0, 2).toUpperCase()}
+                      {mk.abbr ?? mk.label.slice(0, 3).toUpperCase()}
                     </span>
                   )}
                   <span className="text-[13px] font-medium" style={{ color: 'var(--ink)' }}>{mk.label}</span>

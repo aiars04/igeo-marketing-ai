@@ -33,9 +33,9 @@ export const CHANNEL_CONFIG: Record<Channel, { label: string; color: string; ico
   newsletter: { label: 'Newsletter', color: 'text-violet-400',  icon: 'newsletter' },
 }
 
-export const MARKET_CONFIG: Record<Market, { label: string; flag: string }> = {
+export const MARKET_CONFIG: Record<Market, { label: string; flag: string; abbr?: string }> = {
   spain:    { label: 'España',   flag: '🇪🇸' },
-  latam:    { label: 'LATAM',    flag: '' },
+  latam:    { label: 'LATAM',    flag: '', abbr: 'LTM' },
   uk:       { label: 'UK',       flag: '🇬🇧' },
   france:   { label: 'Francia',  flag: '🇫🇷' },
   italy:    { label: 'Italia',   flag: '🇮🇹' },
