@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo, useEffect, Fragment } from "react"
+import { useState, useCallback, useMemo, useEffect, useRef, Fragment } from "react"
 import {
   Select,
   SelectContent,
@@ -23,6 +23,8 @@ import {
   CalendarDays,
   Megaphone,
   MapPin,
+  Upload,
+  Download,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -176,6 +178,8 @@ export interface EventManagerProps {
   defaultView?: "month" | "week" | "day" | "list"
   className?: string
   availableTags?: string[]
+  onImportCSV?: (file: File) => void
+  onDownloadTemplate?: () => void
 }
 
 // Paleta Apple apagada para las píldoras de evento
@@ -206,6 +210,8 @@ export function EventManager({
   categories = ["Reunión", "Tarea", "Recordatorio", "Personal"],
   colors = defaultColors,
   defaultView = "month",
+  onImportCSV,
+  onDownloadTemplate,
   className,
   availableTags = ["Importante", "Urgente", "Trabajo", "Personal", "Equipo", "Cliente"],
 }: EventManagerProps) {
@@ -217,6 +223,7 @@ export function EventManager({
   const [eventType, setEventType] = useState<'presential' | 'digital' | null>(null)
   const [draggedEvent, setDraggedEvent] = useState<Event | null>(null)
   const [allDay, setAllDay] = useState(false)
+  const csvInputRef = useRef<HTMLInputElement | null>(null)
   const [newEvent, setNewEvent] = useState<Partial<Event>>({
     title: "",
     description: "",
@@ -587,6 +594,41 @@ export function EventManager({
               )
             })}
           </div>
+
+          {/* CSV controls — visibles solo si las props existen */}
+          {onDownloadTemplate && (
+            <button
+              onClick={onDownloadTemplate}
+              className="btn-pill-secondary"
+              title="Descargar plantilla CSV"
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+              Plantilla
+            </button>
+          )}
+          {onImportCSV && (
+            <>
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                style={{ display: 'none' }}
+                onChange={e => {
+                  const file = e.target.files?.[0]
+                  e.target.value = ''
+                  if (file) onImportCSV(file)
+                }}
+              />
+              <button
+                onClick={() => csvInputRef.current?.click()}
+                className="btn-pill-secondary"
+                title="Importar eventos desde CSV"
+              >
+                <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                Importar CSV
+              </button>
+            </>
+          )}
 
           <button
             onClick={() => {
