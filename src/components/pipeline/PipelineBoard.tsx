@@ -112,7 +112,7 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
         <>
           <div className="fixed inset-0 z-[9998]" onClick={e => { e.stopPropagation(); setPos(null) }} />
           <div
-            className="fixed z-[9999] rounded-[var(--radius-md)] py-1 animate-scale-in min-w-[200px]"
+            className="fixed z-[9999] rounded-[var(--radius-md)] py-2 animate-scale-in min-w-[220px]"
             style={{
               top: pos.top, right: pos.right,
               background: 'var(--surface)',
@@ -122,11 +122,14 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
           >
             <button
               onClick={e => { e.stopPropagation(); onMove(item.id, next); setPos(null) }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-[var(--surface-2)] transition-colors"
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-[var(--accent-soft)] transition-colors"
               style={{ color: 'var(--ink)' }}
             >
-              <ChevronRight size={13} style={{ color: nextCfg.accentHex }} />
-              Mover a <span className="font-medium">{nextCfg.label}</span>
+              <ChevronRight size={13} style={{ color: nextCfg.accentHex, flexShrink: 0 }} aria-hidden="true" />
+              <div>
+                <p style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.3 }}>Mover a</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3 }}>{nextCfg.label}</p>
+              </div>
             </button>
           </div>
         </>,
