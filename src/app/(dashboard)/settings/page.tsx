@@ -71,8 +71,8 @@ export default async function SettingsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto" style={{ padding: '32px 40px' }}>
-        <div className="max-w-3xl mx-auto space-y-10">
+      <div className="flex-1 overflow-auto" style={{ padding: '48px 40px' }}>
+        <div className="max-w-3xl mx-auto flex flex-col" style={{ gap: 48 }}>
 
           {/* Integraciones — solo admin */}
           {isAdmin && (
