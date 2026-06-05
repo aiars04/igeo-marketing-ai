@@ -1,8 +1,12 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Loader2, Save, Check, Compass, Mic, ShieldCheck, Hash, Globe2, BadgeX } from 'lucide-react'
+import {
+  Loader2, Save, Check, Compass, Mic, ShieldCheck, Hash, Globe2, BadgeX,
+  Pencil,
+} from 'lucide-react'
 import { useToast, Toasts } from '@/components/ui/Toast'
+import { Modal } from '@/components/ui/Modal'
 import type { BrandContext } from '@/types/database'
 
 // Etiquetas humanas + iconos para cada `key` conocido
@@ -22,12 +26,25 @@ const KEY_META: Record<string, { label: string; group: string; icon: typeof Comp
 
 const GROUP_ORDER = ['Marca', 'Canales', 'Mercados']
 
+// Limpia markers markdown del inicio de líneas para el preview (#, ##, -, *)
+function previewText(content: string, maxChars = 200): string {
+  const cleaned = content
+    .split('\n')
+    .map(l => l.replace(/^\s*(?:#{1,6}|[-*])\s*/, ''))
+    .filter(l => l.trim().length > 0)
+    .join(' ')
+    .trim()
+  return cleaned.length > maxChars ? cleaned.slice(0, maxChars).trimEnd() + '…' : cleaned
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 export function BrandContextEditor({ canEdit }: { canEdit: boolean }) {
   const [blocks, setBlocks] = useState<BrandContext[]>([])
   const [loading, setLoading] = useState(true)
-  const [drafts, setDrafts] = useState<Record<string, string>>({}) // id → current textarea value
-  const [savingId, setSavingId] = useState<string | null>(null)
-  const [savedFlash, setSavedFlash] = useState<string | null>(null)
+  const [selectedBlock, setSelectedBlock] = useState<BrandContext | null>(null)
   const { items: toasts, show: showToast, remove: removeToast } = useToast()
 
   useEffect(() => {
@@ -37,12 +54,7 @@ export function BrandContextEditor({ canEdit }: { canEdit: boolean }) {
         const res = await fetch('/api/brand-context')
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json() as BrandContext[]
-        if (cancelled) return
-        setBlocks(data)
-        // Initialise drafts
-        const d: Record<string, string> = {}
-        for (const b of data) d[b.id] = b.content
-        setDrafts(d)
+        if (!cancelled) setBlocks(data)
       } catch (e) {
         if (!cancelled) showToast(`Error cargando contexto: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
       } finally {
@@ -64,29 +76,10 @@ export function BrandContextEditor({ canEdit }: { canEdit: boolean }) {
     return map
   }, [blocks])
 
-  const handleSave = async (block: BrandContext) => {
-    const next = drafts[block.id]
-    if (next === undefined || next === block.content) return
-    setSavingId(block.id)
-    try {
-      const res = await fetch(`/api/brand-context/${block.id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: next }),
-      })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        showToast(`Error: ${j.error ?? res.statusText}`, 'error')
-        return
-      }
-      const updated = await res.json() as BrandContext
-      setBlocks(prev => prev.map(b => b.id === updated.id ? updated : b))
-      setDrafts(prev => ({ ...prev, [updated.id]: updated.content }))
-      setSavedFlash(updated.id)
-      setTimeout(() => setSavedFlash(prev => prev === updated.id ? null : prev), 2000)
-      showToast(`"${KEY_META[updated.key]?.label ?? updated.key}" guardado`, 'success')
-    } finally {
-      setSavingId(null)
-    }
+  const handleSaved = (updated: BrandContext) => {
+    setBlocks(prev => prev.map(b => b.id === updated.id ? updated : b))
+    setSelectedBlock(updated)
+    showToast(`"${KEY_META[updated.key]?.label ?? updated.key}" guardado`, 'success')
   }
 
   if (loading) {
@@ -127,135 +120,18 @@ export function BrandContextEditor({ canEdit }: { canEdit: boolean }) {
               >
                 {groupName}
               </h3>
-              <div className="grid grid-cols-1 gap-4">
+              <div className="flex flex-col gap-3">
                 {groupBlocks.map(block => {
                   const meta = KEY_META[block.key]
                   const Icon = meta?.icon ?? Compass
-                  const isDirty = drafts[block.id] !== block.content
-                  const isSaving = savingId === block.id
-                  const wasJustSaved = savedFlash === block.id
-
                   return (
-                    <div
+                    <BrandCard
                       key={block.id}
-                      style={{
-                        background: 'var(--surface)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 'var(--radius-md)',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {/* Header del bloque */}
-                      <div
-                        className="flex items-center justify-between"
-                        style={{
-                          padding: '12px 16px',
-                          borderBottom: '1px solid var(--border)',
-                          background: 'var(--surface-2)',
-                        }}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            style={{
-                              width: 26, height: 26, borderRadius: 'var(--radius-sm)',
-                              background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}
-                          >
-                            <Icon size={13} aria-hidden="true" style={{ color: 'var(--accent-2)' }} />
-                          </div>
-                          <div>
-                            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
-                              {meta?.label ?? block.key}
-                            </p>
-                            <p style={{ fontSize: 10, color: 'var(--ink-3)', fontFamily: 'ui-monospace, monospace', marginTop: 2 }}>
-                              {block.key} · {block.market}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                            Actualizado {new Date(block.updated_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </span>
-                          {wasJustSaved && (
-                            <span
-                              className="inline-flex items-center gap-1"
-                              style={{
-                                fontSize: 11, fontWeight: 600,
-                                color: 'var(--green-2)', background: 'var(--green-soft)',
-                                padding: '2px 8px', borderRadius: 'var(--radius-sm)',
-                              }}
-                            >
-                              <Check size={11} aria-hidden="true" /> Guardado
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Textarea */}
-                      <div style={{ padding: 16 }}>
-                        <textarea
-                          value={drafts[block.id] ?? ''}
-                          onChange={e => setDrafts(prev => ({ ...prev, [block.id]: e.target.value }))}
-                          className="input"
-                          style={{
-                            height: 'auto',
-                            minHeight: 180,
-                            padding: 12,
-                            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                            fontSize: 12.5,
-                            lineHeight: 1.55,
-                            resize: 'vertical',
-                            whiteSpace: 'pre-wrap',
-                          }}
-                          rows={Math.max(8, (drafts[block.id] ?? '').split('\n').length + 1)}
-                          disabled={!canEdit || isSaving}
-                        />
-                        {!canEdit && (
-                          <p style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6 }}>
-                            Solo admin y manager pueden editar el contexto de marca.
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Footer botones */}
-                      {canEdit && (
-                        <div
-                          className="flex items-center justify-between"
-                          style={{
-                            padding: '10px 16px',
-                            borderTop: '1px solid var(--border)',
-                            background: 'var(--surface-2)',
-                          }}
-                        >
-                          <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                            {(drafts[block.id] ?? '').length} chars · {(drafts[block.id] ?? '').split('\n').length} líneas
-                          </span>
-                          <div className="flex items-center gap-2">
-                            {isDirty && (
-                              <button
-                                className="btn-secondary"
-                                onClick={() => setDrafts(prev => ({ ...prev, [block.id]: block.content }))}
-                                disabled={isSaving}
-                                style={{ height: 28, fontSize: 11, padding: '0 10px' }}
-                              >
-                                Descartar
-                              </button>
-                            )}
-                            <button
-                              className="btn-cta"
-                              onClick={() => handleSave(block)}
-                              disabled={!isDirty || isSaving}
-                              style={{ height: 28, fontSize: 11, padding: '0 12px' }}
-                            >
-                              {isSaving
-                                ? <><Loader2 size={11} className="animate-spin" aria-hidden="true" /> Guardando…</>
-                                : <><Save size={11} aria-hidden="true" /> Guardar</>}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                      block={block}
+                      icon={Icon}
+                      label={meta?.label ?? block.key}
+                      onClick={() => setSelectedBlock(block)}
+                    />
                   )
                 })}
               </div>
@@ -264,7 +140,318 @@ export function BrandContextEditor({ canEdit }: { canEdit: boolean }) {
         })}
       </div>
 
+      <BrandBlockModal
+        block={selectedBlock}
+        canEdit={canEdit}
+        onClose={() => setSelectedBlock(null)}
+        onSaved={handleSaved}
+        onError={msg => showToast(msg, 'error')}
+      />
+
       <Toasts items={toasts} remove={removeToast} />
     </>
+  )
+}
+
+// ─── BrandCard (plegada) ─────────────────────────────────────────────────────
+
+function BrandCard({
+  block, icon: Icon, label, onClick,
+}: {
+  block: BrandContext
+  icon: typeof Compass
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
+      aria-label={`Editar ${label}`}
+      className="group animate-fade-up"
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-md)',
+        padding: 16,
+        cursor: 'pointer',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        transition: 'border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'
+        e.currentTarget.style.transform = 'translateY(-1px)'
+        e.currentTarget.style.borderColor = 'var(--accent-border)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'
+        e.currentTarget.style.transform = 'translateY(0)'
+        e.currentTarget.style.borderColor = 'var(--border)'
+      }}
+    >
+      <div className="flex items-start gap-3">
+        {/* Icono */}
+        <div
+          className="shrink-0 flex items-center justify-center"
+          style={{
+            width: 32, height: 32,
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--accent-soft)',
+            border: '1px solid var(--accent-border)',
+          }}
+        >
+          <Icon size={15} aria-hidden="true" style={{ color: 'var(--accent-2)' }} />
+        </div>
+
+        {/* Contenido principal */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>
+              {label}
+            </p>
+            <p style={{ fontSize: 10, fontFamily: 'ui-monospace, monospace', color: 'var(--ink-3)' }}>
+              {block.key} · {block.market}
+            </p>
+          </div>
+          {/* Preview 2 líneas */}
+          <p
+            className="line-clamp-2"
+            style={{
+              fontSize: 12.5,
+              color: 'var(--ink-2)',
+              lineHeight: 1.55,
+              marginTop: 6,
+            }}
+          >
+            {previewText(block.content)}
+          </p>
+          {/* Footer meta */}
+          <div className="flex items-center gap-3 flex-wrap" style={{ marginTop: 10 }}>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+              Actualizado {formatDate(block.updated_at)}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>·</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontVariantNumeric: 'tabular-nums' }}>
+              {block.content.length.toLocaleString('es-ES')} chars
+            </span>
+          </div>
+        </div>
+
+        {/* Icono editar a la derecha (hint visual) */}
+        <div
+          className="shrink-0 self-start opacity-50 group-hover:opacity-100 transition-opacity"
+          style={{
+            width: 26, height: 26,
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--surface-2)',
+            border: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--ink-2)',
+          }}
+          aria-hidden="true"
+        >
+          <Pencil size={12} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── BrandBlockModal (edición) ───────────────────────────────────────────────
+
+function BrandBlockModal({
+  block, canEdit, onClose, onSaved, onError,
+}: {
+  block: BrandContext | null
+  canEdit: boolean
+  onClose: () => void
+  onSaved: (b: BrandContext) => void
+  onError: (msg: string) => void
+}) {
+  const [draft, setDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [justSaved, setJustSaved] = useState(false)
+
+  // Sync draft al abrir / cambiar block
+  useEffect(() => {
+    if (block) {
+      setDraft(block.content)
+      setSaveError(null)
+      setJustSaved(false)
+    }
+  }, [block?.id, block?.content]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!block) return null
+
+  const meta = KEY_META[block.key]
+  const Icon = meta?.icon ?? Compass
+  const isDirty = draft !== block.content
+
+  const handleSave = async () => {
+    if (!isDirty) return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const res = await fetch(`/api/brand-context/${block.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: draft }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        const msg = j.error ?? res.statusText
+        setSaveError(msg)
+        onError(`Error: ${msg}`)
+        return
+      }
+      const updated = await res.json() as BrandContext
+      onSaved(updated)
+      setJustSaved(true)
+      setTimeout(() => setJustSaved(false), 1800)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown'
+      setSaveError(msg)
+      onError(`Error: ${msg}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleClose = () => {
+    if (saving) return
+    if (isDirty && !confirm('Hay cambios sin guardar. ¿Descartar?')) return
+    onClose()
+  }
+
+  const lineCount = draft.split('\n').length
+
+  return (
+    <Modal open onClose={handleClose} title={meta?.label ?? block.key} size="lg">
+      <div className="flex flex-col gap-4">
+        {/* Header con icono + meta */}
+        <div className="flex items-center gap-3">
+          <div
+            className="shrink-0 flex items-center justify-center"
+            style={{
+              width: 36, height: 36,
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--accent-soft)',
+              border: '1px solid var(--accent-border)',
+            }}
+          >
+            <Icon size={16} aria-hidden="true" style={{ color: 'var(--accent-2)' }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p style={{ fontSize: 11, fontFamily: 'ui-monospace, monospace', color: 'var(--ink-3)' }}>
+              {block.key} · market: {block.market}
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>
+              Actualizado {formatDate(block.updated_at)}
+            </p>
+          </div>
+          {justSaved && (
+            <span
+              className="inline-flex items-center gap-1"
+              style={{
+                fontSize: 11, fontWeight: 600,
+                color: 'var(--green-2)', background: 'var(--green-soft)',
+                padding: '3px 9px', borderRadius: 'var(--radius-sm)',
+              }}
+            >
+              <Check size={11} aria-hidden="true" /> Guardado
+            </span>
+          )}
+        </div>
+
+        {/* Editor */}
+        <div>
+          <span className="section-label block mb-1.5">
+            Contenido (markdown)
+          </span>
+          <textarea
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            disabled={!canEdit || saving}
+            className="input"
+            style={{
+              height: 'auto',
+              minHeight: 320,
+              maxHeight: '50vh',
+              padding: 14,
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              fontSize: 13,
+              lineHeight: 1.6,
+              resize: 'vertical',
+              whiteSpace: 'pre-wrap',
+            }}
+            rows={Math.min(24, Math.max(14, lineCount + 1))}
+          />
+          <div className="flex items-center justify-between" style={{ marginTop: 8 }}>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+              Soporta Markdown: # H1, ## H2, **negrita**, - lista
+            </span>
+            <span className="tabular-nums" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+              {draft.length.toLocaleString('es-ES')} chars · {lineCount} líneas
+            </span>
+          </div>
+        </div>
+
+        {!canEdit && (
+          <div
+            style={{
+              padding: '10px 12px',
+              background: 'var(--surface-2)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: 12,
+              color: 'var(--ink-2)',
+            }}
+          >
+            🔒 Solo lectura. Solo admin y manager pueden editar el contexto de marca.
+          </div>
+        )}
+
+        {saveError && (
+          <div
+            style={{
+              padding: '10px 12px',
+              background: 'var(--red-soft)',
+              border: '1px solid rgba(239,68,68,0.25)',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: 12, color: 'var(--red-2)',
+            }}
+          >
+            {saveError}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div
+          className="flex items-center justify-between pt-3 flex-wrap gap-2"
+          style={{ borderTop: '1px solid var(--border)', marginTop: 4 }}
+        >
+          <button
+            className="btn-secondary"
+            onClick={handleClose}
+            disabled={saving}
+          >
+            {isDirty ? 'Descartar y cerrar' : 'Cerrar'}
+          </button>
+          {canEdit && (
+            <button
+              className="btn-cta"
+              onClick={handleSave}
+              disabled={!isDirty || saving}
+            >
+              {saving
+                ? <><Loader2 size={13} className="animate-spin" aria-hidden="true" /> Guardando…</>
+                : <><Save size={13} aria-hidden="true" /> Guardar cambios</>}
+            </button>
+          )}
+        </div>
+      </div>
+    </Modal>
   )
 }
