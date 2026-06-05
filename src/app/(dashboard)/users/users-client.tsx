@@ -157,6 +157,7 @@ export function UsersClient({
           className="grid"
           style={{
             gridTemplateColumns: '1fr 140px 110px 200px',
+            columnGap: 24,
             padding: '10px 16px',
             borderBottom: '1px solid var(--border)',
             background: 'var(--surface-2)',
@@ -189,6 +190,7 @@ export function UsersClient({
               className="grid items-center"
               style={{
                 gridTemplateColumns: '1fr 140px 110px 200px',
+            columnGap: 24,
                 padding: '12px 16px',
                 borderBottom: '1px solid var(--border)',
                 opacity: p.active ? 1 : 0.55,
