@@ -30,15 +30,22 @@ export async function GET(req: NextRequest) {
 
   const url = new URL(req.url)
   const stage = url.searchParams.get('stage') as Stage | null
+  // Paginación: ?limit=N (default 200, max 500) y ?before=<createdAt ISO> para cursor.
+  const reqLimit = Number(url.searchParams.get('limit') ?? 200)
+  const limit = Math.min(Math.max(Number.isFinite(reqLimit) ? reqLimit : 200, 1), 500)
+  const before = url.searchParams.get('before')
 
   let query = admin
     .from('content_items')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(500)
+    .limit(limit)
 
   if (stage && STAGES.includes(stage)) {
     query = query.eq('stage', stage)
+  }
+  if (before) {
+    query = query.lt('created_at', before)
   }
 
   const { data, error } = await query.returns<ContentItem[]>()

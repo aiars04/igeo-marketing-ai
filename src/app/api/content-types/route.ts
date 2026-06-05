@@ -30,8 +30,10 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const channel = url.searchParams.get('channel') as Channel | null
   const activeOnly = url.searchParams.get('active') === 'true'
+  const reqLimit = Number(url.searchParams.get('limit') ?? 200)
+  const limit = Math.min(Math.max(Number.isFinite(reqLimit) ? reqLimit : 200, 1), 500)
 
-  let query = admin.from('content_types').select('*').order('created_at', { ascending: true }).limit(200)
+  let query = admin.from('content_types').select('*').order('created_at', { ascending: true }).limit(limit)
   if (channel && CHANNELS.includes(channel)) query = query.eq('channel', channel)
   if (activeOnly) query = query.eq('active', true)
 

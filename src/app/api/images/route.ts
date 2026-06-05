@@ -23,12 +23,15 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const folderId = url.searchParams.get('folder_id')
   const channel = url.searchParams.get('channel')
+  const reqLimit = Number(url.searchParams.get('limit') ?? 200)
+  const limit = Math.min(Math.max(Number.isFinite(reqLimit) ? reqLimit : 200, 1), 500)
+  const before = url.searchParams.get('before')
 
   let query = admin
     .from('content_assets')
     .select('id, storage_path, prompt, approved, created_at, aspect_ratio, width, height, created_by, content_item_id, carousel_id, position, channel, folder_id')
     .order('created_at', { ascending: false })
-    .limit(200)
+    .limit(limit)
 
   // Filtros
   if (folderId === 'uncategorized') {
@@ -38,6 +41,9 @@ export async function GET(req: NextRequest) {
   }
   if (channel && VALID_CHANNELS.includes(channel as Channel)) {
     query = query.eq('channel', channel)
+  }
+  if (before) {
+    query = query.lt('created_at', before)
   }
 
   const { data, error } = await query

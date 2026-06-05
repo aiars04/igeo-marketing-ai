@@ -46,7 +46,7 @@ do $$ begin
 
     execute 'create policy content_items_select on public.content_items for select to authenticated using (true)';
     execute 'create policy content_items_insert on public.content_items for insert to authenticated with check (public.current_user_is_active())';
-    execute 'create policy content_items_update on public.content_items for update to authenticated using (public.current_user_role() in (''admin'',''manager'',''editor''))';
+    execute 'create policy content_items_update on public.content_items for update to authenticated using (public.current_user_role() in (''admin'',''manager''))';
     execute 'create policy content_items_delete on public.content_items for delete to authenticated using (public.current_user_role() in (''admin'',''manager''))';
   end if;
 end $$;
@@ -81,7 +81,7 @@ do $$ begin
 
     execute 'create policy ideas_select on public.ideas for select to authenticated using (true)';
     execute 'create policy ideas_insert on public.ideas for insert to authenticated with check (public.current_user_is_active())';
-    execute 'create policy ideas_update on public.ideas for update to authenticated using (public.current_user_role() in (''admin'',''manager'',''editor''))';
+    execute 'create policy ideas_update on public.ideas for update to authenticated using (public.current_user_role() in (''admin'',''manager''))';
     execute 'create policy ideas_delete on public.ideas for delete to authenticated using (public.current_user_role() in (''admin'',''manager''))';
   end if;
 end $$;

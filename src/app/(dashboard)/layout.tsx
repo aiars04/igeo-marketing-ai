@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { AppShell } from '@/components/app-shell'
 
 export type UserRole = 'admin' | 'manager' | 'user'
@@ -10,9 +10,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/login')
 
-  // Leer profile real de la tabla `profiles` (con admin client para bypass de RLS aquí)
-  const supabaseAdmin = createAdminClient()
-  const { data: profileData } = await supabaseAdmin
+  // RLS policy `profiles_select` permite a cualquier authenticated leer perfiles,
+  // así que el cliente user-scoped basta — sin necesidad de service_role aquí.
+  const { data: profileData } = await supabase
     .from('profiles')
     .select('full_name, role, active')
     .eq('id', user.id)

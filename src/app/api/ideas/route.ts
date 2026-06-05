@@ -31,15 +31,21 @@ export async function GET(req: NextRequest) {
 
   const url = new URL(req.url)
   const status = url.searchParams.get('status') as Idea['status'] | null
+  const reqLimit = Number(url.searchParams.get('limit') ?? 200)
+  const limit = Math.min(Math.max(Number.isFinite(reqLimit) ? reqLimit : 200, 1), 500)
+  const before = url.searchParams.get('before')
 
   let query = admin
     .from('ideas')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(500)
+    .limit(limit)
 
   if (status && STATUSES.includes(status)) {
     query = query.eq('status', status)
+  }
+  if (before) {
+    query = query.lt('created_at', before)
   }
 
   const { data, error } = await query.returns<Idea[]>()
