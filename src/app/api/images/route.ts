@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import type { Channel } from '@/types/database'
+import type { Channel, Profile } from '@/types/database'
 
 const BUCKET = 'content-assets'
 const VALID_CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
@@ -11,6 +11,15 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const admin = createAdminClient()
+
+  // Verificar que el perfil esté activo (alineado con el resto de rutas /api/images/*)
+  const { data: profile } = await admin
+    .from('profiles').select('id, active').eq('id', user.id)
+    .single<Pick<Profile, 'id' | 'active'>>()
+  if (!profile || !profile.active) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
   const url = new URL(req.url)
   const folderId = url.searchParams.get('folder_id')
   const channel = url.searchParams.get('channel')

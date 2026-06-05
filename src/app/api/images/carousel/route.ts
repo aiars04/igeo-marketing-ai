@@ -143,13 +143,27 @@ export async function POST(req: NextRequest) {
     }
 
     // 4) Subir cada imagen + insertar fila
+    // Estrategia all-or-nothing: si algo falla en cualquier paso, rollback completo
+    // (Storage.remove + DB.delete por carousel_id) para no dejar carruseles parciales.
     const carouselId = randomUUID()
     const ts = Date.now()
+    const uploadedPaths: string[] = []
     const inserted: Array<{
       id: string; url: string; prompt: string; position: number;
       carousel_id: string; aspect_ratio: AspectRatio;
       approved: boolean; created_at: string; width: number; height: number;
     }> = []
+
+    const rollback = async (reason: string, status: number) => {
+      if (uploadedPaths.length > 0) {
+        await admin.storage.from(BUCKET).remove(uploadedPaths).catch(() => {})
+      }
+      if (inserted.length > 0) {
+        // PostgrestFilterBuilder no es una Promise nativa hasta que se await — sin .catch().
+        try { await admin.from('content_assets').delete().eq('carousel_id', carouselId) } catch {}
+      }
+      return NextResponse.json({ error: reason, carousel_id: carouselId, rolled_back: true }, { status })
+    }
 
     for (let i = 0; i < imagesBase64.length; i++) {
       const filename = `${user.id}/${ts}-c${carouselId.slice(0, 8)}-${i}-${aspectRatio.replace(':', 'x')}.png`
@@ -159,8 +173,9 @@ export async function POST(req: NextRequest) {
         .from(BUCKET)
         .upload(filename, buffer, { contentType: 'image/png', upsert: false })
       if (upErr) {
-        return NextResponse.json({ error: `storage: ${upErr.message}`, partial_carousel_id: carouselId, completed_slides: inserted.length }, { status: 500 })
+        return await rollback(`storage: ${upErr.message}`, 500)
       }
+      uploadedPaths.push(filename)
 
       const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(filename)
 
@@ -185,7 +200,7 @@ export async function POST(req: NextRequest) {
         .select('id, created_at')
         .single<{ id: string; created_at: string }>()
       if (dbErr || !asset) {
-        return NextResponse.json({ error: `db: ${dbErr?.message ?? 'no_asset'}`, partial_carousel_id: carouselId, completed_slides: inserted.length }, { status: 500 })
+        return await rollback(`db: ${dbErr?.message ?? 'no_asset'}`, 500)
       }
 
       inserted.push({

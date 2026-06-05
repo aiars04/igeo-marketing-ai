@@ -269,10 +269,11 @@ export function EventManager({
   }
 
   // Sincronizar allDay cuando se abre el modal (creación o edición)
+  // Comparamos antes de setState para evitar re-renders en cascada.
   useEffect(() => {
     if (!isDialogOpen) return
-    if (isCreating) setAllDay(false)
-    else if (selectedEvent) setAllDay(selectedEvent.allDay ?? false)
+    const next = isCreating ? false : (selectedEvent?.allDay ?? false)
+    setAllDay(prev => (prev === next ? prev : next))
     // sólo al abrir; dentro del modal lo controla el usuario
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDialogOpen])

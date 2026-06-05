@@ -165,6 +165,8 @@ export async function POST(req: NextRequest) {
       .select('*')
       .single()
     if (dbError) {
+      // Rollback: limpia el archivo huérfano en Storage si el insert falla
+      await admin.storage.from(BUCKET).remove([filename]).catch(() => {})
       return NextResponse.json({ error: `db: ${dbError.message}` }, { status: 500 })
     }
 
