@@ -132,7 +132,20 @@ export async function POST(req: NextRequest) {
 
     const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(filename)
 
-    // 5) Insertar en content_assets (solo columnas existentes en la tabla)
+    // 4b) Auto-asignar folder system del channel si viene en el body
+    const channel = (body.channel ?? '').toLowerCase()
+    const validChannels = ['linkedin','instagram','facebook','x','blog','email','newsletter']
+    const channelForRow = validChannels.includes(channel) ? channel : null
+    let folderId: string | null = null
+    if (channelForRow) {
+      const { data: folder } = await admin
+        .from('image_folders').select('id')
+        .eq('system', true).eq('channel', channelForRow)
+        .maybeSingle<{ id: string }>()
+      folderId = folder?.id ?? null
+    }
+
+    // 5) Insertar en content_assets
     const insertRow = {
       storage_path: filename,
       prompt,
@@ -143,6 +156,8 @@ export async function POST(req: NextRequest) {
       height: size.height,
       mime_type: 'image/png',
       asset_type: 'image',
+      channel: channelForRow,
+      folder_id: folderId,
     }
     const { data: asset, error: dbError } = await admin
       .from('content_assets')

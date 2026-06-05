@@ -28,7 +28,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const { profile: me, admin } = auth
   const { id } = await ctx.params
 
-  let body: { approved?: boolean }
+  let body: { approved?: boolean; folder_id?: string | null }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
 
   const { data: target } = await admin
@@ -38,22 +38,39 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     .single<{ id: string; approved: boolean; created_by: string | null }>()
   if (!target) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
-  // Permisos: dueño, manager o admin
   const isOwner = target.created_by === me.id
   const isPriv = me.role === 'admin' || me.role === 'manager'
   if (!isOwner && !isPriv) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
-  const next = typeof body.approved === 'boolean' ? body.approved : !target.approved
+  const patch: Record<string, unknown> = {}
+
+  // toggle approved (sin body → toggle; body.approved boolean → set explícito)
+  if (Object.prototype.hasOwnProperty.call(body, 'approved') || Object.keys(body).length === 0) {
+    patch.approved = typeof body.approved === 'boolean' ? body.approved : !target.approved
+  }
+
+  // Cambiar folder_id (null = sin clasificar)
+  if (Object.prototype.hasOwnProperty.call(body, 'folder_id')) {
+    if (body.folder_id !== null && typeof body.folder_id === 'string') {
+      const { data: f } = await admin.from('image_folders').select('id').eq('id', body.folder_id).single()
+      if (!f) return NextResponse.json({ error: 'folder_not_found' }, { status: 404 })
+    }
+    patch.folder_id = body.folder_id
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: 'no_changes' }, { status: 400 })
+  }
 
   const { error } = await admin
     .from('content_assets')
-    .update({ approved: next } as never)
+    .update(patch as never)
     .eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ ok: true, approved: next })
+  return NextResponse.json({ ok: true, ...patch })
 }
 
 // DELETE: borrar de storage + tabla

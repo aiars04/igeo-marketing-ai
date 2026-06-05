@@ -4,10 +4,11 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import {
   Image as ImageIcon, Sparkles, Upload, Check, MoreHorizontal, Loader2, Trash2,
   Download, Copy, RefreshCw, Calendar as CalendarIcon, Maximize2, AlertCircle, Search, X,
-  ChevronLeft, ChevronRight, Layers,
+  ChevronLeft, ChevronRight, Layers, FolderClosed,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { useToast, Toasts } from '@/components/ui/Toast'
+import { ImageFoldersSidebar, type FolderWithCount } from '@/components/images/ImageFoldersSidebar'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ interface ImageAsset {
   content_item_id: string | null
   carousel_id: string | null
   position: number | null
+  channel: string | null
+  folder_id: string | null
 }
 
 interface PipelineItemLite {
@@ -165,29 +168,81 @@ export default function ImagesPage() {
   const [filter, setFilter] = useState<FilterMode>('all')
   const [search, setSearch] = useState('')
 
+  // Folders
+  const [folders, setFolders] = useState<FolderWithCount[]>([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [uncategorizedCount, setUncategorizedCount] = useState(0)
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null) // null = todas, 'uncategorized' o uuid
+
   // Busy IDs
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const { items: toasts, show: showToast, remove: removeToast } = useToast()
 
-  // ── Load images on mount ───────────────────────────────────────────────────
+  // ── Cargar carpetas (también recalcula counts) ─────────────────────────────
+  const fetchFolders = async () => {
+    try {
+      const res = await fetch('/api/image-folders')
+      if (!res.ok) return
+      const data = await res.json() as { folders: FolderWithCount[]; uncategorized_count: number; total_count: number }
+      setFolders(data.folders)
+      setUncategorizedCount(data.uncategorized_count)
+      setTotalCount(data.total_count)
+    } catch {}
+  }
+
+  // ── Cargar imágenes (con filtro folder opcional) ───────────────────────────
+  const fetchImages = async (folder: string | null) => {
+    setLoading(true)
+    try {
+      const url = folder ? `/api/images?folder_id=${encodeURIComponent(folder)}` : '/api/images'
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json() as ImageAsset[]
+      setImages(data)
+    } catch (e) {
+      showToast(`Error cargando imágenes: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ── Carga inicial — folders + images ──────────────────────────────────────
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      try {
-        const res = await fetch('/api/images')
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = await res.json() as ImageAsset[]
-        if (!cancelled) setImages(data)
-      } catch (e) {
-        if (!cancelled) showToast(`Error cargando imágenes: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+      await Promise.all([
+        fetchFolders(),
+        (async () => {
+          try {
+            const res = await fetch('/api/images')
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            const data = await res.json() as ImageAsset[]
+            if (!cancelled) setImages(data)
+          } catch (e) {
+            if (!cancelled) showToast(`Error cargando imágenes: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
+          } finally {
+            if (!cancelled) setLoading(false)
+          }
+        })(),
+      ])
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── Refetch al cambiar selectedFolder ───────────────────────────────────────
+  const [initialDone, setInitialDone] = useState(false)
+  useEffect(() => {
+    if (!loading && !initialDone) {
+      setInitialDone(true)
+      return
+    }
+    if (initialDone) {
+      fetchImages(selectedFolder)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFolder])
 
   // ── Filtered + grouped (carousels as 1 unit) ───────────────────────────────
   const gridUnits: GridUnit[] = useMemo(() => {
@@ -505,7 +560,7 @@ export default function ImagesPage() {
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Topbar */}
+      {/* Topbar (full width arriba del split) */}
       <div className="flex items-center justify-between px-6 h-[60px] shrink-0 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-5 min-w-0">
           <div className="shrink-0">
@@ -550,6 +605,21 @@ export default function ImagesPage() {
           </button>
         </div>
       </div>
+
+      {/* Split: sidebar + main */}
+      <div className="flex flex-1 overflow-hidden">
+        <ImageFoldersSidebar
+          folders={folders}
+          totalCount={totalCount}
+          uncategorizedCount={uncategorizedCount}
+          selectedFolder={selectedFolder}
+          onSelect={setSelectedFolder}
+          onFoldersChange={fetchFolders}
+          canManage={true}
+          showError={msg => showToast(msg, 'error')}
+        />
+
+        <div className="flex flex-col flex-1 overflow-hidden">
 
       {/* Filter bar */}
       <div
@@ -627,7 +697,7 @@ export default function ImagesPage() {
             <p className="text-[12px]">Prueba a ampliar el filtro o cambiar la búsqueda.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
             {gridUnits.map(unit => {
               if (unit.kind === 'single') {
                 const img = unit.asset
@@ -790,6 +860,9 @@ export default function ImagesPage() {
           </div>
         )}
       </div>
+
+        </div>{/* /flex-col main */}
+      </div>{/* /flex split */}
 
       {/* ── Generate Modal ── */}
       <Modal

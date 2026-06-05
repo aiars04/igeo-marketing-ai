@@ -129,6 +129,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 3b) Auto-asignar folder system del channel si viene en el body
+    const channelRaw = ((body as { channel?: string }).channel ?? '').toLowerCase()
+    const validChannelsList = ['linkedin','instagram','facebook','x','blog','email','newsletter']
+    const channelForRow = validChannelsList.includes(channelRaw) ? channelRaw : null
+    let folderId: string | null = null
+    if (channelForRow) {
+      const { data: folder } = await admin
+        .from('image_folders').select('id')
+        .eq('system', true).eq('channel', channelForRow)
+        .maybeSingle<{ id: string }>()
+      folderId = folder?.id ?? null
+    }
+
     // 4) Subir cada imagen + insertar fila
     const carouselId = randomUUID()
     const ts = Date.now()
@@ -163,6 +176,8 @@ export async function POST(req: NextRequest) {
         asset_type: 'image',
         carousel_id: carouselId,
         position: i,
+        channel: channelForRow,
+        folder_id: folderId,
       }
       const { data: asset, error: dbErr } = await admin
         .from('content_assets')

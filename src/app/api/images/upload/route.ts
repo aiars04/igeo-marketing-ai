@@ -59,7 +59,20 @@ export async function POST(req: NextRequest) {
 
   const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(filename)
 
-  // 4) Insertar en content_assets (sin prompt, asset_type='upload')
+  // 3b) Auto-asignar folder system del channel si el formData lo trae
+  const rawChannel = (formData.get('channel') ?? '').toString().toLowerCase()
+  const validChannels = ['linkedin','instagram','facebook','x','blog','email','newsletter']
+  const channelForRow = validChannels.includes(rawChannel) ? rawChannel : null
+  let folderId: string | null = null
+  if (channelForRow) {
+    const { data: folder } = await admin
+      .from('image_folders').select('id')
+      .eq('system', true).eq('channel', channelForRow)
+      .maybeSingle<{ id: string }>()
+    folderId = folder?.id ?? null
+  }
+
+  // 4) Insertar en content_assets
   const insertRow = {
     storage_path: filename,
     prompt: null,
@@ -70,6 +83,8 @@ export async function POST(req: NextRequest) {
     height: null,
     mime_type: file.type,
     asset_type: 'upload',
+    channel: channelForRow,
+    folder_id: folderId,
   }
   const { data: asset, error: dbError } = await admin
     .from('content_assets')

@@ -107,6 +107,20 @@ export interface ContentAsset {
   created_at: string
   carousel_id: string | null
   position: number | null
+  channel: Channel | 'uncategorized' | null
+  folder_id: string | null
+}
+
+export interface ImageFolder {
+  id:         string
+  name:       string
+  channel:    Channel | null
+  system:     boolean
+  color:      string | null
+  icon:       string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface Idea {
