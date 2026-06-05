@@ -1,7 +1,7 @@
 import { Globe, Users, Key } from 'lucide-react'
 import Link from 'next/link'
 import { cn, MARKET_CONFIG } from '@/lib/utils'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { Profile, UserRole } from '@/types/database'
 
 const ROLE_LABEL: Record<UserRole, string> = { admin: 'Admin', manager: 'Manager', user: 'Usuario' }
@@ -15,6 +15,25 @@ export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
   const supabaseAdmin = createAdminClient()
+
+  // ── Rol del usuario actual ──
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: meProfile } = user
+    ? await supabaseAdmin
+        .from('profiles').select('role').eq('id', user.id)
+        .single<Pick<Profile, 'role'>>()
+    : { data: null }
+  const isAdmin = meProfile?.role === 'admin'
+
+  // ── Estado real de integraciones (env vars) ──
+  const integrations = [
+    { label: 'Gemini API Key',          desc: 'Generación de contenido e imágenes',     configured: !!process.env.GEMINI_API_KEY },
+    { label: 'Imagen 4 Ultra (Google)', desc: 'Generación avanzada de imágenes',        configured: !!process.env.GEMINI_API_KEY },
+    { label: 'Postiz API',              desc: 'Publicación automática multi-red social', configured: !!process.env.POSTIZ_API_KEY },
+  ]
+
+  // ── Usuarios activos ──
   const { data: usersData } = await supabaseAdmin
     .from('profiles')
     .select('id, full_name, email, role, active')
@@ -53,26 +72,28 @@ export default async function SettingsPage() {
       </div>
 
       <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="max-w-3xl mx-auto space-y-6">
 
-          {/* API Keys */}
-          <div className="card animate-fade-up">
-            <div className="flex items-center gap-2.5 mb-4">
-              <Key size={15} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
-              <h2 className="section-title" style={{ fontSize: 15, fontWeight: 600 }}>
-                Integraciones
-              </h2>
-            </div>
-            <div className="space-y-2">
-              {[
-                { label: 'Gemini API Key', key: 'GEMINI_API_KEY', status: 'configured', desc: 'Generación de contenido e imágenes' },
-                { label: 'Nano Banana Pro', key: 'INFSH_TOKEN', status: 'configured', desc: 'Generación avanzada de imágenes' },
-                { label: 'Postiz API', key: 'POSTIZ_API_KEY', status: 'pending', desc: 'Publicación automática multi-red social' },
-              ].map(item => {
-                const configured = item.status === 'configured'
-                return (
+          {/* Integraciones — solo admin */}
+          {isAdmin && (
+            <div
+              className="card animate-fade-up"
+              style={{
+                padding: 24,
+                borderLeft: '3px solid var(--accent)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+              }}
+            >
+              <div className="flex items-center gap-2.5 mb-5">
+                <Key size={15} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
+                <h2 className="section-title" style={{ fontSize: 15, fontWeight: 600 }}>
+                  Integraciones
+                </h2>
+              </div>
+              <div className="space-y-2">
+                {integrations.map(item => (
                   <div
-                    key={item.key}
+                    key={item.label}
                     className="settings-item justify-between"
                     style={{ background: 'var(--surface-2)' }}
                   >
@@ -82,25 +103,32 @@ export default async function SettingsPage() {
                       </div>
                       <div className="text-[12px] mt-0.5" style={{ color: 'var(--ink-2)' }}>{item.desc}</div>
                     </div>
-                    <span className={cn('badge shrink-0 ml-3', configured ? 'badge-green' : 'badge-amber')}>
+                    <span className={cn('badge shrink-0 ml-3', item.configured ? 'badge-green' : 'badge-amber')}>
                       <span
                         aria-hidden="true"
                         className="w-1.5 h-1.5 rounded-full"
                         style={{
-                          background: configured ? 'var(--green)' : 'var(--amber)',
+                          background: item.configured ? 'var(--green)' : 'var(--amber)',
                         }}
                       />
-                      {configured ? 'Configurado' : 'Pendiente'}
+                      {item.configured ? 'Configurado' : 'Pendiente'}
                     </span>
                   </div>
-                )
-              })}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Markets */}
-          <div className="card animate-fade-up">
-            <div className="flex items-center gap-2.5 mb-4">
+          <div
+            className="card animate-fade-up"
+            style={{
+              padding: 24,
+              borderLeft: '3px solid var(--green)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            }}
+          >
+            <div className="flex items-center gap-2.5 mb-5">
               <Globe size={15} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
               <h2 className="section-title" style={{ fontSize: 15, fontWeight: 600 }}>
                 Mercados activos
@@ -113,7 +141,24 @@ export default async function SettingsPage() {
                   className="settings-item"
                   style={{ background: 'var(--surface-2)' }}
                 >
-                  <span className="text-base">{mk.flag}</span>
+                  {mk.flag ? (
+                    <span className="text-base">{mk.flag}</span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center justify-center"
+                      style={{
+                        width: 18, height: 18,
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--surface-3)',
+                        fontSize: 9, fontWeight: 700,
+                        color: 'var(--ink-3)',
+                        letterSpacing: '0.04em',
+                      }}
+                      aria-hidden="true"
+                    >
+                      {mk.label.slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
                   <span className="text-[13px] font-medium" style={{ color: 'var(--ink)' }}>{mk.label}</span>
                   <span
                     aria-hidden="true"
@@ -126,8 +171,15 @@ export default async function SettingsPage() {
           </div>
 
           {/* Users */}
-          <div className="card animate-fade-up">
-            <div className="flex items-center justify-between mb-4 gap-2">
+          <div
+            className="card animate-fade-up"
+            style={{
+              padding: 24,
+              borderLeft: '3px solid var(--accent)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            }}
+          >
+            <div className="flex items-center justify-between mb-5 gap-2">
               <div className="flex items-center gap-2.5">
                 <Users size={15} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
                 <h2 className="section-title" style={{ fontSize: 15, fontWeight: 600 }}>
