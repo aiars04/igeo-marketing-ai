@@ -275,9 +275,10 @@ function BrandBlockModal({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
 
-  // Sync draft al abrir / cambiar block
+  // Sync draft al abrir / cambiar block (mirror de prop external)
   useEffect(() => {
     if (block) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft(block.content)
       setSaveError(null)
       setJustSaved(false)

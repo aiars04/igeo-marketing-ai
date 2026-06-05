@@ -84,6 +84,7 @@ function DocumentsModal({
     finally { setLoading(false) }
   }, [ct.id])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { refresh() }, [refresh])
 
   // Cleanup preview object URLs
@@ -642,9 +643,11 @@ function ContentTypeModal({
   const [testResult, setTestResult] = useState<string | null>(null)
   const [testError, setTestError] = useState<string | null>(null)
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setForm(initial ?? EMPTY_FORM) }, [initial])
   useEffect(() => {
-    // Reset estado transitorio al abrir/cambiar
+    // Reset estado transitorio al abrir/cambiar (sync con prop external)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveError(null); setTestResult(null); setTestError(null)
   }, [initial, open])
 

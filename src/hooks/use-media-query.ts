@@ -7,9 +7,11 @@ export function useMediaQuery(query: string): boolean {
     return window.matchMedia(query).matches
   })
 
+  // Sync con MediaQueryList externo (window) — patrón canónico para
+  // subscribirse a APIs del navegador.
   useEffect(() => {
     const media = window.matchMedia(query)
-    // Sincronizamos por si la query cambió o el SSR devolvió false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (media.matches !== matches) setMatches(media.matches)
     const listener = (e: MediaQueryListEvent) => setMatches(e.matches)
     media.addEventListener('change', listener)

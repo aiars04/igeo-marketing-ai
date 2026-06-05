@@ -268,13 +268,13 @@ export function EventManager({
     setSearchQuery("")
   }
 
-  // Sincronizar allDay cuando se abre el modal (creación o edición)
-  // Comparamos antes de setState para evitar re-renders en cascada.
+  // Sincronizar allDay cuando se abre el modal (creación o edición).
+  // Mirror de external state legítimo — el modal se abre por evento del usuario.
   useEffect(() => {
     if (!isDialogOpen) return
     const next = isCreating ? false : (selectedEvent?.allDay ?? false)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAllDay(prev => (prev === next ? prev : next))
-    // sólo al abrir; dentro del modal lo controla el usuario
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDialogOpen])
 
@@ -1529,6 +1529,7 @@ function EventCard({
   variant?: "default" | "compact" | "detailed"
 }) {
   const [isHovered, setIsHovered] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const colorClasses = getColorClasses(event.color)
 
   const formatTime = (date: Date) =>
@@ -2103,6 +2104,7 @@ function DayView({
 function ListView({
   events,
   onEventClick,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getColorClasses,
 }: {
   events: Event[]

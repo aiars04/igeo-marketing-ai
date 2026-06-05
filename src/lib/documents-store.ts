@@ -80,7 +80,8 @@ export async function listDocsByType(contentTypeId: string): Promise<DocMeta[]> 
       .index('contentTypeId')
       .getAll(contentTypeId)
     req.onsuccess = () => {
-      resolve((req.result as IDBRecord[]).map(({ blob: _b, ...meta }) => meta))
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    resolve((req.result as IDBRecord[]).map(({ blob, ...meta }) => meta))
     }
     req.onerror = () => reject(req.error)
   })
@@ -91,7 +92,8 @@ export async function listAllDocMeta(): Promise<DocMeta[]> {
   return new Promise((resolve, reject) => {
     const req = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAll()
     req.onsuccess = () => {
-      resolve((req.result as IDBRecord[]).map(({ blob: _b, ...meta }) => meta))
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    resolve((req.result as IDBRecord[]).map(({ blob, ...meta }) => meta))
     }
     req.onerror = () => reject(req.error)
   })

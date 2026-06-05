@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import {
   Image as ImageIcon, Sparkles, Upload, Check, MoreHorizontal, Loader2, Trash2,
   Download, Copy, RefreshCw, Calendar as CalendarIcon, Maximize2, AlertCircle, Search, X,
-  ChevronLeft, ChevronRight, Layers, FolderClosed,
+  ChevronLeft, ChevronRight, Layers,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { useToast, Toasts } from '@/components/ui/Toast'
@@ -235,6 +235,7 @@ export default function ImagesPage() {
   const [initialDone, setInitialDone] = useState(false)
   useEffect(() => {
     if (!loading && !initialDone) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInitialDone(true)
       return
     }

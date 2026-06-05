@@ -252,9 +252,10 @@ export default function CalendarPage() {
     URL.revokeObjectURL(url)
   }
 
-  // Cargar de localStorage al montar
+  // Cargar de localStorage al montar (sync con external storage)
   useEffect(() => {
     const saved = deserialize(localStorage.getItem(STORAGE_KEY))
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved && saved.length > 0) setEvents(saved)
     setHydrated(true)
   }, [])

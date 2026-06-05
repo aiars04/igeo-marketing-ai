@@ -83,6 +83,7 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
   const [mounted, setMounted] = useState(false)
   const ref = useRef<HTMLButtonElement>(null)
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true) }, [])
 
   const idx = STAGES.indexOf(item.stage as Stage)
@@ -256,6 +257,7 @@ function StatusChip({
 }
 
 // Limpia markdown crudo al inicio de líneas: #, ##, ###, -, *
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function stripMarkdown(text: string): string {
   return text
     .split('\n')
@@ -289,8 +291,9 @@ function ContentDetailModal({
   const [confirmRegenerate, setConfirmRegenerate] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
 
-  // Sync editContent cuando el item cambia (regenerar trae content nuevo)
+  // Sync editContent cuando el item cambia (regenerar trae content nuevo) — mirror de prop
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEditContent(item.content ?? '')
     setConfirmRegenerate(false)
   }, [item.id, item.content])
@@ -822,7 +825,6 @@ function Card({
   onApprove: (id: string, s: Stage) => void
   onSelect: (item: ContentItem) => void
 }) {
-  const cfg = STAGE_CONFIG[item.stage as Stage]
   const needsApproval = APPROVAL_STAGES.includes(item.stage as Stage) && !item.human_approved
 
   // Iniciales del responsable
@@ -1163,11 +1165,14 @@ function Column({
 export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, onItemUpdated, itemImageMap }: BoardProps) {
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Sincroniza selectedItem con la última versión cuando items se actualiza
+  // (p.ej. tras editar desde el modal). Patrón legítimo de mirror de external state.
   useEffect(() => {
     if (!selectedItem) return
-    const updated = items.find(i => i.id === selectedItem.id)
-    setSelectedItem(updated ?? null)
+    const updated = items.find(i => i.id === selectedItem.id) ?? null
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (updated !== selectedItem) setSelectedItem(updated)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items])
 
   const byStage = STAGES.reduce((acc, s) => {

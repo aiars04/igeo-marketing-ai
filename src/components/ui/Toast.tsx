@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 export type ToastKind = 'success' | 'error' | 'info'
 
