@@ -717,14 +717,6 @@ export default function ImagesPage() {
                       <img src={img.url} alt={img.prompt ?? 'Imagen'} loading="lazy"
                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     </div>
-                    <div
-                      className="absolute inset-0 opacity-0 group-hover:opacity-100 p-3 flex flex-col justify-end pointer-events-none"
-                      style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent 60%)', transition: 'opacity 0.15s ease' }}
-                    >
-                      <p className="text-[11px] leading-snug line-clamp-3" style={{ color: '#ffffff' }}>
-                        {img.prompt ?? 'Imagen subida sin prompt'}
-                      </p>
-                    </div>
                     <div className="absolute top-2 right-2 flex gap-1">
                       {img.aspect_ratio && (
                         <span
@@ -809,14 +801,6 @@ export default function ImagesPage() {
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={cov.url} alt={cov.prompt ?? 'Carrusel'} loading="lazy"
                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    </div>
-                    <div
-                      className="absolute inset-0 opacity-0 group-hover:opacity-100 p-3 flex flex-col justify-end pointer-events-none"
-                      style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent 60%)', transition: 'opacity 0.15s ease' }}
-                    >
-                      <p className="text-[11px] leading-snug line-clamp-2" style={{ color: '#ffffff' }}>
-                        {cov.prompt ?? 'Carrusel'}
-                      </p>
                     </div>
                     {/* Badges */}
                     <div className="absolute top-2 right-2 flex gap-1">

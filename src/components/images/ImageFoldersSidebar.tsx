@@ -148,7 +148,7 @@ export function ImageFoldersSidebar({
           overflowY: 'auto',
         }}
       >
-        <div style={{ padding: '16px 12px 8px' }}>
+        <div style={{ padding: '12px 10px 4px' }}>
           {/* Item Todas */}
           <SidebarItem
             label="Todas las imágenes"
@@ -161,11 +161,11 @@ export function ImageFoldersSidebar({
         </div>
 
         {/* POR CANAL */}
-        <div style={{ padding: '4px 12px' }}>
+        <div style={{ padding: '2px 10px' }}>
           <p style={{
             fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
             letterSpacing: '0.08em', color: 'var(--ink-3)',
-            padding: '8px 8px 4px',
+            padding: '10px 8px 4px',
           }}>
             Por canal
           </p>
@@ -197,11 +197,11 @@ export function ImageFoldersSidebar({
         </div>
 
         {/* CUSTOM */}
-        <div style={{ padding: '4px 12px 16px' }}>
+        <div style={{ padding: '2px 10px 12px' }}>
           <p style={{
             fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
             letterSpacing: '0.08em', color: 'var(--ink-3)',
-            padding: '12px 8px 4px',
+            padding: '14px 8px 4px',
           }}>
             Custom
           </p>
@@ -421,8 +421,8 @@ function SidebarItem({
     <button
       onClick={onClick}
       style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '8px 10px',
+        display: 'flex', alignItems: 'center', gap: 9,
+        padding: '5px 10px',
         width: '100%',
         textAlign: 'left',
         borderRadius: 'var(--radius-md)',
