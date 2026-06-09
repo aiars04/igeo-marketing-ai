@@ -62,16 +62,23 @@ Keep the original intent but make it more detailed and technically precise.
 Output ONLY the enhanced prompt, nothing else. Maximum 200 words.
 Context: This image will be used for ${context}.`
 
+  // Limitar a 3s — si Gemini Flash se demora, usamos el prompt original
+  // para no agotar el presupuesto de tiempo del endpoint
+  const ENHANCER_TIMEOUT_MS = 3000
   try {
-    const res = await genai.models.generateContent({
+    const enhancerPromise = genai.models.generateContent({
       model: ENHANCER_MODEL,
       contents: [{ role: 'user', parts: [{ text: `Original prompt: ${originalPrompt}` }] }],
       config: { systemInstruction: systemPrompt, maxOutputTokens: 300 },
     })
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('enhancer_timeout')), ENHANCER_TIMEOUT_MS),
+    )
+    const res = await Promise.race([enhancerPromise, timeoutPromise])
     const enhanced = res.text?.trim()
     return enhanced && enhanced.length > 10 ? enhanced : originalPrompt
   } catch (e) {
-    console.warn('Prompt enhancer failed, falling back to original:', e instanceof Error ? e.message : e)
+    console.warn('Prompt enhancer failed/timeout, falling back to original:', e instanceof Error ? e.message : e)
     return originalPrompt
   }
 }

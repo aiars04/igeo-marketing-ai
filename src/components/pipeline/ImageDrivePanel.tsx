@@ -142,7 +142,11 @@ export function ImageDrivePanel({
         })
         if (!res.ok) {
           const j = await res.json().catch(() => ({})) as { error?: string }
-          setGenError(j.error ?? `HTTP ${res.status}`)
+          if (res.status === 504 || res.status === 408 || res.status === 502) {
+            setGenError('La generación tardó demasiado. Imagen 4 está saturado o tu plan Vercel limita el tiempo. Pulsa "Generar imagen" otra vez — suele funcionar al segundo intento.')
+          } else {
+            setGenError(j.error ?? `HTTP ${res.status}`)
+          }
           return
         }
         const data = await res.json() as { id: string; url: string }
@@ -166,7 +170,11 @@ export function ImageDrivePanel({
         })
         if (!res.ok) {
           const j = await res.json().catch(() => ({})) as { error?: string }
-          setGenError(j.error ?? `HTTP ${res.status}`)
+          if (res.status === 504 || res.status === 408 || res.status === 502) {
+            setGenError('Timeout generando variantes. Vuelve a intentarlo o prueba en modo Individual.')
+          } else {
+            setGenError(j.error ?? `HTTP ${res.status}`)
+          }
           return
         }
         const data = await res.json() as { assets: ImageAsset[] }
@@ -186,7 +194,11 @@ export function ImageDrivePanel({
         })
         if (!res.ok) {
           const j = await res.json().catch(() => ({})) as { error?: string }
-          setGenError(j.error ?? `HTTP ${res.status}`)
+          if (res.status === 504 || res.status === 408 || res.status === 502) {
+            setGenError('Timeout en modo curado (4 imágenes pueden tardar >60s en Vercel free). Prueba con 2 prompts o usa modo Individual.')
+          } else {
+            setGenError(j.error ?? `HTTP ${res.status}`)
+          }
           return
         }
         const data = await res.json() as { assets: ImageAsset[] }
