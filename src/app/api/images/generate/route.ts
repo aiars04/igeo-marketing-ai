@@ -1,44 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Buffer } from 'node:buffer'
 import { genai, ENHANCER_MODEL, IMAGEN_DIMENSIONS, type AspectRatio } from '@/lib/gemini'
+import { generateWithNanoBanana } from '@/lib/nano-banana'
 
-// Cascada Ultra → Base; ante errores de capacidad probamos el siguiente
-const MODELS_FALLBACK = [
-  'imagen-4.0-ultra-generate-001',
-  'imagen-4.0-generate-001',
+// Cascada: Nano Banana 2 → Imagen 4 Ultra → Imagen 4 Base
+// Nano Banana 2 es ~5x más rápido y tiene cuota mucho mayor.
+// Imagen 4 queda como fallback si Nano Banana falla o no está disponible.
+type ModelType = 'nano-banana' | 'imagen-ultra' | 'imagen-base'
+
+const MODEL_CASCADE: Array<{ id: string; type: ModelType }> = [
+  { id: 'gemini-3.1-flash-image',       type: 'nano-banana'  },
+  { id: 'imagen-4.0-ultra-generate-001', type: 'imagen-ultra' },
+  { id: 'imagen-4.0-generate-001',       type: 'imagen-base'  },
 ]
 
+function shouldFallback(err: unknown): boolean {
+  const e = err as { status?: string; code?: number; message?: string }
+  const status = e.status ?? ''
+  const code = e.code ?? 0
+  const msg = (e.message ?? '').toLowerCase()
+  return (
+    status === 'RESOURCE_EXHAUSTED' ||
+    code === 429 || code === 503 || code === 404 ||
+    msg.includes('not found') || msg.includes('quota') || msg.includes('exhausted') ||
+    msg.includes('unavailable') || msg.includes('no_image_returned')
+  )
+}
+
 async function generateWithFallback(prompt: string, aspectRatio: string): Promise<{ imageBytes: string; modelUsed: string }> {
-  for (const model of MODELS_FALLBACK) {
+  for (const { id, type } of MODEL_CASCADE) {
     try {
+      if (type === 'nano-banana') {
+        const result = await generateWithNanoBanana(prompt, aspectRatio)
+        return result
+      }
+      // Imagen 4 Ultra / Base
       const response = await genai.models.generateImages({
-        model,
+        model: id,
         prompt,
-        config: {
-          numberOfImages: 1,
-          outputMimeType: 'image/png',
-          aspectRatio,
-        },
+        config: { numberOfImages: 1, outputMimeType: 'image/png', aspectRatio },
       })
       const imageBytes = response.generatedImages?.[0]?.image?.imageBytes
-      if (imageBytes) return { imageBytes, modelUsed: model }
-      // Si no devolvió bytes pero tampoco lanzó, seguimos al siguiente modelo
-      console.warn(`Model ${model} returned no image, trying next...`)
+      if (imageBytes) return { imageBytes, modelUsed: id }
+      console.warn(`Model ${id} returned no image, trying next...`)
     } catch (err: unknown) {
       const e = err as { status?: string; code?: number; message?: string }
-      const status = e.status ?? ''
-      const code = e.code ?? 0
-      const msg = (e.message ?? '').toLowerCase()
-      // Solo hace fallback en errores de capacidad/disponibilidad
-      if (
-        status === 'RESOURCE_EXHAUSTED' ||
-        code === 429 || code === 503 || code === 404 ||
-        msg.includes('not found') || msg.includes('quota') || msg.includes('exhausted') || msg.includes('unavailable')
-      ) {
-        console.warn(`Model ${model} unavailable (${status || code || 'unknown'}), trying next...`)
+      if (shouldFallback(err)) {
+        console.warn(`Model ${id} unavailable (${e.status || e.code || e.message}), trying next...`)
         continue
       }
-      // Otros errores (prompt bloqueado, auth, etc.) los propaga
       throw err
     }
   }

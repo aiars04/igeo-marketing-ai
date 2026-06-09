@@ -8,10 +8,20 @@ if (!apiKey) {
 
 export const genai = new GoogleGenAI({ apiKey })
 
-// Nombre verificado vía models.list() — Imagen 4 Ultra (calidad máxima)
+// ── Modelos de generación de imágenes ──────────────────────────────────────
+// Nano Banana 2 (Gemini 3 Flash Image Preview) — PRINCIPAL
+// Más rápido (3-8s), cuota mucho mayor (~1500/día free), más barato y soporta edición.
+// Devuelve la imagen vía generateContent con responseModalities: ['Image'].
+export const NANO_BANANA_MODEL = 'gemini-3.1-flash-image'
+// Variante Pro (calidad superior, más lenta) — fallback intermedio
+export const NANO_BANANA_PRO_MODEL = 'gemini-3-pro-image'
+
+// Imagen 4 Ultra — fallback si Nano Banana falla. Calidad máxima pero más lento y cuota baja.
 export const IMAGEN_MODEL = 'imagen-4.0-ultra-generate-001'
-// Base: soporta numberOfImages 1..4 (Ultra no). Usado en modo "variantes" del carrusel.
+// Imagen 4 Base — fallback final. Soporta numberOfImages 1..4 (Ultra no).
 export const IMAGEN_BASE_MODEL = 'imagen-4.0-generate-001'
+
+// Gemini Flash para enriquecer prompts antes de la generación
 export const ENHANCER_MODEL = 'gemini-2.0-flash'
 
 // Resolución máxima soportada por Imagen 4 para cada aspect ratio
