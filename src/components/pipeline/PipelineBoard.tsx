@@ -629,45 +629,41 @@ function ContentDetailModal({
                   </p>
                 )}
               </div>
-            ) : (
-              <div>
-                {(item.stage === 'design' || item.stage === 'scheduled' || item.stage === 'analyzed') ? (
-                  <ImageDrivePanel
-                    itemId={item.id}
-                    itemTitle={item.title}
-                    channel={item.channel as Channel}
-                    assignedImageId={imageId}
-                    assignedImageUrl={imageUrl}
-                    onAssigned={(assetId, url) => {
-                      onImageAssigned?.(item.id, assetId, url)
-                    }}
-                    onUnassigned={() => {
-                      onImageUnassigned?.(item.id)
-                    }}
-                  />
-                ) : (
-                  <div
-                    className="inline-flex items-center"
-                    style={{
-                      gap: 6,
-                      padding: '8px 12px',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      background: withAlpha(stageCfg.accentHex, 0.08),
-                      border: `1px solid ${withAlpha(stageCfg.accentHex, 0.21)}`,
-                      color: stageCfg.accentHex,
-                    }}
-                  >
-                    <Sparkles size={12} aria-hidden="true" />
-                    Análisis en progreso
-                  </div>
-                )}
-              </div>
-            )}
+            ) : null}
           </div>
         )}
       </div>
+
+      {/* ── Sección Visual — siempre visible en design / scheduled / analyzed ── */}
+      {(item.stage === 'design' || item.stage === 'scheduled' || item.stage === 'analyzed') && (
+        <div
+          style={{
+            background: 'var(--surface-2)',
+            padding: 16,
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 16,
+          }}
+        >
+          <p
+            className="uppercase"
+            style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
+              color: 'var(--ink-3)', marginBottom: 12,
+            }}
+          >
+            Visual
+          </p>
+          <ImageDrivePanel
+            itemId={item.id}
+            itemTitle={item.title}
+            channel={item.channel as Channel}
+            assignedImageId={imageId}
+            assignedImageUrl={imageUrl}
+            onAssigned={(assetId, url) => { onImageAssigned?.(item.id, assetId, url) }}
+            onUnassigned={() => { onImageUnassigned?.(item.id) }}
+          />
+        </div>
+      )}
 
       {/* ── Clarity — chip verde según specs ── */}
       {item.clarity_pass !== null && (
