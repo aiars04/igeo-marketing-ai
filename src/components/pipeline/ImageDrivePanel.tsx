@@ -124,14 +124,33 @@ export function ImageDrivePanel({
     }
   }, [assignedImageId, onUnassigned])
 
-  // ── Generar (con retry automático contra 504/502/408) ──────────────────
+  // ── Generar con retry + backoff exponencial ────────────────────────────
+  // Backoff progresivo en segundos entre intentos: 0s, 4s, 10s, 20s, 35s
   const handleGenerate = useCallback(async () => {
     setGenError(null)
     setVariants(null)
     setGenerating(true)
 
-    const MAX_ATTEMPTS = 3
-    const isTransient = (status: number) => status === 504 || status === 502 || status === 408 || status === 503
+    const MAX_ATTEMPTS = 5
+    const BACKOFF_SECONDS = [0, 4, 10, 20, 35] // espera antes de cada intento (idx 0 = primer intento sin espera)
+
+    // Detecta errores transitorios: 5xx + 429 (rate limit) + 500 (puede venir del SDK Gemini)
+    // También detecta el texto 'unavailable' / 'quota' / 'exhausted' del mensaje del backend
+    const isTransient = (status: number, errorText: string) => {
+      if (status === 504 || status === 502 || status === 408 || status === 503 || status === 429 || status === 500) return true
+      const msg = (errorText || '').toLowerCase()
+      return msg.includes('unavailable') || msg.includes('quota') || msg.includes('exhausted') ||
+             msg.includes('saturated') || msg.includes('overloaded') || msg.includes('rate')
+    }
+
+    const sleep = (s: number) => new Promise(r => setTimeout(r, s * 1000))
+
+    const countdownProgress = async (seconds: number, attempt: number, maxAttempts: number) => {
+      for (let s = seconds; s > 0; s--) {
+        setGenProgress(`Esperando ${s}s antes del reintento ${attempt} de ${maxAttempts}…`)
+        await sleep(1)
+      }
+    }
 
     try {
       if (genMode === 'individual') {
@@ -140,10 +159,14 @@ export function ImageDrivePanel({
 
         let lastError = ''
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+          // Backoff antes de reintentar (excepto el primero)
+          const wait = BACKOFF_SECONDS[attempt - 1] ?? 35
+          if (wait > 0) await countdownProgress(wait, attempt, MAX_ATTEMPTS)
+
           setGenProgress(
             attempt === 1
               ? 'Generando con Imagen 4…'
-              : `Reintento ${attempt} de ${MAX_ATTEMPTS} (Imagen 4 saturado)…`,
+              : `Reintento ${attempt} de ${MAX_ATTEMPTS}…`,
           )
           const res = await fetch('/api/images/generate', {
             method: 'POST',
@@ -158,9 +181,9 @@ export function ImageDrivePanel({
           }
           const j = await res.json().catch(() => ({})) as { error?: string }
           lastError = j.error ?? `HTTP ${res.status}`
-          if (!isTransient(res.status)) break  // error definitivo, no reintentar
+          if (!isTransient(res.status, lastError)) break // error definitivo, no reintentar
         }
-        setGenError(`No se pudo generar tras ${MAX_ATTEMPTS} intentos. ${lastError}. Vuelve a intentarlo en unos segundos.`)
+        setGenError(`Imagen 4 está saturado (${lastError}). Espera 1-2 min y vuelve a intentarlo, o usa el sidebar de Imágenes que tiene la misma generación.`)
         return
 
       } else if (genMode === 'variants') {
@@ -170,6 +193,9 @@ export function ImageDrivePanel({
         let lastError = ''
         let assets: ImageAsset[] | null = null
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+          const wait = BACKOFF_SECONDS[attempt - 1] ?? 35
+          if (wait > 0) await countdownProgress(wait, attempt, MAX_ATTEMPTS)
+
           setGenProgress(
             attempt === 1
               ? `Generando ${genCount} variantes…`
@@ -193,10 +219,10 @@ export function ImageDrivePanel({
           }
           const j = await res.json().catch(() => ({})) as { error?: string }
           lastError = j.error ?? `HTTP ${res.status}`
-          if (!isTransient(res.status)) break
+          if (!isTransient(res.status, lastError)) break
         }
         if (!assets) {
-          setGenError(`No se pudo generar tras ${MAX_ATTEMPTS} intentos. ${lastError}. Prueba en modo Individual o vuelve a intentarlo.`)
+          setGenError(`Imagen 4 está saturado (${lastError}). Espera 1-2 min o prueba modo Individual.`)
           return
         }
         setVariants(assets)
