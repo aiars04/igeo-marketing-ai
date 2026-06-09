@@ -148,7 +148,7 @@ export function ImageFoldersSidebar({
           overflowY: 'auto',
         }}
       >
-        <div style={{ padding: '12px 10px 4px' }}>
+        <div style={{ padding: '16px 10px 8px' }}>
           {/* Item Todas */}
           <SidebarItem
             label="Todas las imágenes"
@@ -161,15 +161,15 @@ export function ImageFoldersSidebar({
         </div>
 
         {/* POR CANAL */}
-        <div style={{ padding: '2px 10px' }}>
+        <div style={{ padding: '4px 10px' }}>
           <p style={{
             fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
             letterSpacing: '0.08em', color: 'var(--ink-3)',
-            padding: '10px 8px 4px',
+            padding: '12px 8px 8px',
           }}>
             Por canal
           </p>
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-1">
             {systemFolders.map(f => {
               const Icon: typeof FolderClosed = (f.icon ? ICON_MAP[f.icon] : undefined) ?? FolderClosed
               return (
@@ -197,15 +197,15 @@ export function ImageFoldersSidebar({
         </div>
 
         {/* CUSTOM */}
-        <div style={{ padding: '2px 10px 12px' }}>
+        <div style={{ padding: '4px 10px 16px' }}>
           <p style={{
             fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
             letterSpacing: '0.08em', color: 'var(--ink-3)',
-            padding: '14px 8px 4px',
+            padding: '18px 8px 8px',
           }}>
             Custom
           </p>
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-1">
             {customFolders.length === 0 && (
               <p style={{ fontSize: 11, color: 'var(--ink-3)', padding: '4px 8px', lineHeight: 1.4 }}>
                 Sin carpetas custom todavía
@@ -321,8 +321,8 @@ export function ImageFoldersSidebar({
               <button
                 onClick={() => setCreateOpen(true)}
                 style={{
-                  marginTop: 4,
-                  padding: '6px 8px',
+                  marginTop: 8,
+                  padding: '8px 10px',
                   display: 'flex', alignItems: 'center', gap: 8,
                   fontSize: 12, color: 'var(--accent-2)',
                   background: 'transparent', border: '1px dashed var(--border)',
@@ -421,8 +421,8 @@ function SidebarItem({
     <button
       onClick={onClick}
       style={{
-        display: 'flex', alignItems: 'center', gap: 9,
-        padding: '5px 10px',
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '8px 10px',
         width: '100%',
         textAlign: 'left',
         borderRadius: 'var(--radius-md)',
