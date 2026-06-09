@@ -60,7 +60,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     .from('content_assets')
     .update({ content_item_id: contentItemId } as never)
     .eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error('[api]', error.message); return NextResponse.json({ error: 'db_failed' }, { status: 500 }) }
 
   return NextResponse.json({ ok: true, content_item_id: contentItemId })
 }

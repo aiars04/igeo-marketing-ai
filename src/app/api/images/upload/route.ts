@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
     .from(BUCKET)
     .upload(filename, buffer, { contentType: file.type, upsert: false })
   if (uploadError) {
-    return NextResponse.json({ error: `storage: ${uploadError.message}` }, { status: 500 })
+    console.error('[images/upload] storage failed:', uploadError.message)
+    return NextResponse.json({ error: 'storage_failed' }, { status: 500 })
   }
 
   const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(filename)
@@ -94,7 +95,8 @@ export async function POST(req: NextRequest) {
   if (dbError) {
     // Rollback: limpia el archivo huérfano en Storage si el insert falla
     await admin.storage.from(BUCKET).remove([filename]).catch(() => {})
-    return NextResponse.json({ error: `db: ${dbError.message}` }, { status: 500 })
+    console.error('[images/upload] db failed:', dbError.message)
+    return NextResponse.json({ error: 'db_failed' }, { status: 500 })
   }
 
   return NextResponse.json({

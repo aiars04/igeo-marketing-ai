@@ -30,7 +30,7 @@ export function UsersClient({
   const { items: toasts, show: showToast, remove: removeToast } = useToast()
   const [profiles, setProfiles] = useState(initialProfiles)
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [inviteResult, setInviteResult] = useState<{ email: string; password: string } | null>(null)
+  const [inviteResult, setInviteResult] = useState<{ email: string; resetLink: string | null } | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const counts = useMemo(() => ({
@@ -298,7 +298,7 @@ export function UsersClient({
         currentRole={currentRole}
         onCreated={(p) => {
           setProfiles(prev => [...prev, p.profile])
-          setInviteResult({ email: p.email, password: p.password })
+          setInviteResult({ email: p.email, resetLink: p.resetLink })
           showToast(`Usuario ${p.email} creado`, 'success')
           refresh()
         }}
@@ -318,8 +318,8 @@ function InviteModal({
   open: boolean
   onClose: () => void
   currentRole: UserRole
-  onCreated: (data: { email: string; password: string; profile: Profile }) => void
-  result: { email: string; password: string } | null
+  onCreated: (data: { email: string; resetLink: string | null; profile: Profile }) => void
+  result: { email: string; resetLink: string | null } | null
 }) {
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
@@ -351,10 +351,10 @@ function InviteModal({
       setError(j.error ?? `Error ${res.status}`)
       return
     }
-    const data = await res.json() as { user_id: string; email: string; password: string; full_name: string | null; role: UserRole }
+    const data = await res.json() as { user_id: string; email: string; reset_link: string | null; full_name: string | null; role: UserRole }
     onCreated({
       email: data.email,
-      password: data.password,
+      resetLink: data.reset_link,
       profile: {
         id: data.user_id, email: data.email, full_name: data.full_name, role: data.role,
         active: true,
@@ -379,15 +379,21 @@ function InviteModal({
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--green-2)' }}>Usuario creado</span>
             </div>
             <p className="text-[12px] mb-3" style={{ color: 'var(--ink-2)' }}>
-              Comparte estas credenciales con el usuario. La contraseña se genera una sola vez.
+              Envía este enlace al usuario para que fije su contraseña. El enlace es de un solo uso y expira en 1 hora.
             </p>
             <div className="space-y-2">
               <CredentialRow label="Email" value={result.email} />
-              <CredentialRow
-                label="Password" value={result.password}
-                onCopy={() => { navigator.clipboard.writeText(result.password); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
-                copied={copied}
-              />
+              {result.resetLink ? (
+                <CredentialRow
+                  label="Enlace" value={result.resetLink}
+                  onCopy={() => { navigator.clipboard.writeText(result.resetLink ?? ''); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
+                  copied={copied}
+                />
+              ) : (
+                <p style={{ fontSize: 11, color: 'var(--amber-2)' }}>
+                  No se pudo generar enlace. Pide al usuario que use &quot;Olvidé mi contraseña&quot; en el login.
+                </p>
+              )}
             </div>
           </div>
           <button className="btn-cta" onClick={() => { reset(); onClose() }}>Cerrar</button>

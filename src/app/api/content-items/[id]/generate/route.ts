@@ -151,7 +151,10 @@ ESTILO: ${ct.style}`
       .eq('id', id)
       .select('*')
       .single<ContentItem>()
-    if (upErr) return NextResponse.json({ error: `db: ${upErr.message}` }, { status: 500 })
+    if (upErr) {
+      console.error('[content-items/generate] db update failed:', upErr.message)
+      return NextResponse.json({ error: 'db_failed' }, { status: 500 })
+    }
 
     return NextResponse.json({
       item: updated,
@@ -162,8 +165,12 @@ ESTILO: ${ct.style}`
       },
     })
   } catch (err: unknown) {
-    console.error('Generate content error:', err)
-    const message = err instanceof Error ? err.message : 'generation_failed'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('[content-items/generate] error:', err instanceof Error ? err.message : err)
+    const msg = (err instanceof Error ? err.message : '').toLowerCase()
+    const isTransient = msg.includes('unavailable') || msg.includes('exhausted') || msg.includes('quota')
+    return NextResponse.json(
+      { error: isTransient ? 'models_unavailable' : 'generation_failed' },
+      { status: isTransient ? 503 : 500 },
+    )
   }
 }

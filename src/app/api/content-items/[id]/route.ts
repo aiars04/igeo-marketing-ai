@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { ContentItem, Profile, Stage } from '@/types/database'
 
 const STAGES: Stage[] = ['ideas', 'copy', 'design', 'scheduled', 'analyzed']
+const STATUSES = ['pending', 'in_progress', 'approved', 'rejected'] as const
 
 async function requireActor() {
   const supabase = await createClient()
@@ -31,30 +32,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   let body: Partial<ContentItem>
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
 
-  // Sólo permitimos editar un subconjunto de campos
-  const patch: Record<string, unknown> = {}
-  if (body.stage !== undefined) {
-    if (!STAGES.includes(body.stage as Stage)) return NextResponse.json({ error: 'invalid_stage' }, { status: 400 })
-    patch.stage = body.stage
-  }
-  if (body.status !== undefined) patch.status = body.status
-  if (body.title !== undefined) patch.title = body.title
-  if (body.content !== undefined) patch.content = body.content
-  if (body.campaign !== undefined) patch.campaign = body.campaign
-  if ((body as { description?: string }).description !== undefined) patch.description = (body as { description?: string }).description
-  if (body.human_approved !== undefined) patch.human_approved = body.human_approved
-  if (body.approved_by !== undefined) patch.approved_by = body.approved_by
-  if (body.approved_at !== undefined) patch.approved_at = body.approved_at
-  if (body.scheduled_at !== undefined) patch.scheduled_at = body.scheduled_at
-  if (body.published_at !== undefined) patch.published_at = body.published_at
-  if (body.clarity_pass !== undefined) patch.clarity_pass = body.clarity_pass
-  if (body.clarity_summary !== undefined) patch.clarity_summary = body.clarity_summary
-
-  if (Object.keys(patch).length === 0) {
-    return NextResponse.json({ error: 'no_changes' }, { status: 400 })
-  }
-
-  // Verificar permisos: dueño, manager o admin
+  // Cargar el item primero para verificar permisos
   const { data: target } = await admin
     .from('content_items')
     .select('id, created_by')
@@ -68,13 +46,81 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
+  // ── Whitelist con tres tiers: ─────────────────────────────────────────────
+  // 1. Libre (owner/priv): edición de contenido — stage, title, content, campaign, description, scheduled_at, status, human_approved
+  // 2. Solo admin/manager: campos de auditoría — published_at, clarity_pass, clarity_summary
+  // 3. Server-only: approved_by, approved_at — SIEMPRE seteados desde el servidor (no se aceptan del cliente)
+  const patch: Record<string, unknown> = {}
+
+  // Tier 1 — campos libres
+  if (body.stage !== undefined) {
+    if (!STAGES.includes(body.stage as Stage)) {
+      return NextResponse.json({ error: 'invalid_stage' }, { status: 400 })
+    }
+    patch.stage = body.stage
+  }
+  if (body.title !== undefined && typeof body.title === 'string') patch.title = body.title.trim()
+  if (body.content !== undefined) patch.content = body.content
+  if (body.campaign !== undefined) patch.campaign = body.campaign
+  if ((body as { description?: string }).description !== undefined) {
+    patch.description = (body as { description?: string }).description
+  }
+  if (body.scheduled_at !== undefined) patch.scheduled_at = body.scheduled_at
+  if (body.status !== undefined) {
+    if (!STATUSES.includes(body.status as typeof STATUSES[number])) {
+      return NextResponse.json({ error: 'invalid_status' }, { status: 400 })
+    }
+    patch.status = body.status
+  }
+  if (body.human_approved !== undefined) {
+    patch.human_approved = !!body.human_approved
+    // CLAVE: approved_by/approved_at SIEMPRE desde el servidor — el cliente no puede suplantar a otro usuario
+    if (body.human_approved) {
+      patch.approved_by = me.id
+      patch.approved_at = new Date().toISOString()
+    } else {
+      patch.approved_by = null
+      patch.approved_at = null
+    }
+  }
+
+  // Tier 2 — solo admin/manager
+  if (body.published_at !== undefined) {
+    if (!isPriv) {
+      return NextResponse.json({ error: 'forbidden_field:published_at' }, { status: 403 })
+    }
+    patch.published_at = body.published_at
+  }
+  if (body.clarity_pass !== undefined) {
+    if (!isPriv) {
+      return NextResponse.json({ error: 'forbidden_field:clarity_pass' }, { status: 403 })
+    }
+    patch.clarity_pass = body.clarity_pass
+  }
+  if (body.clarity_summary !== undefined) {
+    if (!isPriv) {
+      return NextResponse.json({ error: 'forbidden_field:clarity_summary' }, { status: 403 })
+    }
+    patch.clarity_summary = body.clarity_summary
+  }
+
+  // body.approved_by / body.approved_at del cliente son SIEMPRE ignorados —
+  // se setean en el servidor cuando human_approved cambia.
+
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: 'no_changes' }, { status: 400 })
+  }
+
   const { data, error } = await admin
     .from('content_items')
     .update(patch as never)
     .eq('id', id)
     .select('*')
     .single<ContentItem>()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[content-items/PATCH] update failed:', error.message)
+    return NextResponse.json({ error: 'update_failed' }, { status: 500 })
+  }
 
   return NextResponse.json(data)
 }
@@ -100,7 +146,10 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   }
 
   const { error } = await admin.from('content_items').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[content-items/DELETE] failed:', error.message)
+    return NextResponse.json({ error: 'delete_failed' }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 }

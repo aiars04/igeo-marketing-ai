@@ -62,7 +62,27 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
   // Asignar / desasignar content_item (null = sin asignar)
   if (Object.prototype.hasOwnProperty.call(body, 'content_item_id')) {
-    patch.content_item_id = body.content_item_id ?? null
+    if (body.content_item_id === null) {
+      patch.content_item_id = null
+    } else if (typeof body.content_item_id === 'string') {
+      // Verificar que el content_item existe y el actor tiene permiso sobre él
+      const { data: ci } = await admin
+        .from('content_items')
+        .select('id, created_by')
+        .eq('id', body.content_item_id)
+        .maybeSingle<{ id: string; created_by: string | null }>()
+      if (!ci) {
+        return NextResponse.json({ error: 'content_item_not_found' }, { status: 404 })
+      }
+      const ciOwner = ci.created_by === me.id
+      const ciPriv = me.role === 'admin' || me.role === 'manager'
+      if (!ciOwner && !ciPriv) {
+        return NextResponse.json({ error: 'forbidden_content_item' }, { status: 403 })
+      }
+      patch.content_item_id = body.content_item_id
+    } else {
+      return NextResponse.json({ error: 'invalid_content_item_id' }, { status: 400 })
+    }
   }
 
   if (Object.keys(patch).length === 0) {
@@ -73,7 +93,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     .from('content_assets')
     .update(patch as never)
     .eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[images/PATCH] update failed:', error.message)
+    return NextResponse.json({ error: 'update_failed' }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true, ...patch })
 }
@@ -98,14 +121,19 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
-  // Borrar storage primero (idempotente — no falla si ya no existe)
-  const { error: storageErr } = await admin.storage.from(BUCKET).remove([target.storage_path])
-  if (storageErr) {
-    console.warn('storage delete warning:', storageErr.message)
+  // ORDEN CORRECTO: primero DB, luego storage.
+  // Si DB falla → no tocamos storage (asset sigue listable y reintenta-ble).
+  // Si DB OK pero storage falla → log warning (archivo huérfano, limpiable por cron).
+  const { error } = await admin.from('content_assets').delete().eq('id', id)
+  if (error) {
+    console.error('[images/DELETE] db delete failed:', error.message)
+    return NextResponse.json({ error: 'delete_failed' }, { status: 500 })
   }
 
-  const { error } = await admin.from('content_assets').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const { error: storageErr } = await admin.storage.from(BUCKET).remove([target.storage_path])
+  if (storageErr) {
+    console.warn('[images/DELETE] storage warning (huérfano):', storageErr.message)
+  }
 
   return NextResponse.json({ ok: true })
 }

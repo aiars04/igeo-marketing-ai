@@ -36,9 +36,10 @@ export function usePostizChannels() {
 
   useEffect(() => {
     let cancelled = false
+    const controller = new AbortController()
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
-    fetch('/api/postiz/channels')
+    fetch('/api/postiz/channels', { signal: controller.signal })
       .then((r) => r.json())
       .then((data: { channels?: PostizChannel[]; error?: string }) => {
         if (cancelled) return
@@ -46,10 +47,14 @@ export function usePostizChannels() {
         setChannels(data.channels ?? [])
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Error de red')
+        if (cancelled || (e instanceof Error && e.name === 'AbortError')) return
+        setError(e instanceof Error ? e.message : 'Error de red')
       })
       .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
   }, [])
 
   return { channels, loading, error }
@@ -91,10 +96,16 @@ export function usePostizStatus() {
   const [connected, setConnected] = useState<boolean | null>(null)
 
   useEffect(() => {
-    fetch('/api/postiz/status')
+    let cancelled = false
+    const controller = new AbortController()
+    fetch('/api/postiz/status', { signal: controller.signal })
       .then((r) => r.json())
-      .then((d: { connected: boolean }) => setConnected(d.connected))
-      .catch(() => setConnected(false))
+      .then((d: { connected: boolean }) => { if (!cancelled) setConnected(d.connected) })
+      .catch(() => { if (!cancelled) setConnected(false) })
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
   }, [])
 
   return connected

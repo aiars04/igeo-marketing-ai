@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { PipelineBoard } from '@/components/pipeline/PipelineBoard'
 import { Sparkles, Filter, X, Loader2 } from 'lucide-react'
 import { cn, STAGE_CONFIG, STAGES } from '@/lib/utils'
@@ -62,6 +62,8 @@ export default function PipelinePage() {
   const [filterChannels, setFilterChannels] = useState<Channel[]>([])
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
+  // Set de IDs en-vuelo para prevenir doble-disparo en move/delete/approve
+  const inFlightRef = useRef<Set<string>>(new Set())
   const { items: toasts, show: showToast, remove: removeToast } = useToast()
 
   // ── Carga inicial: items + map de imágenes asignadas ──────────────────────
@@ -124,59 +126,76 @@ export default function PipelinePage() {
   }, [showToast])
 
   const handleMove = useCallback(async (id: string, newStage: Stage) => {
+    if (inFlightRef.current.has(`move-${id}`)) return // doble-click guard
+    inFlightRef.current.add(`move-${id}`)
     const prev = items.find(i => i.id === id)
-    if (!prev) return
+    if (!prev) { inFlightRef.current.delete(`move-${id}`); return }
     // Optimistic
     setItems(p => p.map(i => i.id === id ? { ...i, stage: newStage } : i))
-    const res = await fetch(`/api/content-items/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stage: newStage }),
-    })
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}))
-      showToast(`Error: ${j.error ?? res.statusText}`, 'error')
-      setItems(p => p.map(i => i.id === id ? { ...i, stage: prev.stage } : i))
-      return
+    try {
+      const res = await fetch(`/api/content-items/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: newStage }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        showToast(`Error: ${j.error ?? res.statusText}`, 'error')
+        setItems(p => p.map(i => i.id === id ? { ...i, stage: prev.stage } : i))
+        return
+      }
+      showToast(`Movido a ${STAGE_CONFIG[newStage].label}`, 'info')
+    } finally {
+      inFlightRef.current.delete(`move-${id}`)
     }
-    showToast(`Movido a ${STAGE_CONFIG[newStage].label}`, 'info')
   }, [items, showToast])
 
   const handleDelete = useCallback(async (id: string) => {
+    if (inFlightRef.current.has(`del-${id}`)) return // doble-click guard
+    inFlightRef.current.add(`del-${id}`)
     const prev = items
     setItems(p => p.filter(i => i.id !== id))
-    const res = await fetch(`/api/content-items/${id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}))
-      showToast(`Error: ${j.error ?? res.statusText}`, 'error')
-      setItems(prev)
-      return
+    try {
+      const res = await fetch(`/api/content-items/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        showToast(`Error: ${j.error ?? res.statusText}`, 'error')
+        setItems(prev)
+        return
+      }
+      showToast('Elemento eliminado', 'info')
+    } finally {
+      inFlightRef.current.delete(`del-${id}`)
     }
-    showToast('Elemento eliminado', 'info')
   }, [items, showToast])
 
   const handleApprove = useCallback(async (id: string, currentStage: Stage) => {
+    if (inFlightRef.current.has(`approve-${id}`)) return // doble-click guard
     const currentIdx = STAGES.indexOf(currentStage)
     const nextStage = currentIdx < STAGES.length - 1 ? STAGES[currentIdx + 1] : null
     if (!nextStage) return
-    const now = new Date().toISOString()
+    inFlightRef.current.add(`approve-${id}`)
+    // approved_by/approved_at los setea el servidor — no los enviamos
     const patch = {
       human_approved: true,
-      approved_at: now,
       status: 'approved' as const,
       stage: nextStage,
     }
     setItems(p => p.map(i => i.id === id ? { ...i, ...patch } : i))
-    const res = await fetch(`/api/content-items/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    })
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}))
-      showToast(`Error: ${j.error ?? res.statusText}`, 'error')
-      fetchItems()
-      return
+    try {
+      const res = await fetch(`/api/content-items/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        showToast(`Error: ${j.error ?? res.statusText}`, 'error')
+        fetchItems()
+        return
+      }
+      showToast(`✓ Aprobado → ${STAGE_CONFIG[nextStage].label}`, 'success')
+    } finally {
+      inFlightRef.current.delete(`approve-${id}`)
     }
-    showToast(`✓ Aprobado → ${STAGE_CONFIG[nextStage].label}`, 'success')
   }, [showToast, fetchItems])
 
   const handleGenerateAI = useCallback(async () => {

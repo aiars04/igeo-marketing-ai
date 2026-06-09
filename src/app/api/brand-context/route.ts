@@ -27,6 +27,6 @@ export async function GET() {
     .select('*')
     .order('key', { ascending: true })
     .returns<BrandContext[]>()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error('[api]', error.message); return NextResponse.json({ error: 'db_failed' }, { status: 500 }) }
   return NextResponse.json(data ?? [])
 }

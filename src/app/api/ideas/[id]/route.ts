@@ -56,7 +56,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
   const { data, error } = await admin
     .from('ideas').update(patch as never).eq('id', id).select('*').single<Idea>()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error('[api]', error.message); return NextResponse.json({ error: 'db_failed' }, { status: 500 }) }
 
   return NextResponse.json(data)
 }
@@ -78,7 +78,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   if (!isOwner && !isAdmin) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
   const { error } = await admin.from('ideas').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error('[api]', error.message); return NextResponse.json({ error: 'db_failed' }, { status: 500 }) }
 
   return NextResponse.json({ ok: true })
 }

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
+import { randomBytes } from 'node:crypto'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { Profile, UserRole } from '@/types/database'
+
+export const runtime = 'nodejs'
 
 // ── Helper: verifica caller y devuelve su profile (o response 401/403) ─────
 async function requireActor(needRole: UserRole[]): Promise<
@@ -59,7 +62,8 @@ export async function POST(req: Request) {
     user_metadata: { full_name, role },
   })
   if (createErr || !created.user) {
-    return NextResponse.json({ error: createErr?.message ?? 'create_failed' }, { status: 400 })
+    console.error('[users] auth.createUser failed:', createErr?.message)
+    return NextResponse.json({ error: 'create_failed' }, { status: 400 })
   }
 
   // 2) El trigger ya crea la row en profiles; forzamos role + full_name por seguridad
@@ -70,22 +74,40 @@ export async function POST(req: Request) {
       { onConflict: 'id' },
     )
   if (upErr) {
-    return NextResponse.json({ error: upErr.message }, { status: 400 })
+    // Rollback: si profiles upsert falla, eliminamos el auth user para no dejar huérfanos
+    await admin.auth.admin.deleteUser(created.user.id).catch(err =>
+      console.error('[users] rollback deleteUser failed:', err),
+    )
+    console.error('[users] profile upsert failed:', upErr.message)
+    return NextResponse.json({ error: 'profile_failed' }, { status: 400 })
+  }
+
+  // NUNCA devolvemos la password en JSON — queda en logs/proxy/historial.
+  // El admin invitador recibe un enlace de password-reset que el invitado usa para fijar su contraseña.
+  const { data: resetLink, error: linkErr } = await admin.auth.admin.generateLink({
+    type: 'recovery',
+    email,
+  })
+  if (linkErr) {
+    console.warn('[users] generateLink failed (no bloqueante):', linkErr.message)
   }
 
   return NextResponse.json({
     ok: true,
     user_id: created.user.id,
     email,
-    password, // devolvemos pwd inicial al invitador
     full_name,
     role,
+    // Link de recovery (one-time) para que el admin lo comparta por canal seguro.
+    // Sin password en plain text.
+    reset_link: resetLink?.properties?.action_link ?? null,
   })
 }
 
+// Genera password criptográficamente segura. NO se devuelve al cliente —
+// solo se usa internamente para crear el usuario en auth.users (Supabase
+// lo hashea inmediatamente).
 function randomPassword(): string {
-  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
-  let s = ''
-  for (let i = 0; i < 14; i++) s += c[Math.floor(Math.random() * c.length)]
-  return s + '!'
+  // 16 bytes random → 22 chars URL-safe + sufijo "!" para cumplir policy
+  return randomBytes(16).toString('base64url') + '!'
 }

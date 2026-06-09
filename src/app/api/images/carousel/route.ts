@@ -181,13 +181,20 @@ export async function POST(req: NextRequest) {
 
     const rollback = async (reason: string, status: number) => {
       if (uploadedPaths.length > 0) {
-        await admin.storage.from(BUCKET).remove(uploadedPaths).catch(() => {})
+        await admin.storage.from(BUCKET).remove(uploadedPaths).catch(err =>
+          console.error('[carousel/rollback] storage cleanup failed:', err),
+        )
       }
       if (inserted.length > 0) {
-        // PostgrestFilterBuilder no es una Promise nativa hasta que se await — sin .catch().
-        try { await admin.from('content_assets').delete().eq('carousel_id', carouselId) } catch {}
+        try {
+          await admin.from('content_assets').delete().eq('carousel_id', carouselId)
+        } catch (e) {
+          console.error('[carousel/rollback] db cleanup failed:', e instanceof Error ? e.message : e)
+        }
       }
-      return NextResponse.json({ error: reason, carousel_id: carouselId, rolled_back: true }, { status })
+      console.error('[carousel] rollback triggered:', reason)
+      // No exponemos el motivo crudo al cliente — puede contener nombres de columna/path
+      return NextResponse.json({ error: 'carousel_failed', carousel_id: carouselId, rolled_back: true }, { status })
     }
 
     for (let i = 0; i < imagesBase64.length; i++) {
@@ -249,8 +256,12 @@ export async function POST(req: NextRequest) {
       assets: inserted,
     })
   } catch (err: unknown) {
-    console.error('Carousel generation error:', err)
-    const message = err instanceof Error ? err.message : 'carousel_generation_failed'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('[images/carousel] error:', err instanceof Error ? err.message : err)
+    const msg = (err instanceof Error ? err.message : '').toLowerCase()
+    const isTransient = msg.includes('unavailable') || msg.includes('exhausted') || msg.includes('quota')
+    return NextResponse.json(
+      { error: isTransient ? 'models_unavailable' : 'carousel_failed' },
+      { status: isTransient ? 503 : 500 },
+    )
   }
 }

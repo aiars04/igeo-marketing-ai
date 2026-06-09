@@ -847,6 +847,7 @@ function Card({
 }) {
   const needsApproval = APPROVAL_STAGES.includes(item.stage as Stage) && !item.human_approved
   const [generatingImage, setGeneratingImage] = useState(false)
+  const [generateError, setGenerateError] = useState(false)
 
   // Iniciales del responsable
   const initials = item.human_approved && item.approved_by
@@ -1028,16 +1029,28 @@ function Card({
         <button
           onClick={e => {
             e.stopPropagation()
+            if (generatingImage) return // doble-click guard
             setGeneratingImage(true)
+            setGenerateError(false)
             onGenerateImage(item.id, item.title, item.channel as Channel)
+              .catch(err => {
+                console.error('[card/generate]', err instanceof Error ? err.message : err)
+                setGenerateError(true)
+              })
               .finally(() => setGeneratingImage(false))
           }}
           disabled={generatingImage}
           className="btn-pill-ghost"
-          style={{ marginTop: needsApproval ? 4 : 8 }}
+          style={{
+            marginTop: needsApproval ? 4 : 8,
+            ...(generateError ? { borderColor: 'var(--red-2)', color: 'var(--red-2)' } : {}),
+          }}
+          title={generateError ? 'Error generando — pulsa para reintentar' : undefined}
         >
           {generatingImage ? (
             <><Loader2 size={12} className="animate-spin" aria-hidden="true" /> Generando imagen…</>
+          ) : generateError ? (
+            <><RefreshCw size={12} aria-hidden="true" /> Error — reintentar</>
           ) : hasImage ? (
             <><RefreshCw size={12} aria-hidden="true" /> Regenerar imagen</>
           ) : (
@@ -1220,25 +1233,29 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items])
 
-  // Genera imagen desde la tarjeta directamente (sin abrir modal)
+  // Genera imagen desde la tarjeta directamente (sin abrir modal).
+  // Lanza error si falla — la Card lo captura y muestra estado visible.
   const handleGenerateImageForCard = useCallback(async (itemId: string, title: string, channel: Channel) => {
-    try {
-      const genRes = await fetch('/api/images/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: title, aspectRatio: '1:1', channel }),
-      })
-      if (!genRes.ok) return
-      const { id, url } = await genRes.json() as { id: string; url: string }
-      await fetch(`/api/images/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content_item_id: itemId }),
-      })
-      onImageAssigned?.(itemId, id, url)
-    } catch {
-      // silencia errores — el usuario puede intentarlo desde el modal
+    const genRes = await fetch('/api/images/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: title, aspectRatio: '1:1', channel }),
+    })
+    if (!genRes.ok) {
+      const j = await genRes.json().catch(() => ({})) as { error?: string }
+      throw new Error(j.error ?? `HTTP ${genRes.status}`)
     }
+    const { id, url } = await genRes.json() as { id: string; url: string }
+    const patchRes = await fetch(`/api/images/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content_item_id: itemId }),
+    })
+    if (!patchRes.ok) {
+      const j = await patchRes.json().catch(() => ({})) as { error?: string }
+      throw new Error(j.error ?? `assign HTTP ${patchRes.status}`)
+    }
+    onImageAssigned?.(itemId, id, url)
   }, [onImageAssigned])
 
   const byStage = STAGES.reduce((acc, s) => {

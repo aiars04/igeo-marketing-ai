@@ -75,7 +75,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   }
 
   const { error } = await admin.from('profiles').update(patch as never).eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error) { console.error('[api]', error.message); return NextResponse.json({ error: 'request_failed' }, { status: 400 }) }
 
   return NextResponse.json({ ok: true })
 }
@@ -95,7 +95,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
 
   // Borrar de auth → cascade a profiles
   const { error } = await admin.auth.admin.deleteUser(id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error) { console.error('[api]', error.message); return NextResponse.json({ error: 'request_failed' }, { status: 400 }) }
 
   return NextResponse.json({ ok: true })
 }

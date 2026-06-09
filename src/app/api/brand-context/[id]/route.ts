@@ -41,7 +41,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     .eq('id', id)
     .select('*')
     .single<BrandContext>()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error('[api]', error.message); return NextResponse.json({ error: 'db_failed' }, { status: 500 }) }
 
   return NextResponse.json(data)
 }

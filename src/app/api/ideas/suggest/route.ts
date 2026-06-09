@@ -127,7 +127,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (validRows.length === 0) {
-      return NextResponse.json({ error: 'no_valid_ideas_in_response', raw: raw.slice(0, 400) }, { status: 502 })
+      // No devolvemos `raw` al cliente — puede filtrar prompts internos o system instructions del LLM
+      console.error('[ideas/suggest] no valid ideas in response, raw:', raw.slice(0, 400))
+      return NextResponse.json({ error: 'no_valid_ideas_in_response' }, { status: 502 })
     }
 
     // 7) Insertar todas en BD
@@ -137,8 +139,8 @@ export async function POST(req: NextRequest) {
       .select('*')
       .returns<Idea[]>()
     if (dbErr) {
-      console.error('Insert ideas error:', dbErr)
-      return NextResponse.json({ error: `db: ${dbErr.message}` }, { status: 500 })
+      console.error('[ideas/suggest] insert failed:', dbErr.message)
+      return NextResponse.json({ error: 'db_failed' }, { status: 500 })
     }
 
     return NextResponse.json({ ideas: inserted ?? [] })

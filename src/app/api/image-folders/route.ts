@@ -30,7 +30,7 @@ export async function GET() {
     .order('system', { ascending: false })  // system primero
     .order('created_at', { ascending: true })
     .returns<ImageFolder[]>()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error('[api]', error.message); return NextResponse.json({ error: 'db_failed' }, { status: 500 }) }
 
   // Conteo de assets por folder + uncategorized + total
   const { data: assetRows } = await admin
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     .insert(insertRow as never)
     .select('*')
     .single<ImageFolder>()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error('[api]', error.message); return NextResponse.json({ error: 'db_failed' }, { status: 500 }) }
 
   return NextResponse.json({ ...data, asset_count: 0 })
 }

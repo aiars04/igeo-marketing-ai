@@ -85,24 +85,27 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // En CREATE NUNCA aceptamos campos de auditoría/aprobación del cliente.
+  // human_approved/approved_by/approved_at se setean vía PATCH con role check.
+  // postiz_id, clarity_pass, clarity_summary, published_at se setean vía endpoints específicos.
   const insertRow = {
     title,
     channel,
     stage,
     market,
-    status: body.status ?? 'pending',
+    status: 'pending', // siempre arranca pendiente
     campaign: body.campaign ?? null,
     content: body.content ?? null,
     description: (body as { description?: string }).description ?? null,
-    ai_generated: body.ai_generated ?? false,
-    clarity_pass: body.clarity_pass ?? null,
-    clarity_summary: body.clarity_summary ?? null,
-    human_approved: body.human_approved ?? false,
-    approved_by: body.approved_by ?? null,
-    approved_at: body.approved_at ?? null,
+    ai_generated: !!body.ai_generated,
+    clarity_pass: null,
+    clarity_summary: null,
+    human_approved: false,
+    approved_by: null,
+    approved_at: null,
     scheduled_at: body.scheduled_at ?? null,
-    published_at: body.published_at ?? null,
-    postiz_id: body.postiz_id ?? null,
+    published_at: null,
+    postiz_id: null,
     calendar_item_id: body.calendar_item_id ?? null,
     created_by: me.id,
   }
@@ -112,7 +115,10 @@ export async function POST(req: NextRequest) {
     .insert(insertRow as never)
     .select('*')
     .single<ContentItem>()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[content-items/POST] insert failed:', error.message)
+    return NextResponse.json({ error: 'create_failed' }, { status: 500 })
+  }
 
   return NextResponse.json(data)
 }

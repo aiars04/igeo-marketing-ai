@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { postizCreatePost, postizUploadFromUrl, type PostizCreatePostBody } from '@/lib/postiz'
+import type { Profile } from '@/types/database'
+
+/**
+ * Valida que una URL de imagen pertenezca al storage de Supabase del proyecto.
+ * Previene SSRF: rechazar URLs internas (localhost, 192.168.x, 10.x, etc.) y
+ * dominios arbitrarios que el atacante pueda controlar.
+ */
+function isAllowedImageUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    if (u.protocol !== 'https:') return false
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    if (!supabaseUrl) return false
+    const supabaseHost = new URL(supabaseUrl).host
+    // Solo aceptamos URLs de nuestro Supabase Storage público
+    return u.host === supabaseHost && u.pathname.includes('/storage/v1/object/public/')
+  } catch {
+    return false
+  }
+}
 
 /**
  * POST /api/postiz/publish
@@ -13,11 +33,27 @@ import { postizCreatePost, postizUploadFromUrl, type PostizCreatePostBody } from
  *   scheduledAt?: string          — ISO date para programar; si falta → publicar ahora
  *   type?: 'schedule'|'draft'|'now'  — Por defecto 'schedule' si hay fecha, 'now' si no
  * }
+ *
+ * Requiere: usuario autenticado, perfil activo, rol admin/manager.
+ * Publicar en redes corporativas es una acción crítica — no la dejamos a users.
  */
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  const admin = createAdminClient()
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('id, role, active')
+    .eq('id', user.id)
+    .single<Pick<Profile, 'id' | 'role' | 'active'>>()
+  if (!profile || !profile.active) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  if (profile.role !== 'admin' && profile.role !== 'manager') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
 
   let body: {
     channelIds: string[]
@@ -30,22 +66,26 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Body JSON inválido' }, { status: 400 })
+    return NextResponse.json({ error: 'bad_json' }, { status: 400 })
   }
 
   const { channelIds, content, imageUrl, scheduledAt } = body
 
   if (!channelIds?.length) {
-    return NextResponse.json({ error: 'Se requiere al menos un channelId' }, { status: 400 })
+    return NextResponse.json({ error: 'channelIds_required' }, { status: 400 })
   }
   if (!content?.trim()) {
-    return NextResponse.json({ error: 'El contenido no puede estar vacío' }, { status: 400 })
+    return NextResponse.json({ error: 'content_required' }, { status: 400 })
+  }
+  // SSRF guard: si viene imagen, debe ser de NUESTRO Supabase Storage.
+  if (imageUrl && !isAllowedImageUrl(imageUrl)) {
+    return NextResponse.json({ error: 'invalid_image_url' }, { status: 400 })
   }
 
   // Determinar tipo de publicación
   const type = body.type ?? (scheduledAt ? 'schedule' : 'now')
   if (type === 'schedule' && !scheduledAt) {
-    return NextResponse.json({ error: 'scheduledAt es requerido para type=schedule' }, { status: 400 })
+    return NextResponse.json({ error: 'scheduledAt_required_for_schedule' }, { status: 400 })
   }
 
   try {
@@ -87,8 +127,8 @@ export async function POST(req: NextRequest) {
       result,
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Error al publicar en Postiz'
-    console.error('[postiz/publish]', message)
-    return NextResponse.json({ error: message }, { status: 502 })
+    // No exponemos el mensaje crudo de Postiz al cliente — puede filtrar URLs internas/tokens
+    console.error('[postiz/publish] upstream error:', err instanceof Error ? err.message : err)
+    return NextResponse.json({ error: 'postiz_upstream_failed' }, { status: 502 })
   }
 }

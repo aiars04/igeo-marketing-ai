@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
   if (activeOnly) query = query.eq('active', true)
 
   const { data, error } = await query.returns<ContentType[]>()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error('[api]', error.message); return NextResponse.json({ error: 'db_failed' }, { status: 500 }) }
   return NextResponse.json(data ?? [])
 }
 
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     .insert(insertRow as never)
     .select('*')
     .single<ContentType>()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error('[api]', error.message); return NextResponse.json({ error: 'db_failed' }, { status: 500 }) }
 
   return NextResponse.json(data)
 }
