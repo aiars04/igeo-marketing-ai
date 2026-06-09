@@ -877,10 +877,10 @@ export default function ImagesPage() {
             <Loader2 size={28} className="animate-spin" aria-hidden="true" style={{ color: 'var(--accent-2)' }} />
             <div className="text-center">
               <p className="text-[14px] font-semibold" style={{ color: 'var(--ink)' }}>
-                {generateProgress || 'Generando con Imagen 4…'}
+                {generateProgress || 'Generando con Nano Banana 2…'}
               </p>
               <p className="text-[12px] mt-1" style={{ color: 'var(--ink-2)' }}>
-                {genMode === 'curated' ? 'Cada slide tarda 10-30s' : 'Esto puede tardar 10-30 segundos'}
+                {genMode === 'curated' ? 'Cada slide tarda 3-8s' : 'Esto puede tardar 3-8 segundos'}
               </p>
             </div>
           </div>

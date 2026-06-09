@@ -167,7 +167,7 @@ export function ImageDrivePanel({
 
           setGenProgress(
             attempt === 1
-              ? 'Generando con Imagen 4…'
+              ? 'Generando con Nano Banana 2…'
               : `Reintento ${attempt} de ${MAX_ATTEMPTS}…`,
           )
           const res = await fetch('/api/images/generate', {
@@ -185,7 +185,7 @@ export function ImageDrivePanel({
           lastError = j.error ?? `HTTP ${res.status}`
           if (!isTransient(res.status, lastError)) break // error definitivo, no reintentar
         }
-        setGenError(`Imagen 4 está saturado (${lastError}). Espera 1-2 min y vuelve a intentarlo, o usa el sidebar de Imágenes que tiene la misma generación.`)
+        setGenError(`Nano Banana 2 está saturado (${lastError}). Espera unos segundos y vuelve a intentarlo.`)
         return
 
       } else if (genMode === 'variants') {
@@ -224,7 +224,7 @@ export function ImageDrivePanel({
           if (!isTransient(res.status, lastError)) break
         }
         if (!assets) {
-          setGenError(`Imagen 4 está saturado (${lastError}). Espera 1-2 min o prueba modo Individual.`)
+          setGenError(`Nano Banana 2 está saturado (${lastError}). Espera unos segundos o prueba modo Individual.`)
           return
         }
         setVariants(assets)
@@ -457,7 +457,7 @@ export function ImageDrivePanel({
         Generar imagen con IA
       </button>
       <p style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-        Imagen 4 Ultra para el canal <strong>{channel}</strong> · 4 ratios disponibles · 3 modos
+        Nano Banana 2 para el canal <strong>{channel}</strong> · 4 ratios disponibles · 3 modos
       </p>
 
       {/* Modal de generación */}
@@ -607,12 +607,12 @@ function GenerationModal({
           <div className="flex flex-col items-center justify-center gap-3 py-10">
             <Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent-2)' }} aria-hidden="true" />
             <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
-              {genProgress || 'Generando con Imagen 4…'}
+              {genProgress || 'Generando con Nano Banana 2…'}
             </p>
             <p style={{ fontSize: 12, color: 'var(--ink-2)' }}>
               {genMode === 'curated'
-                ? 'Generación secuencial — entre 1 y 2 minutos.'
-                : 'Entre 10 y 30 segundos.'}
+                ? 'Generación secuencial — entre 15 y 40 segundos.'
+                : 'Entre 3 y 8 segundos.'}
             </p>
           </div>
         ) : (
@@ -812,7 +812,7 @@ function GenerationModal({
 
             <p style={{ fontSize: 11, color: 'var(--ink-3)' }}>
               <ImagePlus size={10} aria-hidden="true" style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-              Imagen 4 Ultra (con fallback a Base si la cuota está saturada). Imágenes guardadas en biblioteca con prompt y ratio.
+              Nano Banana 2 (Gemini 3.1 Flash Image) con fallback a Imagen 4 si la cuota está saturada. Imágenes guardadas en biblioteca con prompt y ratio.
             </p>
           </>
         )}

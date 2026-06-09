@@ -21,7 +21,7 @@ export default async function SettingsPage() {
   // ── Estado real de integraciones (env vars) ──
   const integrations = [
     { label: 'Gemini API Key',          desc: 'Generación de contenido e imágenes',     configured: !!process.env.GEMINI_API_KEY },
-    { label: 'Imagen 4 Ultra (Google)', desc: 'Generación avanzada de imágenes',        configured: !!process.env.GEMINI_API_KEY },
+    { label: 'Nano Banana 2 (Gemini)',  desc: 'Generación de imágenes (Gemini 3.1 Flash Image)', configured: !!process.env.GEMINI_API_KEY },
     { label: 'Postiz API',              desc: 'Publicación automática multi-red social', configured: !!process.env.POSTIZ_API_KEY },
   ]
 
