@@ -11,6 +11,7 @@ import {
 import { cn, STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
 import { Modal } from '@/components/ui/Modal'
+import { ImageDrivePanel } from '@/components/pipeline/ImageDrivePanel'
 import type { ContentItem, Stage, Channel } from '@/types/database'
 import type { LucideIcon } from 'lucide-react'
 
@@ -46,14 +47,16 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 interface BoardProps {
-  items:          ContentItem[]
-  filterChannels: Channel[]
-  onAdd:          (stage: Stage, data: { title: string; channel: Channel }) => void
-  onMove:         (id: string, newStage: Stage) => void
-  onDelete:       (id: string) => void
-  onApprove:      (id: string, currentStage: Stage) => void
-  onItemUpdated?: (item: ContentItem) => void   // callback tras generate/save content
-  itemImageMap?:  Record<string, string>
+  items:               ContentItem[]
+  filterChannels:      Channel[]
+  onAdd:               (stage: Stage, data: { title: string; channel: Channel }) => void
+  onMove:              (id: string, newStage: Stage) => void
+  onDelete:            (id: string) => void
+  onApprove:           (id: string, currentStage: Stage) => void
+  onItemUpdated?:      (item: ContentItem) => void
+  itemImageMap?:       Record<string, { id: string; url: string }>
+  onImageAssigned?:    (contentItemId: string, assetId: string, url: string) => void
+  onImageUnassigned?:  (contentItemId: string) => void
 }
 
 // ─── StatusDot ───────────────────────────────────────────────────────────────
@@ -267,15 +270,19 @@ function stripMarkdown(text: string): string {
 }
 
 function ContentDetailModal({
-  item, imageUrl, onClose, onApprove, onMove, onDelete, onItemUpdated,
+  item, imageUrl, imageId, onClose, onApprove, onMove, onDelete, onItemUpdated,
+  onImageAssigned, onImageUnassigned,
 }: {
-  item: ContentItem
-  imageUrl: string | null
-  onClose: () => void
-  onApprove: (id: string, s: Stage) => void
-  onMove: (id: string, s: Stage) => void
-  onDelete: (id: string) => void
-  onItemUpdated?: (item: ContentItem) => void
+  item:              ContentItem
+  imageUrl:          string | null
+  imageId:           string | null
+  onClose:           () => void
+  onApprove:         (id: string, s: Stage) => void
+  onMove:            (id: string, s: Stage) => void
+  onDelete:          (id: string) => void
+  onItemUpdated?:    (item: ContentItem) => void
+  onImageAssigned?:  (contentItemId: string, assetId: string, url: string) => void
+  onImageUnassigned?: (contentItemId: string) => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const stageCfg = STAGE_CONFIG[item.stage as Stage]
@@ -420,8 +427,8 @@ function ContentDetailModal({
         })}
       </div>
 
-      {/* ── Thumbnail imagen asignada (si existe) ── */}
-      {imageUrl && (
+      {/* ── Thumbnail imagen asignada (solo en stages sin ImageDrivePanel) ── */}
+      {imageUrl && (item.stage === 'ideas' || item.stage === 'copy') && (
         <div
           style={{
             marginBottom: 20,
@@ -623,23 +630,38 @@ function ContentDetailModal({
                 )}
               </div>
             ) : (
-              <div
-                className="inline-flex items-center"
-                style={{
-                  gap: 6,
-                  padding: '8px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  background: withAlpha(stageCfg.accentHex, 0.08),
-                  border: `1px solid ${withAlpha(stageCfg.accentHex, 0.21)}`,
-                  color: stageCfg.accentHex,
-                }}
-              >
-                <Sparkles size={12} aria-hidden="true" />
-                {item.stage === 'design' ? 'Pendiente de crear los visuales'
-                  : item.stage === 'scheduled' ? 'Programado vía PostiZ'
-                  : 'Análisis en progreso'}
+              <div>
+                {(item.stage === 'design' || item.stage === 'scheduled' || item.stage === 'analyzed') ? (
+                  <ImageDrivePanel
+                    itemId={item.id}
+                    channel={item.channel as Channel}
+                    assignedImageId={imageId}
+                    assignedImageUrl={imageUrl}
+                    onAssigned={(assetId, url) => {
+                      onImageAssigned?.(item.id, assetId, url)
+                    }}
+                    onUnassigned={() => {
+                      onImageUnassigned?.(item.id)
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="inline-flex items-center"
+                    style={{
+                      gap: 6,
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: withAlpha(stageCfg.accentHex, 0.08),
+                      border: `1px solid ${withAlpha(stageCfg.accentHex, 0.21)}`,
+                      color: stageCfg.accentHex,
+                    }}
+                  >
+                    <Sparkles size={12} aria-hidden="true" />
+                    Análisis en progreso
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1020,7 +1042,7 @@ function Column({
   onApprove: (id: string, s: Stage) => void
   onSelectItem: (item: ContentItem) => void
   index: number
-  itemImageMap?: Record<string, string>
+  itemImageMap?: Record<string, { id: string; url: string }>
 }) {
   const cfg = STAGE_CONFIG[stage]
   const Icon = STAGE_ICONS[stage]
@@ -1162,7 +1184,7 @@ function Column({
 // BOARD — scroll horizontal funcional, gap 16px entre columnas
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, onItemUpdated, itemImageMap }: BoardProps) {
+export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, onItemUpdated, itemImageMap, onImageAssigned, onImageUnassigned }: BoardProps) {
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
 
   // Sincroniza selectedItem con la última versión cuando items se actualiza
@@ -1202,7 +1224,8 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
       {selectedItem && (
         <ContentDetailModal
           item={selectedItem}
-          imageUrl={itemImageMap?.[selectedItem.id] ?? null}
+          imageUrl={itemImageMap?.[selectedItem.id]?.url ?? null}
+          imageId={itemImageMap?.[selectedItem.id]?.id ?? null}
           onClose={() => setSelectedItem(null)}
           onApprove={(id, s) => { onApprove(id, s) }}
           onMove={(id, s)    => { onMove(id, s) }}
@@ -1211,6 +1234,8 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
             setSelectedItem(updated)
             onItemUpdated?.(updated)
           }}
+          onImageAssigned={onImageAssigned}
+          onImageUnassigned={onImageUnassigned}
         />
       )}
     </>

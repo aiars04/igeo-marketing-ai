@@ -57,7 +57,7 @@ function StatPill({
 export default function PipelinePage() {
   const [items, setItems] = useState<ContentItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [itemImageMap, setItemImageMap] = useState<Record<string, string>>({}) // content_item_id → url
+  const [itemImageMap, setItemImageMap] = useState<Record<string, { id: string; url: string }>>({}) // content_item_id → {id, url}
   const [filterOpen, setFilterOpen] = useState(false)
   const [filterChannels, setFilterChannels] = useState<Channel[]>([])
   const [aiModalOpen, setAiModalOpen] = useState(false)
@@ -78,11 +78,11 @@ export default function PipelinePage() {
         showToast(`Error cargando pipeline: HTTP ${iRes.status}`, 'error')
       }
       if (aRes.ok) {
-        const assets = await aRes.json() as Array<{ url: string; content_item_id: string | null }>
-        const map: Record<string, string> = {}
+        const assets = await aRes.json() as Array<{ id: string; url: string; content_item_id: string | null }>
+        const map: Record<string, { id: string; url: string }> = {}
         for (const a of assets) {
           if (a.content_item_id && !map[a.content_item_id]) {
-            map[a.content_item_id] = a.url
+            map[a.content_item_id] = { id: a.id, url: a.url }
           }
         }
         setItemImageMap(map)
@@ -199,6 +199,18 @@ export default function PipelinePage() {
     setAiModalOpen(false)
     showToast(`IA generó ${created.length} ideas`, 'success')
   }, [showToast])
+
+  const handleImageAssigned = useCallback((contentItemId: string, assetId: string, url: string) => {
+    setItemImageMap(prev => ({ ...prev, [contentItemId]: { id: assetId, url } }))
+  }, [])
+
+  const handleImageUnassigned = useCallback((contentItemId: string) => {
+    setItemImageMap(prev => {
+      const next = { ...prev }
+      delete next[contentItemId]
+      return next
+    })
+  }, [])
 
   const toggleFilterChannel = (ch: Channel) => {
     setFilterChannels(prev =>
@@ -320,6 +332,8 @@ export default function PipelinePage() {
             onApprove={handleApprove}
             onItemUpdated={(updated) => setItems(prev => prev.map(i => i.id === updated.id ? updated : i))}
             itemImageMap={itemImageMap}
+            onImageAssigned={handleImageAssigned}
+            onImageUnassigned={handleImageUnassigned}
           />
         )}
       </div>

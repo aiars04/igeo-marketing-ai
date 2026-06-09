@@ -28,7 +28,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const { profile: me, admin } = auth
   const { id } = await ctx.params
 
-  let body: { approved?: boolean; folder_id?: string | null }
+  let body: { approved?: boolean; folder_id?: string | null; content_item_id?: string | null }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
 
   const { data: target } = await admin
@@ -58,6 +58,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       if (!f) return NextResponse.json({ error: 'folder_not_found' }, { status: 404 })
     }
     patch.folder_id = body.folder_id
+  }
+
+  // Asignar / desasignar content_item (null = sin asignar)
+  if (Object.prototype.hasOwnProperty.call(body, 'content_item_id')) {
+    patch.content_item_id = body.content_item_id ?? null
   }
 
   if (Object.keys(patch).length === 0) {
