@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import {
   Sparkles, Loader2, RefreshCw, X, Check, ImagePlus, Layers, Grid3x3, Wand2, AlertCircle,
+  Maximize2, Download,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import type { Channel } from '@/types/database'
@@ -49,6 +50,7 @@ export function ImageDrivePanel({
   // Inline panel state
   const [unassigning, setUnassigning] = useState(false)
   const [confirmRegen, setConfirmRegen] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   // Generation modal state
   const [genModalOpen, setGenModalOpen] = useState(false)
@@ -266,17 +268,111 @@ export function ImageDrivePanel({
   if (assignedImageUrl) {
     return (
       <div className="flex flex-col gap-2">
-        <div
-          className="relative overflow-hidden"
-          style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+        {/* Preview: contain para ver imagen completa + click para ampliar */}
+        <button
+          onClick={() => setLightboxOpen(true)}
+          className="relative group"
+          style={{
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border)',
+            background: 'var(--surface-2)',
+            padding: 0,
+            cursor: 'zoom-in',
+            overflow: 'hidden',
+            width: '100%',
+          }}
+          aria-label="Ampliar imagen"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={assignedImageUrl}
             alt="Visual generado"
-            style={{ width: '100%', maxHeight: 220, objectFit: 'cover', display: 'block' }}
+            style={{
+              width: '100%',
+              maxHeight: 420,
+              minHeight: 200,
+              objectFit: 'contain',
+              display: 'block',
+              background: 'var(--surface-2)',
+            }}
           />
-        </div>
+          {/* Hover overlay con icono ampliar */}
+          <div
+            className="absolute inset-0 flex items-center justify-center transition-opacity opacity-0 group-hover:opacity-100"
+            style={{ background: 'rgba(0,0,0,0.35)', pointerEvents: 'none' }}
+          >
+            <div
+              className="flex items-center gap-1.5"
+              style={{
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-pill)',
+                background: 'rgba(255,255,255,0.95)',
+                color: 'var(--ink)',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              <Maximize2 size={12} aria-hidden="true" /> Ver tamaño completo
+            </div>
+          </div>
+        </button>
+
+        {/* Lightbox a tamaño completo */}
+        {lightboxOpen && (
+          <div
+            className="fixed inset-0 z-[10000] flex items-center justify-center animate-fade-in"
+            style={{ background: 'rgba(0,0,0,0.85)', padding: 24 }}
+            onClick={() => setLightboxOpen(false)}
+            role="dialog"
+            aria-label="Vista completa de la imagen"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={assignedImageUrl}
+              alt="Visual generado (tamaño completo)"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain',
+                borderRadius: 'var(--radius-md)',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+              }}
+              onClick={e => e.stopPropagation()}
+            />
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className="absolute top-4 right-4 flex items-center justify-center transition-colors"
+              style={{
+                width: 36, height: 36,
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+              aria-label="Cerrar"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+            <a
+              href={assignedImageUrl}
+              download
+              onClick={e => e.stopPropagation()}
+              className="absolute top-4 right-16 inline-flex items-center gap-1.5 transition-colors"
+              style={{
+                padding: '8px 14px',
+                borderRadius: 'var(--radius-pill)',
+                background: 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                fontSize: 12,
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              <Download size={12} aria-hidden="true" /> Descargar
+            </a>
+          </div>
+        )}
 
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
