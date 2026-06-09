@@ -624,8 +624,8 @@ export default function ImagesPage() {
 
       {/* Filter bar */}
       <div
-        className="flex items-center gap-3 px-6 flex-wrap"
-        style={{ paddingTop: 14, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}
+        className="flex items-center gap-3 flex-wrap"
+        style={{ paddingTop: 14, paddingBottom: 14, paddingLeft: 40, paddingRight: 24, borderBottom: '1px solid var(--border)' }}
       >
         <div className="flex items-center gap-1.5">
           {([
@@ -679,7 +679,7 @@ export default function ImagesPage() {
         )}
       </div>
 
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto" style={{ paddingLeft: 40, paddingRight: 24, paddingTop: 24, paddingBottom: 24 }}>
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: 'var(--ink-3)' }}>
             <Loader2 size={28} className="animate-spin" aria-hidden="true" />

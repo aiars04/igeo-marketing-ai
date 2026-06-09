@@ -141,7 +141,7 @@ export function ImageFoldersSidebar({
     <>
       <aside
         style={{
-          width: 220, flexShrink: 0,
+          width: 240, flexShrink: 0,
           borderRight: '1px solid var(--border)',
           background: 'var(--surface)',
           display: 'flex', flexDirection: 'column',
