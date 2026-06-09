@@ -1023,8 +1023,8 @@ function Card({
         </button>
       )}
 
-      {/* ── Botón Generar imagen — solo en design sin imagen ── */}
-      {item.stage === 'design' && !hasImage && onGenerateImage && (
+      {/* ── Botón Generar imagen — siempre visible en design ── */}
+      {item.stage === 'design' && onGenerateImage && (
         <button
           onClick={e => {
             e.stopPropagation()
@@ -1038,6 +1038,8 @@ function Card({
         >
           {generatingImage ? (
             <><Loader2 size={12} className="animate-spin" aria-hidden="true" /> Generando imagen…</>
+          ) : hasImage ? (
+            <><RefreshCw size={12} aria-hidden="true" /> Regenerar imagen</>
           ) : (
             <><ImageIcon size={12} aria-hidden="true" /> Generar imagen con IA</>
           )}
