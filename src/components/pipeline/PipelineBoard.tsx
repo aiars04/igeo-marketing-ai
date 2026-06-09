@@ -836,15 +836,17 @@ function ContentDetailModal({
 // ═══════════════════════════════════════════════════════════════════════════
 
 function Card({
-  item, hasImage, onMove, onApprove, onSelect,
+  item, hasImage, onMove, onApprove, onSelect, onGenerateImage,
 }: {
   item: ContentItem
   hasImage?: boolean
   onMove: (id: string, s: Stage) => void
   onApprove: (id: string, s: Stage) => void
   onSelect: (item: ContentItem) => void
+  onGenerateImage?: (itemId: string, title: string, channel: Channel) => Promise<void>
 }) {
   const needsApproval = APPROVAL_STAGES.includes(item.stage as Stage) && !item.human_approved
+  const [generatingImage, setGeneratingImage] = useState(false)
 
   // Iniciales del responsable
   const initials = item.human_approved && item.approved_by
@@ -1009,7 +1011,7 @@ function Card({
         </div>
       )}
 
-      {/* ── Botón Aprobar y avanzar — ghost refinado ── */}
+      {/* ── Botón Aprobar y avanzar ── */}
       {needsApproval && (
         <button
           onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
@@ -1018,6 +1020,27 @@ function Card({
         >
           Aprobar y avanzar
           <ArrowRight size={13} aria-hidden="true" />
+        </button>
+      )}
+
+      {/* ── Botón Generar imagen — solo en design sin imagen ── */}
+      {item.stage === 'design' && !hasImage && onGenerateImage && (
+        <button
+          onClick={e => {
+            e.stopPropagation()
+            setGeneratingImage(true)
+            onGenerateImage(item.id, item.title, item.channel as Channel)
+              .finally(() => setGeneratingImage(false))
+          }}
+          disabled={generatingImage}
+          className="btn-pill-ghost"
+          style={{ marginTop: needsApproval ? 4 : 8 }}
+        >
+          {generatingImage ? (
+            <><Loader2 size={12} className="animate-spin" aria-hidden="true" /> Generando imagen…</>
+          ) : (
+            <><ImageIcon size={12} aria-hidden="true" /> Generar imagen con IA</>
+          )}
         </button>
       )}
     </article>
@@ -1029,7 +1052,7 @@ function Card({
 // ═══════════════════════════════════════════════════════════════════════════
 
 function Column({
-  stage, items, filterChannels, onAdd, onMove, onApprove, onSelectItem, index, itemImageMap,
+  stage, items, filterChannels, onAdd, onMove, onApprove, onSelectItem, index, itemImageMap, onGenerateImage,
 }: {
   stage: Stage
   items: ContentItem[]
@@ -1040,6 +1063,7 @@ function Column({
   onSelectItem: (item: ContentItem) => void
   index: number
   itemImageMap?: Record<string, { id: string; url: string }>
+  onGenerateImage?: (itemId: string, title: string, channel: Channel) => Promise<void>
 }) {
   const cfg = STAGE_CONFIG[stage]
   const Icon = STAGE_ICONS[stage]
@@ -1138,6 +1162,7 @@ function Column({
             onMove={onMove}
             onApprove={onApprove}
             onSelect={onSelectItem}
+            onGenerateImage={onGenerateImage}
           />
         ))}
 
@@ -1185,7 +1210,6 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
 
   // Sincroniza selectedItem con la última versión cuando items se actualiza
-  // (p.ej. tras editar desde el modal). Patrón legítimo de mirror de external state.
   useEffect(() => {
     if (!selectedItem) return
     const updated = items.find(i => i.id === selectedItem.id) ?? null
@@ -1193,6 +1217,27 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
     if (updated !== selectedItem) setSelectedItem(updated)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items])
+
+  // Genera imagen desde la tarjeta directamente (sin abrir modal)
+  const handleGenerateImageForCard = useCallback(async (itemId: string, title: string, channel: Channel) => {
+    try {
+      const genRes = await fetch('/api/images/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: title, aspectRatio: '1:1', channel }),
+      })
+      if (!genRes.ok) return
+      const { id, url } = await genRes.json() as { id: string; url: string }
+      await fetch(`/api/images/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content_item_id: itemId }),
+      })
+      onImageAssigned?.(itemId, id, url)
+    } catch {
+      // silencia errores — el usuario puede intentarlo desde el modal
+    }
+  }, [onImageAssigned])
 
   const byStage = STAGES.reduce((acc, s) => {
     acc[s] = items.filter(i => i.stage === s)
@@ -1214,6 +1259,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
             onSelectItem={setSelectedItem}
             index={idx}
             itemImageMap={itemImageMap}
+            onGenerateImage={handleGenerateImageForCard}
           />
         ))}
       </div>
