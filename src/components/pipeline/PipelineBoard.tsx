@@ -634,6 +634,7 @@ function ContentDetailModal({
                 {(item.stage === 'design' || item.stage === 'scheduled' || item.stage === 'analyzed') ? (
                   <ImageDrivePanel
                     itemId={item.id}
+                    itemTitle={item.title}
                     channel={item.channel as Channel}
                     assignedImageId={imageId}
                     assignedImageUrl={imageUrl}
