@@ -124,61 +124,82 @@ export function ImageDrivePanel({
     }
   }, [assignedImageId, onUnassigned])
 
-  // ── Generar ──────────────────────────────────────────────────────────────
+  // ── Generar (con retry automático contra 504/502/408) ──────────────────
   const handleGenerate = useCallback(async () => {
     setGenError(null)
     setVariants(null)
     setGenerating(true)
-    setGenProgress(genMode === 'individual' ? 'Generando con Imagen 4…' : `Generando ${genCount} imágenes…`)
+
+    const MAX_ATTEMPTS = 3
+    const isTransient = (status: number) => status === 504 || status === 502 || status === 408 || status === 503
+
     try {
       if (genMode === 'individual') {
         const promptFinal = (genPrompt.trim() || itemTitle).trim()
         if (!promptFinal) { setGenError('Escribe un prompt o un título'); return }
 
-        const res = await fetch('/api/images/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: promptFinal, aspectRatio, channel }),
-        })
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({})) as { error?: string }
-          if (res.status === 504 || res.status === 408 || res.status === 502) {
-            setGenError('La generación tardó demasiado. Imagen 4 está saturado o tu plan Vercel limita el tiempo. Pulsa "Generar imagen" otra vez — suele funcionar al segundo intento.')
-          } else {
-            setGenError(j.error ?? `HTTP ${res.status}`)
+        let lastError = ''
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+          setGenProgress(
+            attempt === 1
+              ? 'Generando con Imagen 4…'
+              : `Reintento ${attempt} de ${MAX_ATTEMPTS} (Imagen 4 saturado)…`,
+          )
+          const res = await fetch('/api/images/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: promptFinal, aspectRatio, channel }),
+          })
+          if (res.ok) {
+            const data = await res.json() as { id: string; url: string }
+            await assignAsset(data.id, data.url)
+            setGenModalOpen(false)
+            return
           }
-          return
+          const j = await res.json().catch(() => ({})) as { error?: string }
+          lastError = j.error ?? `HTTP ${res.status}`
+          if (!isTransient(res.status)) break  // error definitivo, no reintentar
         }
-        const data = await res.json() as { id: string; url: string }
-        await assignAsset(data.id, data.url)
-        setGenModalOpen(false)
+        setGenError(`No se pudo generar tras ${MAX_ATTEMPTS} intentos. ${lastError}. Vuelve a intentarlo en unos segundos.`)
+        return
 
       } else if (genMode === 'variants') {
         const promptFinal = (genPrompt.trim() || itemTitle).trim()
         if (!promptFinal) { setGenError('Escribe un prompt o un título'); return }
 
-        const res = await fetch('/api/images/carousel', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            mode: 'variants',
-            prompts: [promptFinal],
-            count: genCount,
-            aspectRatio,
-            channel,
-          }),
-        })
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({})) as { error?: string }
-          if (res.status === 504 || res.status === 408 || res.status === 502) {
-            setGenError('Timeout generando variantes. Vuelve a intentarlo o prueba en modo Individual.')
-          } else {
-            setGenError(j.error ?? `HTTP ${res.status}`)
+        let lastError = ''
+        let assets: ImageAsset[] | null = null
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+          setGenProgress(
+            attempt === 1
+              ? `Generando ${genCount} variantes…`
+              : `Reintento ${attempt} de ${MAX_ATTEMPTS}…`,
+          )
+          const res = await fetch('/api/images/carousel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              mode: 'variants',
+              prompts: [promptFinal],
+              count: genCount,
+              aspectRatio,
+              channel,
+            }),
+          })
+          if (res.ok) {
+            const data = await res.json() as { assets: ImageAsset[] }
+            assets = data.assets
+            break
           }
+          const j = await res.json().catch(() => ({})) as { error?: string }
+          lastError = j.error ?? `HTTP ${res.status}`
+          if (!isTransient(res.status)) break
+        }
+        if (!assets) {
+          setGenError(`No se pudo generar tras ${MAX_ATTEMPTS} intentos. ${lastError}. Prueba en modo Individual o vuelve a intentarlo.`)
           return
         }
-        const data = await res.json() as { assets: ImageAsset[] }
-        setVariants(data.assets)
+        setVariants(assets)
 
       } else {
         // curated
