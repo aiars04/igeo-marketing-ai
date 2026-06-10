@@ -5,8 +5,8 @@ import { EventManager, type Event } from '@/components/ui/event-manager'
 import { addPipelineItemFromCalendar } from '@/lib/stores/pipeline-store'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import { Modal } from '@/components/ui/Modal'
-import { AlertCircle, Check, X } from 'lucide-react'
-import type { ContentItem } from '@/types/database'
+import { AlertCircle, Check, X, Upload } from 'lucide-react'
+import type { ContentItem, CalendarEvent } from '@/types/database'
 
 // ─── CSV helpers ─────────────────────────────────────────────────────────────
 
@@ -35,7 +35,9 @@ const CSV_CHANNEL_TO_COLOR: Record<string, string> = {
   blog: 'orange', x: 'purple', facebook: 'blue',
 }
 
-const STORAGE_KEY = 'igeo_cal_events_v2'
+// Clave del localStorage legacy — sólo se usa para detectar eventos pendientes de migrar
+const LEGACY_STORAGE_KEY = 'igeo_cal_events_v2'
+const MIGRATION_DONE_KEY = 'igeo_cal_migration_done_v1'
 
 // Colores por canal para eventos del pipeline
 const PIPELINE_CHANNEL_COLORS: Record<string, string> = {
@@ -62,100 +64,63 @@ function pipelineItemToEvent(item: ContentItem): Event {
   }
 }
 
-// Eventos demo iniciales
-const INITIAL_EVENTS: Event[] = [
-  {
-    id: '1',
-    title: 'Post semana — LinkedIn iGEO',
-    description: 'Publicación semanal en LinkedIn con casos de éxito',
-    startTime: new Date(2026, 4, 21, 9, 0),
-    endTime: new Date(2026, 4, 21, 9, 30),
-    color: 'blue',
-    category: 'Contenido',
-    tags: ['Trabajo', 'Equipo'],
-  },
-  {
-    id: '2',
-    title: 'Carrusel semanal Instagram',
-    description: 'Carrusel con 5 slides — Control operativo',
-    startTime: new Date(2026, 4, 22, 10, 0),
-    endTime: new Date(2026, 4, 22, 11, 0),
-    color: 'pink',
-    category: 'Contenido',
-    tags: ['Trabajo'],
-  },
-  {
-    id: '3',
-    title: 'Feria TECNA Madrid',
-    description: 'Stand iGEO en TECNA · Falta visibilidad en limpieza industrial',
-    startTime: new Date(2026, 4, 24, 9, 0),
-    endTime: new Date(2026, 4, 24, 18, 0),
-    color: 'orange',
-    category: 'Acontecimiento',
-    tags: ['Importante', 'Cliente'],
-  },
-  {
-    id: '4',
-    title: 'Artículo: Trazabilidad en legionella',
-    description: 'Blog post mensual SEO',
-    startTime: new Date(2026, 4, 26, 12, 0),
-    endTime: new Date(2026, 4, 26, 13, 0),
-    color: 'green',
-    category: 'Contenido',
-    tags: ['Trabajo'],
-  },
-  {
-    id: '5',
-    title: 'Newsletter mayo 2026',
-    description: 'Envío mensual de newsletter a clientes',
-    startTime: new Date(2026, 4, 28, 11, 0),
-    endTime: new Date(2026, 4, 28, 12, 0),
-    color: 'purple',
-    category: 'Contenido',
-    tags: ['Cliente'],
-  },
-  {
-    id: '6',
-    title: 'Visita cliente — Clece Barcelona',
-    description: 'Reunión gestión de múltiples contratos · Case study',
-    startTime: new Date(2026, 4, 30, 10, 0),
-    endTime: new Date(2026, 4, 30, 12, 0),
-    color: 'red',
-    category: 'Reunión',
-    tags: ['Importante', 'Cliente'],
-  },
-]
-
-// Serializar/deserializar Date <-> string
-function serialize(events: Event[]) {
-  return JSON.stringify(
-    events.map(e => ({
-      ...e,
-      startTime: e.startTime.toISOString(),
-      endTime: e.endTime.toISOString(),
-    })),
-  )
+/** Convierte una fila de Supabase a un Event del UI */
+function dbEventToUI(row: CalendarEvent): Event {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description ?? undefined,
+    startTime: new Date(row.start_time),
+    endTime: new Date(row.end_time),
+    color: row.color,
+    category: row.category ?? undefined,
+    tags: row.tags ?? [],
+    allDay: row.all_day || undefined,
+    eventType: row.event_type ?? undefined,
+    location: row.location ?? undefined,
+    channel: row.channel ?? undefined,
+    market: row.market ?? undefined,
+  }
 }
 
-function deserialize(raw: string | null): Event[] | null {
-  if (!raw) return null
+/** Convierte un Event del UI a payload para Supabase */
+function uiEventToDB(ev: Event): Partial<CalendarEvent> {
+  return {
+    title: ev.title,
+    description: ev.description ?? null,
+    start_time: (ev.startTime instanceof Date ? ev.startTime : new Date(ev.startTime as unknown as string)).toISOString(),
+    end_time:   (ev.endTime   instanceof Date ? ev.endTime   : new Date(ev.endTime   as unknown as string)).toISOString(),
+    all_day:    !!ev.allDay,
+    color:      ev.color ?? 'blue',
+    category:   ev.category ?? null,
+    tags:       Array.isArray(ev.tags) ? ev.tags : [],
+    event_type: (ev.eventType ?? null) as CalendarEvent['event_type'],
+    location:   ev.location ?? null,
+    channel:    ev.channel ?? null,
+    market:     ev.market ?? null,
+  }
+}
+
+/** Deserializa eventos legacy de localStorage para migración */
+function deserializeLegacy(raw: string | null): Event[] {
+  if (!raw) return []
   try {
     const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return null
+    if (!Array.isArray(parsed)) return []
     return parsed.map((e: { startTime: string; endTime: string } & Omit<Event, 'startTime' | 'endTime'>) => ({
       ...e,
       startTime: new Date(e.startTime),
       endTime: new Date(e.endTime),
     }))
   } catch {
-    return null
+    return []
   }
 }
 
 export default function CalendarPage() {
-  const [events, setEvents] = useState<Event[]>(INITIAL_EVENTS)
-  const [hydrated, setHydrated] = useState(false)
+  const [events, setEvents] = useState<Event[]>([])
   const [pipelineEvents, setPipelineEvents] = useState<Event[]>([])
+  const [loading, setLoading] = useState(true)
   const { items: toasts, show: showToast, remove: removeToast } = useToast()
   const [csvPreview, setCsvPreview] = useState<{
     fileName: string
@@ -163,15 +128,123 @@ export default function CalendarPage() {
     skipped: number
     errors: string[]
   } | null>(null)
+  const [pendingMigration, setPendingMigration] = useState<Event[] | null>(null)
+  const [migrating, setMigrating] = useState(false)
+
+  // ── Carga eventos de Supabase ─────────────────────────────────────────────
+  const loadEvents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/calendar-events')
+      if (!res.ok) {
+        showToast(`Error cargando eventos: HTTP ${res.status}`, 'error')
+        return
+      }
+      const rows = await res.json() as CalendarEvent[]
+      setEvents(rows.map(dbEventToUI))
+    } catch (e) {
+      showToast(`Error de red: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
+    } finally {
+      setLoading(false)
+    }
+  }, [showToast])
+
+  // ── Carga items del pipeline con scheduled_at ─────────────────────────────
+  const loadPipelineEvents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/content-items')
+      if (!res.ok) return
+      const items = await res.json() as ContentItem[]
+      const mapped = items
+        .filter(i => i.scheduled_at && !i.calendar_item_id)
+        .map(pipelineItemToEvent)
+      setPipelineEvents(mapped)
+    } catch {}
+  }, [])
+
+  // ── Detección de migración pendiente desde localStorage ───────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const migrationDone = localStorage.getItem(MIGRATION_DONE_KEY)
+    if (migrationDone) return
+    const legacy = deserializeLegacy(localStorage.getItem(LEGACY_STORAGE_KEY))
+    if (legacy.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPendingMigration(legacy)
+    }
+  }, [])
+
+  // ── Carga inicial + escucha cambios del pipeline ──────────────────────────
+  useEffect(() => {
+    loadEvents()
+    loadPipelineEvents()
+    const onPipelineChanged = () => loadPipelineEvents()
+    window.addEventListener('pipeline:changed', onPipelineChanged)
+    return () => window.removeEventListener('pipeline:changed', onPipelineChanged)
+  }, [loadEvents, loadPipelineEvents])
+
+  // ── Migración one-shot de localStorage → Supabase ─────────────────────────
+  const runMigration = async () => {
+    if (!pendingMigration || pendingMigration.length === 0) return
+    setMigrating(true)
+    try {
+      const payload = {
+        events: pendingMigration.map(uiEventToDB),
+      }
+      const res = await fetch('/api/calendar-events/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        showToast(`Error migrando: ${j.error ?? res.statusText}`, 'error')
+        return
+      }
+      const data = await res.json() as { inserted: number }
+      localStorage.setItem(MIGRATION_DONE_KEY, new Date().toISOString())
+      setPendingMigration(null)
+      await loadEvents()
+      showToast(`${data.inserted} eventos migrados a Supabase`, 'success')
+    } catch (e) {
+      showToast(`Error de red: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
+    } finally {
+      setMigrating(false)
+    }
+  }
+
+  const dismissMigration = () => {
+    localStorage.setItem(MIGRATION_DONE_KEY, new Date().toISOString())
+    setPendingMigration(null)
+    showToast('Migración descartada — los eventos locales no se subirán', 'info')
+  }
 
   // ── CSV handlers ──────────────────────────────────────────────────────────
-  const commitImport = (parsed: Event[]) => {
+  const commitImport = async (parsed: Event[]) => {
     if (parsed.length === 0) return
-    setEvents(prev => [...prev, ...parsed])
-    for (const ev of parsed) {
-      if (ev.eventType === 'digital') {
-        addPipelineItemFromCalendar(ev).catch(() => {})
+    const payload = { events: parsed.map(uiEventToDB) }
+    try {
+      const res = await fetch('/api/calendar-events/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        showToast(`Error importando: ${j.error ?? res.statusText}`, 'error')
+        return
       }
+      const data = await res.json() as { inserted: number; events: CalendarEvent[] }
+      setEvents(prev => [...prev, ...data.events.map(dbEventToUI)])
+
+      // Crear tarjetas en pipeline para eventos digitales
+      for (const ev of parsed) {
+        if (ev.eventType === 'digital') {
+          addPipelineItemFromCalendar(ev).catch(() => {})
+        }
+      }
+      showToast(`${data.inserted} eventos importados`, 'success')
+    } catch (e) {
+      showToast(`Error de red: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
     }
   }
 
@@ -248,11 +321,7 @@ export default function CalendarPage() {
       }
 
       if (errors.length === 0 && parsed.length <= 20) {
-        commitImport(parsed)
-        showToast(
-          `${parsed.length} evento${parsed.length === 1 ? '' : 's'} importado${parsed.length === 1 ? '' : 's'}`,
-          'success',
-        )
+        await commitImport(parsed)
       } else {
         setCsvPreview({ fileName: file.name, parsed, skipped, errors })
       }
@@ -278,45 +347,6 @@ export default function CalendarPage() {
     a.remove()
     URL.revokeObjectURL(url)
   }
-
-  // Carga items del pipeline con fecha de Supabase
-  // Solo los que NO vienen del calendario (calendar_item_id = null) para evitar duplicados
-  const loadPipelineEvents = useCallback(async () => {
-    try {
-      const res = await fetch('/api/content-items')
-      if (!res.ok) return
-      const items = await res.json() as ContentItem[]
-      const mapped = items
-        .filter(i => i.scheduled_at && !i.calendar_item_id)
-        .map(pipelineItemToEvent)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPipelineEvents(mapped)
-    } catch {}
-  }, [])
-
-  // Cargar de localStorage al montar (sync con external storage)
-  useEffect(() => {
-    const saved = deserialize(localStorage.getItem(STORAGE_KEY))
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (saved && saved.length > 0) setEvents(saved)
-    setHydrated(true)
-  }, [])
-
-  // Cargar pipeline events al montar + escuchar cambios del pipeline
-  useEffect(() => {
-    loadPipelineEvents()
-    const onPipelineChanged = () => loadPipelineEvents()
-    window.addEventListener('pipeline:changed', onPipelineChanged)
-    return () => window.removeEventListener('pipeline:changed', onPipelineChanged)
-  }, [loadPipelineEvents])
-
-  // Persistir cambios
-  useEffect(() => {
-    if (!hydrated) return
-    try {
-      localStorage.setItem(STORAGE_KEY, serialize(events))
-    } catch {}
-  }, [events, hydrated])
 
   return (
     <div
@@ -350,57 +380,162 @@ export default function CalendarPage() {
         </p>
       </div>
 
-      <EventManager
-        events={[...events, ...pipelineEvents]}
-        onEventCreate={async (ev) => {
-          setEvents(prev => [...prev, ev])
-          // Si es evento digital → crear tarjeta en pipeline (fase Ideas)
-          if (ev.eventType === 'digital') {
-            const result = await addPipelineItemFromCalendar(ev)
-            if (result.ok) {
-              showToast('Evento creado · Tarjeta añadida a Pipeline (Ideas)', 'success')
-              await loadPipelineEvents()
-            } else if (result.duplicate) {
-              showToast('Evento creado (ya existía la tarjeta en Pipeline)', 'info')
-            } else {
-              showToast(`Evento creado, pero falló el Pipeline: ${result.error ?? 'error'}`, 'error')
+      {/* ── Banner de migración pendiente ── */}
+      {pendingMigration && pendingMigration.length > 0 && (
+        <div
+          className="flex items-center gap-3 mb-4"
+          style={{
+            padding: '12px 16px',
+            background: 'var(--amber-soft)',
+            border: '1px solid var(--amber-border)',
+            borderRadius: 'var(--radius-md)',
+          }}
+        >
+          <Upload size={16} aria-hidden="true" style={{ color: 'var(--amber-2)', flexShrink: 0 }} />
+          <div className="flex-1 min-w-0">
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--amber-2)', lineHeight: 1.3 }}>
+              {pendingMigration.length} evento{pendingMigration.length === 1 ? '' : 's'} guardado{pendingMigration.length === 1 ? '' : 's'} localmente
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>
+              Importa estos eventos a Supabase para acceder a ellos desde cualquier dispositivo.
+            </p>
+          </div>
+          <button
+            onClick={dismissMigration}
+            disabled={migrating}
+            className="btn-secondary"
+            style={{ height: 32, fontSize: 12 }}
+          >
+            Descartar
+          </button>
+          <button
+            onClick={runMigration}
+            disabled={migrating}
+            className="btn-cta"
+            style={{ height: 32, fontSize: 12 }}
+          >
+            {migrating ? 'Importando…' : `Importar ${pendingMigration.length}`}
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
+          Cargando eventos…
+        </div>
+      ) : (
+        <EventManager
+          events={[...events, ...pipelineEvents]}
+          onEventCreate={async (ev) => {
+            // 1) Optimistic — añadir al estado con id temporal
+            const tempId = ev.id
+            setEvents(prev => [...prev, ev])
+            try {
+              const res = await fetch('/api/calendar-events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(uiEventToDB(ev)),
+              })
+              if (!res.ok) {
+                const j = await res.json().catch(() => ({}))
+                showToast(`Error: ${j.error ?? res.statusText}`, 'error')
+                setEvents(prev => prev.filter(e => e.id !== tempId))
+                return
+              }
+              const row = await res.json() as CalendarEvent
+              // Reemplazar el evento temporal con el real (con id de Supabase)
+              setEvents(prev => prev.map(e => e.id === tempId ? dbEventToUI(row) : e))
+
+              // Si es evento digital → crear tarjeta en pipeline
+              if (ev.eventType === 'digital') {
+                const result = await addPipelineItemFromCalendar(ev)
+                if (result.ok) {
+                  showToast('Evento creado · Tarjeta añadida a Pipeline', 'success')
+                  await loadPipelineEvents()
+                } else if (result.duplicate) {
+                  showToast('Evento creado (ya existía la tarjeta en Pipeline)', 'info')
+                } else {
+                  showToast('Evento creado', 'success')
+                }
+              } else {
+                showToast('Evento creado', 'success')
+              }
+            } catch (e) {
+              showToast(`Error de red: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
+              setEvents(prev => prev.filter(e => e.id !== tempId))
             }
-          }
-        }}
-        onEventUpdate={async (id, partial) => {
-          if (id.startsWith('pipeline-')) {
-            const itemId = id.replace('pipeline-', '')
-            if (partial.startTime) {
+          }}
+          onEventUpdate={async (id, partial) => {
+            // Pipeline events — PATCH a content-items
+            if (id.startsWith('pipeline-')) {
+              const itemId = id.replace('pipeline-', '')
+              if (partial.startTime) {
+                await fetch(`/api/content-items/${itemId}`, {
+                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ scheduled_at: new Date(partial.startTime).toISOString() }),
+                }).catch(() => null)
+                await loadPipelineEvents()
+              } else {
+                setPipelineEvents(prev => prev.map(e => e.id === id ? { ...e, ...partial } : e))
+              }
+              return
+            }
+
+            // Calendar events — optimistic + PATCH
+            const prev = events.find(e => e.id === id)
+            if (!prev) return
+            setEvents(p => p.map(e => e.id === id ? { ...e, ...partial } : e))
+            try {
+              const merged = { ...prev, ...partial } as Event
+              const res = await fetch(`/api/calendar-events/${id}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(uiEventToDB(merged)),
+              })
+              if (!res.ok) {
+                const j = await res.json().catch(() => ({}))
+                showToast(`Error: ${j.error ?? res.statusText}`, 'error')
+                setEvents(p => p.map(e => e.id === id ? prev : e))
+              }
+            } catch (e) {
+              showToast(`Error de red: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
+              setEvents(p => p.map(e => e.id === id ? prev : e))
+            }
+          }}
+          onEventDelete={async (id) => {
+            // Pipeline events — PATCH scheduled_at: null
+            if (id.startsWith('pipeline-')) {
+              const itemId = id.replace('pipeline-', '')
               await fetch(`/api/content-items/${itemId}`, {
                 method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ scheduled_at: new Date(partial.startTime).toISOString() }),
+                body: JSON.stringify({ scheduled_at: null }),
               }).catch(() => null)
-              await loadPipelineEvents()
-            } else {
-              setPipelineEvents(prev => prev.map(e => e.id === id ? { ...e, ...partial } : e))
+              setPipelineEvents(prev => prev.filter(e => e.id !== id))
+              return
             }
-          } else {
-            setEvents(prev => prev.map(e => (e.id === id ? { ...e, ...partial } : e)))
-          }
-        }}
-        onEventDelete={async (id) => {
-          if (id.startsWith('pipeline-')) {
-            const itemId = id.replace('pipeline-', '')
-            await fetch(`/api/content-items/${itemId}`, {
-              method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ scheduled_at: null }),
-            }).catch(() => null)
-            setPipelineEvents(prev => prev.filter(e => e.id !== id))
-          } else {
-            setEvents(prev => prev.filter(e => e.id !== id))
-          }
-        }}
-        categories={['Contenido', 'Acontecimiento', 'Reunión', 'Tarea', 'Personal']}
-        availableTags={['Importante', 'Urgente', 'Trabajo', 'Cliente', 'Equipo', 'Personal']}
-        defaultView="month"
-        onImportCSV={handleCSVImport}
-        onDownloadTemplate={downloadCSVTemplate}
-      />
+
+            // Calendar events — optimistic + DELETE
+            const prev = events.find(e => e.id === id)
+            if (!prev) return
+            setEvents(p => p.filter(e => e.id !== id))
+            try {
+              const res = await fetch(`/api/calendar-events/${id}`, { method: 'DELETE' })
+              if (!res.ok) {
+                const j = await res.json().catch(() => ({}))
+                showToast(`Error: ${j.error ?? res.statusText}`, 'error')
+                setEvents(p => [...p, prev])
+              }
+            } catch (e) {
+              showToast(`Error de red: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
+              setEvents(p => [...p, prev])
+            }
+          }}
+          categories={['Contenido', 'Acontecimiento', 'Reunión', 'Tarea', 'Personal']}
+          availableTags={['Importante', 'Urgente', 'Trabajo', 'Cliente', 'Equipo', 'Personal']}
+          defaultView="month"
+          onImportCSV={handleCSVImport}
+          onDownloadTemplate={downloadCSVTemplate}
+        />
+      )}
 
       {/* ─── Modal preview import CSV (solo si hay errores o >20 eventos) ─── */}
       <Modal
@@ -481,9 +616,8 @@ export default function CalendarPage() {
               </button>
               <button
                 className="btn-cta"
-                onClick={() => {
-                  commitImport(csvPreview.parsed)
-                  showToast(`${csvPreview.parsed.length} eventos importados`, 'success')
+                onClick={async () => {
+                  await commitImport(csvPreview.parsed)
                   setCsvPreview(null)
                 }}
                 disabled={csvPreview.parsed.length === 0}

@@ -72,6 +72,27 @@ export interface CalendarItem {
   updated_at: string
 }
 
+// Eventos nativos del calendario (presenciales y digitales).
+// Distintos de content_items (pipeline) — aquí van ferias, reuniones, eventos genéricos.
+export interface CalendarEvent {
+  id:          string
+  title:       string
+  description: string | null
+  start_time:  string // ISO
+  end_time:    string // ISO
+  all_day:     boolean
+  color:       string
+  category:    string | null
+  tags:        string[]
+  event_type:  'presential' | 'digital' | null
+  location:    string | null
+  channel:     string | null
+  market:      string | null
+  created_by:  string | null
+  created_at:  string
+  updated_at:  string
+}
+
 export interface ContentItem {
   id: string
   calendar_item_id: string | null
