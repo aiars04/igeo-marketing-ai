@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import {
   LayoutDashboard,
   Calendar,
@@ -13,6 +14,7 @@ import {
   MessageSquarePlus,
   LogOut,
   Users,
+  AlertTriangle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -44,6 +46,25 @@ export function AppShell({
   const pathname = usePathname() ?? ''
   const router = useRouter()
   const isLogin = pathname.startsWith('/login')
+  const [alertCount, setAlertCount] = useState(0)
+
+  // Poll alertas activas cada 60s para mantener el badge actualizado
+  useEffect(() => {
+    if (isLogin || !profile) return
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch('/api/alerts?resolved=false')
+        if (!res.ok) return
+        const alerts = await res.json() as unknown[]
+        if (!cancelled) setAlertCount(alerts.length)
+      } catch {}
+    }
+    load()
+    const i = setInterval(load, 60_000)
+    // Refrescar al navegar entre páginas también
+    return () => { cancelled = true; clearInterval(i) }
+  }, [isLogin, profile, pathname])
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -109,6 +130,40 @@ export function AppShell({
             >
               <BarChart3 />
               <span className="sidebar-label">Análisis</span>
+            </Link>
+            <Link
+              className={`nav-link ${isActive(pathname, '/alerts') ? 'active' : ''}`}
+              href="/alerts"
+              title="Alertas"
+              style={{ position: 'relative' }}
+            >
+              <AlertTriangle />
+              <span className="sidebar-label">Alertas</span>
+              {alertCount > 0 && (
+                <span
+                  aria-label={`${alertCount} alertas activas`}
+                  style={{
+                    position: 'absolute',
+                    top: 6,
+                    right: 8,
+                    minWidth: 18,
+                    height: 18,
+                    padding: '0 5px',
+                    background: 'var(--red, #ef4444)',
+                    color: '#fff',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    borderRadius: 999,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontVariantNumeric: 'tabular-nums',
+                    lineHeight: 1,
+                  }}
+                >
+                  {alertCount > 99 ? '99+' : alertCount}
+                </span>
+              )}
             </Link>
           </div>
 
