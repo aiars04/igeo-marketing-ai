@@ -93,6 +93,115 @@ export interface CalendarEvent {
   updated_at:  string
 }
 
+// ─── Fase 1A: Playbooks, Packages, Alerts, Market Rules ──────────────────
+
+export type PlaybookType =
+  | 'webinar' | 'event_presential' | 'event_online' | 'release'
+  | 'newsletter' | 'campaign' | 'alliance' | 'workshop'
+  | 'lead_magnet' | 'reactivation' | 'podcast'
+
+export type MarketScope = 'all' | Market
+
+export interface Playbook {
+  id:                    string
+  name:                  string
+  type:                  PlaybookType
+  description:           string | null
+  market_scope:          MarketScope
+  default_channels:      Channel[]
+  required_assets:       string[]
+  required_copy_blocks:  string[]
+  approval_required:     boolean
+  active:                boolean
+  created_by:            string | null
+  created_at:            string
+  updated_at:            string
+}
+
+export type PlaybookTaskType =
+  | 'post' | 'email' | 'newsletter' | 'landing' | 'reminder'
+  | 'follow_up' | 'blog' | 'video' | 'banner' | 'pdf'
+
+export interface PlaybookStep {
+  id:                    string
+  playbook_id:           string
+  step_order:            number
+  relative_day_offset:   number   // días respecto a anchor_date
+  channel:               Channel | null
+  content_type:          string | null
+  task_type:             PlaybookTaskType
+  title_template:        string | null
+  instructions:          string | null
+  required:              boolean
+  approval_gate:         boolean
+  depends_on_step_id:    string | null
+}
+
+export type PackageStatus = 'draft' | 'active' | 'completed' | 'cancelled'
+
+export interface CampaignPackage {
+  id:           string
+  title:        string
+  package_type: PlaybookType
+  market:       Market
+  objective:    string | null
+  anchor_date:  string | null
+  start_date:   string | null
+  end_date:     string | null
+  playbook_id:  string | null
+  status:       PackageStatus
+  created_by:   string | null
+  created_at:   string
+  updated_at:   string
+}
+
+export type AlertLevel = 'info' | 'warning' | 'critical'
+
+export type AlertType =
+  | 'missing_copy' | 'missing_image' | 'missing_approval'
+  | 'missing_cta' | 'missing_landing' | 'package_incomplete'
+  | 'scheduled_no_material' | 'dependency_not_met'
+  | 'market_inconsistency'
+
+export interface Alert {
+  id:                       string
+  level:                    AlertLevel
+  type:                     AlertType
+  title:                    string
+  description:              string | null
+  related_content_item_id:  string | null
+  related_package_id:       string | null
+  due_at:                   string | null
+  resolved:                 boolean
+  resolved_by:              string | null
+  resolved_at:              string | null
+  created_at:               string
+}
+
+export interface MarketRules {
+  id:                 string
+  market:             Market
+  keyword_rules:      {
+    primary?:   string[]
+    secondary?: string[]
+    forbidden?: string[]
+  }
+  terminology_rules:  {
+    prefer?: Record<string, string>  // ej. {"control de plagas": "sanidad ambiental"}
+  }
+  no_say_rules:       string[]
+  cta_rules:          {
+    default?: string
+    [channel: string]: string | undefined
+  }
+  notes:              string | null
+  updated_by:         string | null
+  created_at:         string
+  updated_at:         string
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+
 export interface ContentItem {
   id: string
   calendar_item_id: string | null
@@ -112,6 +221,10 @@ export interface ContentItem {
   approved_at: string | null
   scheduled_at: string | null
   published_at: string | null
+  // Fase 1A:
+  package_id: string | null
+  playbook_step_id: string | null
+  // ──────────
   postiz_id: string | null
   created_by: string | null
   created_at: string
