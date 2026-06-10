@@ -7,8 +7,10 @@ import {
   ChevronDown, ChevronUp, FileText, FileImage,
   Presentation, Sheet, File, Upload, Eye,
   Download, AlertCircle, Loader2, FolderOpen, Sparkles, Compass,
+  Layers,
 } from 'lucide-react'
 import { BrandContextEditor } from '@/components/admin/BrandContextEditor'
+import { PlaybooksTab } from '@/components/admin/PlaybooksTab'
 import { useContentTypes, type ContentType } from '@/lib/content-types-store'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import {
@@ -913,7 +915,7 @@ export default function AdminPage() {
   const { types, add, update, remove, toggle } = useContentTypes()
   const { items: toasts, show: toast, remove: removeToast } = useToast()
 
-  const [tab, setTab] = useState<'types' | 'brand'>('types')
+  const [tab, setTab] = useState<'types' | 'brand' | 'playbooks'>('types')
   const [modalOpen, setModalOpen]         = useState(false)
   const [editTarget, setEditTarget]       = useState<ContentType | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -1001,8 +1003,9 @@ export default function AdminPage() {
         }}
       >
         {([
-          { value: 'types', label: 'Tipos de contenido', icon: BookOpen },
-          { value: 'brand', label: 'Estrategia & Marca', icon: Compass },
+          { value: 'types',     label: 'Tipos de contenido', icon: BookOpen },
+          { value: 'playbooks', label: 'Playbooks',          icon: Layers   },
+          { value: 'brand',     label: 'Estrategia & Marca', icon: Compass  },
         ] as const).map(t => {
           const active = tab === t.value
           const Icon = t.icon
@@ -1111,6 +1114,11 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+      )}
+
+      {/* ─── Tab Playbooks ─── */}
+      {tab === 'playbooks' && (
+        <PlaybooksTab toast={toast} />
       )}
 
       {/* ─── Tab Estrategia & Marca ─── */}
