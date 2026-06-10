@@ -49,6 +49,12 @@ export async function POST(req: NextRequest) {
     if (!ev.start_time) { errors.push({ index: idx, error: 'start_time_required' }); return }
     if (!ev.end_time)   { errors.push({ index: idx, error: 'end_time_required' }); return }
 
+    const startDate = new Date(ev.start_time)
+    const endDate = new Date(ev.end_time)
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      errors.push({ index: idx, error: 'invalid_dates' }); return
+    }
+
     const eventType = ev.event_type ?? null
     if (eventType && !EVENT_TYPES.includes(eventType as typeof EVENT_TYPES[number])) {
       errors.push({ index: idx, error: 'invalid_event_type' }); return
@@ -57,8 +63,8 @@ export async function POST(req: NextRequest) {
     rows.push({
       title,
       description: ev.description ?? null,
-      start_time:  new Date(ev.start_time).toISOString(),
-      end_time:    new Date(ev.end_time).toISOString(),
+      start_time:  startDate.toISOString(),
+      end_time:    endDate.toISOString(),
       all_day:     !!ev.all_day,
       color:       ev.color ?? 'blue',
       category:    ev.category ?? null,

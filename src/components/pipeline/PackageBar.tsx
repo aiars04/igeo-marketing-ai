@@ -186,14 +186,20 @@ export function PackageDetailModal({
   const [items, setItems] = useState<ItemSummary[]>([])
   const [loading, setLoading] = useState(true)
 
+  const [loadError, setLoadError] = useState<string | null>(null)
   useEffect(() => {
     let cancelled = false
     fetch(`/api/campaign-packages/${pkg.id}`)
-      .then(r => r.json())
-      .then((data: { items: ItemSummary[] }) => {
-        if (!cancelled) setItems(data.items ?? [])
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json() as Promise<{ items: ItemSummary[] }>
       })
-      .catch(() => {})
+      .then(data => { if (!cancelled) setItems(data.items ?? []) })
+      .catch(err => {
+        if (cancelled) return
+        console.warn('[PackageDetailModal] load failed:', err)
+        setLoadError(err instanceof Error ? err.message : 'load_failed')
+      })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [pkg.id])
@@ -324,6 +330,10 @@ export function PackageDetailModal({
           {loading ? (
             <p style={{ fontSize: 12, color: 'var(--ink-3)', textAlign: 'center', padding: 20 }}>
               Cargando piezas…
+            </p>
+          ) : loadError ? (
+            <p style={{ fontSize: 12, color: 'var(--red-2)', textAlign: 'center', padding: 20 }}>
+              Error cargando las piezas: {loadError}
             </p>
           ) : items.length === 0 ? (
             <p style={{ fontSize: 12, color: 'var(--ink-3)', textAlign: 'center', padding: 20 }}>

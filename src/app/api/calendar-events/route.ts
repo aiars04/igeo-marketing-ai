@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import type { CalendarEvent, Profile } from '@/types/database'
+import type { CalendarEvent, Market, Profile } from '@/types/database'
 
 const EVENT_TYPES = ['presential', 'digital'] as const
+const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil']
 
 async function requireActor() {
   const supabase = await createClient()
@@ -69,11 +70,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_event_type' }, { status: 400 })
   }
 
+  // Validar market si está presente (solo para eventos digitales)
+  if (eventType === 'digital' && body.market && !MARKETS.includes(body.market as Market)) {
+    return NextResponse.json({ error: 'invalid_market' }, { status: 400 })
+  }
+
+  // Validar fechas
+  const startDate = new Date(body.start_time)
+  const endDate = new Date(body.end_time)
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    return NextResponse.json({ error: 'invalid_dates' }, { status: 400 })
+  }
+
   const insertRow = {
     title,
     description: body.description ?? null,
-    start_time:  new Date(body.start_time).toISOString(),
-    end_time:    new Date(body.end_time).toISOString(),
+    start_time:  startDate.toISOString(),
+    end_time:    endDate.toISOString(),
     all_day:     !!body.all_day,
     color:       body.color ?? 'blue',
     category:    body.category ?? null,
