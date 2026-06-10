@@ -298,12 +298,44 @@ function ContentDetailModal({
   const [confirmRegenerate, setConfirmRegenerate] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
 
+  // ── Fecha de publicación editable ─────────────────────────────────────────
+  const toLocalDatetimeValue = (iso: string | null) => {
+    if (!iso) return ''
+    try {
+      const d = new Date(iso)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    } catch { return '' }
+  }
+  const [editScheduledAt, setEditScheduledAt] = useState<string>(() => toLocalDatetimeValue(item.scheduled_at))
+
+  const handleSaveScheduledAt = useCallback(async (val: string) => {
+    const isoVal = val ? new Date(val).toISOString() : null
+    const current = item.scheduled_at ?? null
+    if (isoVal === current) return
+    const res = await fetch(`/api/content-items/${item.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduled_at: isoVal }),
+    }).catch(() => null)
+    if (res?.ok) {
+      const updated = await res.json() as ContentItem
+      onItemUpdated?.(updated)
+      window.dispatchEvent(new CustomEvent('pipeline:changed'))
+    }
+  }, [item.id, item.scheduled_at, onItemUpdated])
+
   // Sync editContent cuando el item cambia (regenerar trae content nuevo) — mirror de prop
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setEditContent(item.content ?? '')
     setConfirmRegenerate(false)
   }, [item.id, item.content])
+
+  // Sync editScheduledAt cuando el item cambia desde fuera
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEditScheduledAt(toLocalDatetimeValue(item.scheduled_at))
+  }, [item.id, item.scheduled_at])
 
   const canGenerate = item.stage === 'ideas' || item.stage === 'copy'
   const isDirty = (editContent ?? '') !== (item.content ?? '')
@@ -491,6 +523,35 @@ function ContentDetailModal({
         <MetaRow label="Actualizado">
           {new Date(item.updated_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
         </MetaRow>
+        {/* Fecha de publicación — editable, span 2 cols */}
+        <div style={{ gridColumn: 'span 2' }}>
+          <MetaRow label="Fecha de publicación">
+            <div className="flex items-center gap-2">
+              <input
+                type="datetime-local"
+                value={editScheduledAt}
+                onChange={e => setEditScheduledAt(e.target.value)}
+                onBlur={() => handleSaveScheduledAt(editScheduledAt)}
+                className="input"
+                style={{ height: 30, fontSize: 12, flex: 1, borderRadius: 'var(--radius-sm)' }}
+              />
+              {editScheduledAt && (
+                <button
+                  type="button"
+                  onClick={() => { setEditScheduledAt(''); handleSaveScheduledAt('') }}
+                  aria-label="Quitar fecha"
+                  style={{
+                    width: 22, height: 22, borderRadius: '50%', border: 'none', cursor: 'pointer',
+                    background: 'var(--surface)', color: 'var(--ink-3)', fontSize: 14, lineHeight: 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </MetaRow>
+        </div>
       </div>
 
       {/* ── Sección Contenido (con generación IA) ── */}
@@ -704,33 +765,6 @@ function ContentDetailModal({
                 {item.clarity_summary}
               </p>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Scheduled ── */}
-      {item.scheduled_at && (
-        <div
-          className="flex items-center"
-          style={{
-            gap: 10,
-            padding: '12px 14px',
-            marginBottom: 16,
-            background: 'var(--amber-soft)',
-            border: '1px solid var(--amber-border)',
-            borderRadius: 'var(--radius-md)',
-          }}
-        >
-          <Calendar size={16} aria-hidden="true" className="shrink-0" style={{ color: 'var(--amber-2)' }} />
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--amber-2)', lineHeight: 1.3 }}>
-              Programado vía PostiZ
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>
-              {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
-                day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
-              })}
-            </p>
           </div>
         </div>
       )}

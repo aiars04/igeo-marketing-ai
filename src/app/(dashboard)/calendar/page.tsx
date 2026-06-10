@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { EventManager, type Event } from '@/components/ui/event-manager'
 import { addPipelineItemFromCalendar } from '@/lib/stores/pipeline-store'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import { Modal } from '@/components/ui/Modal'
 import { AlertCircle, Check, X } from 'lucide-react'
+import type { ContentItem } from '@/types/database'
 
 // ─── CSV helpers ─────────────────────────────────────────────────────────────
 
@@ -35,6 +36,31 @@ const CSV_CHANNEL_TO_COLOR: Record<string, string> = {
 }
 
 const STORAGE_KEY = 'igeo_cal_events_v2'
+
+// Colores por canal para eventos del pipeline
+const PIPELINE_CHANNEL_COLORS: Record<string, string> = {
+  linkedin: 'blue', instagram: 'pink', newsletter: 'green',
+  blog: 'orange', x: 'purple', facebook: 'blue', email: 'green',
+}
+
+/** Convierte un ContentItem con scheduled_at a un Event del calendario */
+function pipelineItemToEvent(item: ContentItem): Event {
+  const start = new Date(item.scheduled_at!)
+  const end = new Date(start.getTime() + 60 * 60 * 1000)
+  return {
+    id: `pipeline-${item.id}`,
+    title: item.title,
+    description: item.description ?? undefined,
+    startTime: start,
+    endTime: end,
+    color: PIPELINE_CHANNEL_COLORS[item.channel] ?? 'blue',
+    category: 'Contenido',
+    tags: [],
+    eventType: 'digital',
+    channel: item.channel,
+    market: item.market,
+  }
+}
 
 // Eventos demo iniciales
 const INITIAL_EVENTS: Event[] = [
@@ -129,6 +155,7 @@ function deserialize(raw: string | null): Event[] | null {
 export default function CalendarPage() {
   const [events, setEvents] = useState<Event[]>(INITIAL_EVENTS)
   const [hydrated, setHydrated] = useState(false)
+  const [pipelineEvents, setPipelineEvents] = useState<Event[]>([])
   const { items: toasts, show: showToast, remove: removeToast } = useToast()
   const [csvPreview, setCsvPreview] = useState<{
     fileName: string
@@ -252,6 +279,21 @@ export default function CalendarPage() {
     URL.revokeObjectURL(url)
   }
 
+  // Carga items del pipeline con fecha de Supabase
+  // Solo los que NO vienen del calendario (calendar_item_id = null) para evitar duplicados
+  const loadPipelineEvents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/content-items')
+      if (!res.ok) return
+      const items = await res.json() as ContentItem[]
+      const mapped = items
+        .filter(i => i.scheduled_at && !i.calendar_item_id)
+        .map(pipelineItemToEvent)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPipelineEvents(mapped)
+    } catch {}
+  }, [])
+
   // Cargar de localStorage al montar (sync con external storage)
   useEffect(() => {
     const saved = deserialize(localStorage.getItem(STORAGE_KEY))
@@ -259,6 +301,14 @@ export default function CalendarPage() {
     if (saved && saved.length > 0) setEvents(saved)
     setHydrated(true)
   }, [])
+
+  // Cargar pipeline events al montar + escuchar cambios del pipeline
+  useEffect(() => {
+    loadPipelineEvents()
+    const onPipelineChanged = () => loadPipelineEvents()
+    window.addEventListener('pipeline:changed', onPipelineChanged)
+    return () => window.removeEventListener('pipeline:changed', onPipelineChanged)
+  }, [loadPipelineEvents])
 
   // Persistir cambios
   useEffect(() => {
@@ -301,7 +351,7 @@ export default function CalendarPage() {
       </div>
 
       <EventManager
-        events={events}
+        events={[...events, ...pipelineEvents]}
         onEventCreate={async (ev) => {
           setEvents(prev => [...prev, ev])
           // Si es evento digital → crear tarjeta en pipeline (fase Ideas)
@@ -309,6 +359,7 @@ export default function CalendarPage() {
             const result = await addPipelineItemFromCalendar(ev)
             if (result.ok) {
               showToast('Evento creado · Tarjeta añadida a Pipeline (Ideas)', 'success')
+              await loadPipelineEvents()
             } else if (result.duplicate) {
               showToast('Evento creado (ya existía la tarjeta en Pipeline)', 'info')
             } else {
@@ -316,13 +367,33 @@ export default function CalendarPage() {
             }
           }
         }}
-        onEventUpdate={(id, partial) => {
-          setEvents(prev =>
-            prev.map(e => (e.id === id ? { ...e, ...partial } : e)),
-          )
+        onEventUpdate={async (id, partial) => {
+          if (id.startsWith('pipeline-')) {
+            const itemId = id.replace('pipeline-', '')
+            if (partial.startTime) {
+              await fetch(`/api/content-items/${itemId}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scheduled_at: new Date(partial.startTime).toISOString() }),
+              }).catch(() => null)
+              await loadPipelineEvents()
+            } else {
+              setPipelineEvents(prev => prev.map(e => e.id === id ? { ...e, ...partial } : e))
+            }
+          } else {
+            setEvents(prev => prev.map(e => (e.id === id ? { ...e, ...partial } : e)))
+          }
         }}
-        onEventDelete={(id) => {
-          setEvents(prev => prev.filter(e => e.id !== id))
+        onEventDelete={async (id) => {
+          if (id.startsWith('pipeline-')) {
+            const itemId = id.replace('pipeline-', '')
+            await fetch(`/api/content-items/${itemId}`, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ scheduled_at: null }),
+            }).catch(() => null)
+            setPipelineEvents(prev => prev.filter(e => e.id !== id))
+          } else {
+            setEvents(prev => prev.filter(e => e.id !== id))
+          }
         }}
         categories={['Contenido', 'Acontecimiento', 'Reunión', 'Tarea', 'Personal']}
         availableTags={['Importante', 'Urgente', 'Trabajo', 'Cliente', 'Equipo', 'Personal']}
