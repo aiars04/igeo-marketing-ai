@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { PipelineBoard } from '@/components/pipeline/PipelineBoard'
+import { PackageBar, PackageDetailModal, type PackageWithStats } from '@/components/pipeline/PackageBar'
 import { Sparkles, Filter, X, Loader2 } from 'lucide-react'
 import { cn, STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
@@ -60,6 +61,9 @@ export default function PipelinePage() {
   const [itemImageMap, setItemImageMap] = useState<Record<string, { id: string; url: string }>>({}) // content_item_id → {id, url}
   const [filterOpen, setFilterOpen] = useState(false)
   const [filterChannels, setFilterChannels] = useState<Channel[]>([])
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null)
+  const [detailPackage, setDetailPackage] = useState<PackageWithStats | null>(null)
+  const [packageBarRefresh, setPackageBarRefresh] = useState(0)
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   // Set de IDs en-vuelo para prevenir doble-disparo en move/delete/approve
@@ -103,10 +107,23 @@ export default function PipelinePage() {
     return () => window.removeEventListener(PIPELINE_CHANGED_EVENT, onChanged)
   }, [fetchItems])
 
-  // ── Computed stats ────────────────────────────────────────────────────────
-  const totalItems = items.length
-  const inRevision = useMemo(() => items.filter(i => i.status === 'in_progress').length, [items])
-  const scheduled  = useMemo(() => items.filter(i => i.stage === 'scheduled').length, [items])
+  // ── Items filtrados por package seleccionado ──────────────────────────────
+  const visibleItems = useMemo(
+    () => selectedPackageId
+      ? items.filter(i => i.package_id === selectedPackageId)
+      : items,
+    [items, selectedPackageId],
+  )
+
+  // ── Computed stats (sobre items visibles) ─────────────────────────────────
+  const totalItems = visibleItems.length
+  const inRevision = useMemo(() => visibleItems.filter(i => i.status === 'in_progress').length, [visibleItems])
+  const scheduled  = useMemo(() => visibleItems.filter(i => i.stage === 'scheduled').length, [visibleItems])
+
+  // Refresca la PackageBar cuando cambian los items (al aprobar, mover, etc.)
+  useEffect(() => {
+    setPackageBarRefresh(r => r + 1)
+  }, [items])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -290,6 +307,14 @@ export default function PipelinePage() {
         </div>
       </header>
 
+      {/* Package bar — solo se muestra si hay paquetes activos/draft */}
+      <PackageBar
+        selectedPackageId={selectedPackageId}
+        onSelect={setSelectedPackageId}
+        onOpenDetail={setDetailPackage}
+        refreshKey={packageBarRefresh}
+      />
+
       {/* Filter bar */}
       {filterOpen && (
         <div
@@ -343,7 +368,7 @@ export default function PipelinePage() {
           </div>
         ) : (
           <PipelineBoard
-            items={items}
+            items={visibleItems}
             filterChannels={filterChannels}
             onAdd={handleAdd}
             onMove={handleMove}
@@ -410,6 +435,11 @@ export default function PipelinePage() {
           </div>
         )}
       </Modal>
+
+      {/* Package detail modal */}
+      {detailPackage && (
+        <PackageDetailModal pkg={detailPackage} onClose={() => setDetailPackage(null)} />
+      )}
 
       <Toasts items={toasts} remove={removeToast} />
     </div>
