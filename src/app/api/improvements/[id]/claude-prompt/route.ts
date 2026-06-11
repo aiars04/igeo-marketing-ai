@@ -43,6 +43,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ error: 'not_found' }, { status: 404 })
   }
 
+  // Signed URL de 7 días para que Claude tenga tiempo de leer la captura.
+  // El campo attachment_url en BD guarda el path interno del bucket privado.
+  const SEVEN_DAYS = 60 * 60 * 24 * 7
+  const { data: signed } = await admin.storage
+    .from('improvements').createSignedUrl(imp.attachment_url, SEVEN_DAYS)
+  const attachmentSignedUrl = signed?.signedUrl ?? '(no se pudo generar URL temporal)'
+
   const senderName = imp.created_by_name || imp.created_by_email?.split('@')[0] || 'Usuario'
   const senderEmail = imp.created_by_email || '(sin email)'
   const fechaLocal = new Date(imp.created_at).toLocaleString('es-ES', {
@@ -58,7 +65,8 @@ ${imp.title}
 ${imp.description || '(sin descripción adicional)'}
 
 ═══ CAPTURA DE PANTALLA ═══
-${imp.attachment_url}
+${attachmentSignedUrl}
+(URL temporal válida 7 días — usa Read/WebFetch para verla)
 
 ═══ CONTEXTO TÉCNICO ═══
 - App: igeo-marketing-ai (Next.js 16 + Supabase + Gemini)

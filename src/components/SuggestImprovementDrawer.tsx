@@ -162,18 +162,16 @@ export function SuggestImprovementDrawer({ open, onClose, userId }: Props) {
         setGeneralError(`Error subiendo el adjunto: ${upErr.message}`)
         return
       }
-      const { data: urlData } = supabase.storage
-        .from('improvements')
-        .getPublicUrl(path)
 
-      // 2) Crear improvement
+      // 2) Crear improvement con el PATH interno del bucket privado
+      //    (el backend generará signed URLs cuando admin/manager lo vean)
       const res = await fetch('/api/improvements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim(),
-          attachment_url: urlData.publicUrl,
+          attachment_path: path,
           type,
           priority,
         }),
