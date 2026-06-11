@@ -57,6 +57,31 @@ interface BoardProps {
   itemImageMap?:       Record<string, { id: string; url: string }>
   onImageAssigned?:    (contentItemId: string, assetId: string, url: string) => void
   onImageUnassigned?:  (contentItemId: string) => void
+  profilesById?:       Record<string, { full_name: string | null; email: string }>
+}
+
+/**
+ * Resuelve un UUID de usuario a un display name legible.
+ * Prioridad: full_name > parte local del email > "Usuario".
+ */
+function resolveUserName(
+  userId: string | null,
+  profilesById?: Record<string, { full_name: string | null; email: string }>,
+): string {
+  if (!userId) return ''
+  const p = profilesById?.[userId]
+  if (!p) return ''  // se mostrará "Usuario" en el lugar de uso
+  if (p.full_name && p.full_name.trim()) return p.full_name.trim()
+  if (p.email) return p.email.split('@')[0]
+  return ''
+}
+
+/** Iniciales (2 caracteres) a partir de un nombre legible. */
+function nameInitials(name: string): string {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase()
 }
 
 // ─── StatusDot ───────────────────────────────────────────────────────────────
@@ -271,7 +296,7 @@ function stripMarkdown(text: string): string {
 
 function ContentDetailModal({
   item, imageUrl, imageId, onClose, onApprove, onMove, onDelete, onItemUpdated,
-  onImageAssigned, onImageUnassigned,
+  onImageAssigned, onImageUnassigned, profilesById,
 }: {
   item:              ContentItem
   imageUrl:          string | null
@@ -283,6 +308,7 @@ function ContentDetailModal({
   onItemUpdated?:    (item: ContentItem) => void
   onImageAssigned?:  (contentItemId: string, assetId: string, url: string) => void
   onImageUnassigned?: (contentItemId: string) => void
+  profilesById?:     Record<string, { full_name: string | null; email: string }>
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const stageCfg = STAGE_CONFIG[item.stage as Stage]
@@ -490,7 +516,9 @@ function ContentDetailModal({
           <StatusChip variant="ai" icon={Sparkles}>Generado por IA</StatusChip>
         )}
         {item.human_approved && item.approved_by && (
-          <StatusChip variant="user" icon={CheckCheck}>{item.approved_by}</StatusChip>
+          <StatusChip variant="user" icon={CheckCheck}>
+            {resolveUserName(item.approved_by, profilesById) || 'Usuario'}
+          </StatusChip>
         )}
       </div>
 
@@ -870,7 +898,7 @@ function ContentDetailModal({
 // ═══════════════════════════════════════════════════════════════════════════
 
 function Card({
-  item, hasImage, onMove, onApprove, onSelect, onGenerateImage,
+  item, hasImage, onMove, onApprove, onSelect, onGenerateImage, profilesById,
 }: {
   item: ContentItem
   hasImage?: boolean
@@ -878,15 +906,17 @@ function Card({
   onApprove: (id: string, s: Stage) => void
   onSelect: (item: ContentItem) => void
   onGenerateImage?: (itemId: string, title: string, channel: Channel) => Promise<void>
+  profilesById?: Record<string, { full_name: string | null; email: string }>
 }) {
   const needsApproval = APPROVAL_STAGES.includes(item.stage as Stage) && !item.human_approved
   const [generatingImage, setGeneratingImage] = useState(false)
   const [generateError, setGenerateError] = useState(false)
 
-  // Iniciales del responsable
-  const initials = item.human_approved && item.approved_by
-    ? item.approved_by.slice(0, 2).toUpperCase()
-    : null
+  // Resuelve UUID → nombre legible (o fallback)
+  const approverName = item.human_approved && item.approved_by
+    ? (resolveUserName(item.approved_by, profilesById) || 'Usuario')
+    : ''
+  const initials = approverName ? nameInitials(approverName) : null
 
   return (
     <article
@@ -991,8 +1021,8 @@ function Card({
               >
                 {initials}
               </div>
-              <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-                {item.approved_by}
+              <span style={{ fontSize: 12, color: 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {approverName}
               </span>
             </div>
           ) : (
@@ -1101,7 +1131,7 @@ function Card({
 // ═══════════════════════════════════════════════════════════════════════════
 
 function Column({
-  stage, items, filterChannels, onAdd, onMove, onApprove, onSelectItem, index, itemImageMap, onGenerateImage,
+  stage, items, filterChannels, onAdd, onMove, onApprove, onSelectItem, index, itemImageMap, onGenerateImage, profilesById,
 }: {
   stage: Stage
   items: ContentItem[]
@@ -1113,6 +1143,7 @@ function Column({
   index: number
   itemImageMap?: Record<string, { id: string; url: string }>
   onGenerateImage?: (itemId: string, title: string, channel: Channel) => Promise<void>
+  profilesById?: Record<string, { full_name: string | null; email: string }>
 }) {
   const cfg = STAGE_CONFIG[stage]
   const Icon = STAGE_ICONS[stage]
@@ -1212,6 +1243,7 @@ function Column({
             onApprove={onApprove}
             onSelect={onSelectItem}
             onGenerateImage={onGenerateImage}
+            profilesById={profilesById}
           />
         ))}
 
@@ -1255,7 +1287,7 @@ function Column({
 // BOARD — scroll horizontal funcional, gap 16px entre columnas
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, onItemUpdated, itemImageMap, onImageAssigned, onImageUnassigned }: BoardProps) {
+export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, onItemUpdated, itemImageMap, onImageAssigned, onImageUnassigned, profilesById }: BoardProps) {
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
 
   // Sincroniza selectedItem con la última versión cuando items se actualiza
@@ -1313,6 +1345,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
             index={idx}
             itemImageMap={itemImageMap}
             onGenerateImage={handleGenerateImageForCard}
+            profilesById={profilesById}
           />
         ))}
       </div>
@@ -1332,6 +1365,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
           }}
           onImageAssigned={onImageAssigned}
           onImageUnassigned={onImageUnassigned}
+          profilesById={profilesById}
         />
       )}
     </>

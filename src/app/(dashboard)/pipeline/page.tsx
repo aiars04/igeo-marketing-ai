@@ -66,6 +66,7 @@ export default function PipelinePage() {
   const [packageBarRefresh, setPackageBarRefresh] = useState(0)
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
+  const [profilesById, setProfilesById] = useState<Record<string, { full_name: string | null; email: string }>>({})
   // Set de IDs en-vuelo para prevenir doble-disparo en move/delete/approve
   const inFlightRef = useRef<Set<string>>(new Set())
   const { items: toasts, show: showToast, remove: removeToast } = useToast()
@@ -99,6 +100,22 @@ export default function PipelinePage() {
   }, [showToast])
 
   useEffect(() => { fetchItems() }, [fetchItems])
+
+  // ── Carga directorio de perfiles para resolver UUIDs → nombres ────────────
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/profiles')
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: Array<{ id: string; full_name: string | null; email: string }>) => {
+        if (cancelled) return
+        const map: Record<string, { full_name: string | null; email: string }> = {}
+        for (const p of rows) map[p.id] = { full_name: p.full_name, email: p.email }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setProfilesById(map)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   // ── Sincronización con cambios externos (calendar→pipeline) ───────────────
   useEffect(() => {
@@ -378,6 +395,7 @@ export default function PipelinePage() {
             itemImageMap={itemImageMap}
             onImageAssigned={handleImageAssigned}
             onImageUnassigned={handleImageUnassigned}
+            profilesById={profilesById}
           />
         )}
       </div>
