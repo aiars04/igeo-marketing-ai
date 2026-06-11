@@ -5,6 +5,7 @@ import {
   Bug, Wrench, Sparkles, AlertTriangle, Zap,
   Check, RotateCcw, Trash2, Loader2, X, ExternalLink,
   Copy as CopyIcon, ClipboardCheck, MessageSquarePlus, Filter,
+  Maximize2, ZoomIn, ZoomOut,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import type {
@@ -276,6 +277,7 @@ function DetailModal({
 
   const [copying, setCopying] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   const handleCopyPrompt = async () => {
     setCopying(true)
@@ -378,29 +380,50 @@ function DetailModal({
               fontSize: 10, fontWeight: 700, color: 'var(--ink-3)',
               textTransform: 'uppercase', letterSpacing: '0.05em',
             }}>
-              Captura adjunta
+              Captura adjunta — click para preview en grande
             </p>
-            <a
-              href={item.attachment_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: 11, color: 'var(--accent-2)',
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                textDecoration: 'none',
-              }}
-            >
-              Abrir en pestaña nueva <ExternalLink size={10} aria-hidden="true" />
-            </a>
+            <div className="flex items-center gap-3">
+              {isImage && (
+                <button
+                  type="button"
+                  onClick={() => setLightboxOpen(true)}
+                  style={{
+                    fontSize: 11, color: 'var(--accent-2)',
+                    background: 'transparent', border: 'none', padding: 0,
+                    cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                  }}
+                >
+                  <Maximize2 size={10} aria-hidden="true" /> Ver en grande
+                </button>
+              )}
+              <a
+                href={item.attachment_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: 11, color: 'var(--accent-2)',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  textDecoration: 'none',
+                }}
+              >
+                Abrir en pestaña nueva <ExternalLink size={10} aria-hidden="true" />
+              </a>
+            </div>
           </div>
-          <div style={{
-            borderRadius: 'var(--radius-sm)',
-            overflow: 'hidden',
-            border: '1px solid var(--border)',
-            background: '#0f172a',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            maxHeight: 380,
-          }}>
+          <div
+            onClick={() => isImage && setLightboxOpen(true)}
+            style={{
+              borderRadius: 'var(--radius-sm)',
+              overflow: 'hidden',
+              border: '1px solid var(--border)',
+              background: '#0f172a',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              maxHeight: 380,
+              cursor: isImage ? 'zoom-in' : 'default',
+              position: 'relative',
+            }}
+          >
             {isImage && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={item.attachment_url} alt="Captura" style={{ maxWidth: '100%', maxHeight: 380, objectFit: 'contain' }} />
@@ -501,8 +524,199 @@ function DetailModal({
           </button>
         </div>
       </div>
+
+      {/* Lightbox de la captura: preview a tamaño completo del viewport */}
+      {lightboxOpen && isImage && (
+        <ImageLightbox
+          src={item.attachment_url}
+          alt={`Captura de "${item.title}"`}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
     </Modal>
   )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Lightbox fullscreen con zoom y desplazamiento. Cierra con ESC, click overlay o X.
+// ─────────────────────────────────────────────────────────────────────────
+function ImageLightbox({
+  src, alt, onClose,
+}: {
+  src: string
+  alt: string
+  onClose: () => void
+}) {
+  const [zoom, setZoom] = useState(1)
+  const [translate, setTranslate] = useState({ x: 0, y: 0 })
+  const [dragging, setDragging] = useState<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null)
+
+  // ESC cierra
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key === '+' || e.key === '=') setZoom(z => Math.min(z * 1.25, 4))
+      if (e.key === '-') setZoom(z => Math.max(z / 1.25, 0.5))
+      if (e.key === '0') { setZoom(1); setTranslate({ x: 0, y: 0 }) }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  // Translate efectivo: si no hay zoom no tiene sentido desplazar.
+  const effectiveTranslate = zoom > 1 ? translate : { x: 0, y: 0 }
+
+  const onWheel = (e: React.WheelEvent) => {
+    e.preventDefault()
+    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1
+    setZoom(z => Math.max(0.5, Math.min(4, z * factor)))
+  }
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (zoom <= 1) return
+    setDragging({ startX: e.clientX, startY: e.clientY, baseX: translate.x, baseY: translate.y })
+  }
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!dragging) return
+    setTranslate({
+      x: dragging.baseX + (e.clientX - dragging.startX),
+      y: dragging.baseY + (e.clientY - dragging.startY),
+    })
+  }
+  const onMouseUp = () => setDragging(null)
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Preview de la captura"
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0, 0, 0, 0.92)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: dragging ? 'grabbing' : (zoom > 1 ? 'grab' : 'zoom-out'),
+      }}
+      onMouseUp={onMouseUp}
+      onMouseLeave={onMouseUp}
+    >
+      {/* Toolbar arriba */}
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          position: 'absolute', top: 16, left: 16, right: 16,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 12, zIndex: 2,
+        }}
+      >
+        <p style={{
+          color: '#fff', fontSize: 12, fontWeight: 500,
+          background: 'rgba(0,0,0,0.45)', padding: '6px 12px', borderRadius: 8,
+          maxWidth: '70%',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {alt}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setZoom(z => Math.max(z / 1.25, 0.5))}
+            aria-label="Reducir"
+            style={toolbarBtnStyle}
+            title="Reducir (–)"
+          >
+            <ZoomOut size={16} aria-hidden="true" />
+          </button>
+          <span style={{
+            color: '#fff', fontSize: 12, fontWeight: 600,
+            background: 'rgba(0,0,0,0.45)', padding: '6px 10px', borderRadius: 8,
+            fontVariantNumeric: 'tabular-nums', minWidth: 56, textAlign: 'center',
+          }}>
+            {Math.round(zoom * 100)}%
+          </span>
+          <button
+            onClick={() => setZoom(z => Math.min(z * 1.25, 4))}
+            aria-label="Ampliar"
+            style={toolbarBtnStyle}
+            title="Ampliar (+)"
+          >
+            <ZoomIn size={16} aria-hidden="true" />
+          </button>
+          <button
+            onClick={() => { setZoom(1); setTranslate({ x: 0, y: 0 }) }}
+            aria-label="Restablecer zoom"
+            style={{ ...toolbarBtnStyle, padding: '0 12px', width: 'auto', fontSize: 11, fontWeight: 600 }}
+            title="Restablecer (0)"
+          >
+            1:1
+          </button>
+          <button
+            onClick={onClose}
+            aria-label="Cerrar preview"
+            style={toolbarBtnStyle}
+            title="Cerrar (ESC)"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      {/* Imagen */}
+      <div
+        onClick={e => e.stopPropagation()}
+        onWheel={onWheel}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        style={{
+          width: '100%', height: '100%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt}
+          draggable={false}
+          style={{
+            maxWidth: '92vw', maxHeight: '88vh',
+            objectFit: 'contain',
+            transform: `translate(${effectiveTranslate.x}px, ${effectiveTranslate.y}px) scale(${zoom})`,
+            transformOrigin: 'center',
+            transition: dragging ? 'none' : 'transform 0.15s ease-out',
+            userSelect: 'none',
+            pointerEvents: 'auto',
+            boxShadow: '0 10px 60px rgba(0, 0, 0, 0.6)',
+          }}
+        />
+      </div>
+
+      {/* Pie de ayuda */}
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          position: 'absolute', bottom: 18, left: '50%',
+          transform: 'translateX(-50%)',
+          color: 'rgba(255,255,255,0.7)', fontSize: 11,
+          background: 'rgba(0,0,0,0.45)', padding: '6px 12px', borderRadius: 8,
+          display: 'flex', gap: 14,
+        }}
+      >
+        <span>Rueda · zoom</span>
+        <span>Arrastrar · mover</span>
+        <span>+ / − · zoom</span>
+        <span>0 · 100%</span>
+        <span>ESC · cerrar</span>
+      </div>
+    </div>
+  )
+}
+
+const toolbarBtnStyle: React.CSSProperties = {
+  width: 32, height: 32, borderRadius: 8,
+  background: 'rgba(0,0,0,0.45)', color: '#fff',
+  border: '1px solid rgba(255,255,255,0.12)',
+  cursor: 'pointer',
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
 }
 
 // ─────────────────────────────────────────────────────────────────────────
