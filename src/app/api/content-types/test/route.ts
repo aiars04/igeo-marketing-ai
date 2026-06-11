@@ -46,7 +46,12 @@ Devuelve SOLO el ejemplo, sin meta-comentarios ni explicaciones tuyas.`
     if (!preview) return NextResponse.json({ error: 'empty_response' }, { status: 502 })
     return NextResponse.json({ preview })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'test_failed'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('[content-types/test]', err instanceof Error ? err.message : err)
+    const msg = (err instanceof Error ? err.message : '').toLowerCase()
+    const isTransient = msg.includes('unavailable') || msg.includes('exhausted') || msg.includes('quota')
+    return NextResponse.json(
+      { error: isTransient ? 'models_unavailable' : 'test_failed' },
+      { status: isTransient ? 503 : 500 },
+    )
   }
 }

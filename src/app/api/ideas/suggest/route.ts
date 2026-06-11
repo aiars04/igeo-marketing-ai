@@ -150,8 +150,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ideas: inserted ?? [] })
   } catch (err: unknown) {
-    console.error('Ideas suggest error:', err)
-    const message = err instanceof Error ? err.message : 'suggest_failed'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('[ideas/suggest]', err instanceof Error ? err.message : err)
+    const msg = (err instanceof Error ? err.message : '').toLowerCase()
+    const isTransient = msg.includes('unavailable') || msg.includes('exhausted') || msg.includes('quota')
+    return NextResponse.json(
+      { error: isTransient ? 'models_unavailable' : 'suggest_failed' },
+      { status: isTransient ? 503 : 500 },
+    )
   }
 }

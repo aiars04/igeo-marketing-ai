@@ -32,12 +32,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   let body: Partial<ContentItem>
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
 
-  // Cargar el item primero para verificar permisos
+  // Cargar el item primero para verificar permisos + estado actual de aprobación
   const { data: target } = await admin
     .from('content_items')
-    .select('id, created_by')
+    .select('id, created_by, human_approved')
     .eq('id', id)
-    .single<Pick<ContentItem, 'id'> & { created_by: string | null }>()
+    .single<Pick<ContentItem, 'id' | 'human_approved'> & { created_by: string | null }>()
   if (!target) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const isOwner = target.created_by === me.id
@@ -73,15 +73,19 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     patch.status = body.status
   }
   if (body.human_approved !== undefined) {
-    patch.human_approved = !!body.human_approved
-    // CLAVE: approved_by/approved_at SIEMPRE desde el servidor — el cliente no puede suplantar a otro usuario
-    if (body.human_approved) {
+    const wanted = !!body.human_approved
+    patch.human_approved = wanted
+    // CLAVE: approved_by/approved_at SIEMPRE desde el servidor — el cliente no
+    // puede suplantar a otro usuario. Además: solo sobreescribimos los timestamps
+    // si hay TRANSICIÓN real, así dos PATCH consecutivos no falsean el audit log.
+    if (wanted && !target.human_approved) {
       patch.approved_by = me.id
       patch.approved_at = new Date().toISOString()
-    } else {
+    } else if (!wanted && target.human_approved) {
       patch.approved_by = null
       patch.approved_at = null
     }
+    // Si ya estaba en el estado pedido: no tocar approved_by/at (preserva auditoría)
   }
 
   // Tier 2 — solo admin/manager

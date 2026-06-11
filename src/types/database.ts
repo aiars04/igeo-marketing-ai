@@ -313,6 +313,12 @@ export interface ContentAsset {
   position: number | null
   channel: Channel | 'uncategorized' | null
   folder_id: string | null
+  // Migración 011 (consolidación de schema drift):
+  created_by: string | null
+  aspect_ratio: string | null
+  width: number | null
+  height: number | null
+  mime_type: string | null
 }
 
 export interface ImageFolder {

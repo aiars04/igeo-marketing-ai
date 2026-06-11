@@ -31,13 +31,32 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const { profile: me, admin } = auth
   const { id } = await ctx.params
 
-  const { data: brief, error: bErr } = await admin
-    .from('seo_briefs').select('*').eq('id', id)
-    .single<SeoBrief>()
-  if (bErr || !brief) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-  if (brief.status === 'converted' && brief.related_content_item_id) {
-    return NextResponse.json({ error: 'already_converted', content_item_id: brief.related_content_item_id }, { status: 409 })
+  // 1) Claim atómico: marca el brief como 'converted' SOLO si aún no lo está.
+  //    Si dos POST entran a la vez, solo uno gana el UPDATE; el otro recibe 0 filas.
+  //    Evita race condition de doble-conversión (2 content_items huérfanos).
+  const { data: claimed, error: claimErr } = await admin
+    .from('seo_briefs')
+    .update({ status: 'converted' } as never)
+    .eq('id', id)
+    .neq('status', 'converted')
+    .select('*')
+    .maybeSingle<SeoBrief>()
+  if (claimErr) {
+    console.error('[seo/briefs/convert] claim failed:', claimErr.message)
+    return NextResponse.json({ error: 'update_failed' }, { status: 500 })
   }
+  if (!claimed) {
+    // Otro request ya lo convirtió antes (o el brief no existe). Devuelve el item ya creado.
+    const { data: existing } = await admin
+      .from('seo_briefs').select('related_content_item_id').eq('id', id)
+      .maybeSingle<{ related_content_item_id: string | null }>()
+    if (!existing) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    return NextResponse.json(
+      { error: 'already_converted', content_item_id: existing.related_content_item_id },
+      { status: 409 },
+    )
+  }
+  const brief = claimed
 
   // Construir descripción enriquecida con el outline del brief
   const descriptionLines: string[] = []
@@ -82,17 +101,24 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     .select('*').single<ContentItem>()
   if (iErr || !item) {
     console.error('[seo/briefs/convert] item create failed:', iErr?.message)
+    // Rollback del claim para permitir reintentar
+    try {
+      await admin.from('seo_briefs')
+        .update({ status: 'draft' } as never)
+        .eq('id', id)
+        .eq('status', 'converted')
+    } catch {}
     return NextResponse.json({ error: 'item_create_failed' }, { status: 500 })
   }
 
-  // Marcar el brief como converted
+  // Vincular el item creado al brief (status ya está 'converted' por el claim).
   const { error: upErr } = await admin
     .from('seo_briefs')
-    .update({ status: 'converted', related_content_item_id: item.id } as never)
+    .update({ related_content_item_id: item.id } as never)
     .eq('id', id)
   if (upErr) {
-    console.error('[seo/briefs/convert] brief update failed:', upErr.message)
-    // No es bloqueante — el item ya existe
+    console.error('[seo/briefs/convert] brief link failed:', upErr.message)
+    // No es bloqueante — el item ya existe y el brief está marcado convertido
   }
 
   return NextResponse.json({ content_item: item, brief_id: brief.id })
