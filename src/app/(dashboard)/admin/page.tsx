@@ -9,10 +9,12 @@ import {
   Download, AlertCircle, Loader2, FolderOpen, Sparkles, Compass,
   Layers,
   Globe,
+  MessageSquarePlus,
 } from 'lucide-react'
 import { BrandContextEditor } from '@/components/admin/BrandContextEditor'
 import { PlaybooksTab } from '@/components/admin/PlaybooksTab'
 import { MarketRulesTab } from '@/components/admin/MarketRulesTab'
+import { ImprovementsTab } from '@/components/admin/ImprovementsTab'
 import { useContentTypes, type ContentType } from '@/lib/content-types-store'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import {
@@ -917,7 +919,7 @@ export default function AdminPage() {
   const { types, add, update, remove, toggle } = useContentTypes()
   const { items: toasts, show: toast, remove: removeToast } = useToast()
 
-  const [tab, setTab] = useState<'types' | 'brand' | 'playbooks' | 'markets'>('types')
+  const [tab, setTab] = useState<'types' | 'brand' | 'playbooks' | 'markets' | 'improvements'>('types')
   const [modalOpen, setModalOpen]         = useState(false)
   const [editTarget, setEditTarget]       = useState<ContentType | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -1005,10 +1007,11 @@ export default function AdminPage() {
         }}
       >
         {([
-          { value: 'types',     label: 'Tipos de contenido', icon: BookOpen },
-          { value: 'playbooks', label: 'Playbooks',          icon: Layers   },
-          { value: 'markets',   label: 'Reglas por mercado', icon: Globe    },
-          { value: 'brand',     label: 'Estrategia & Marca', icon: Compass  },
+          { value: 'types',         label: 'Tipos de contenido', icon: BookOpen           },
+          { value: 'playbooks',     label: 'Playbooks',          icon: Layers             },
+          { value: 'markets',       label: 'Reglas por mercado', icon: Globe              },
+          { value: 'brand',         label: 'Estrategia & Marca', icon: Compass            },
+          { value: 'improvements',  label: 'Sugerencias',        icon: MessageSquarePlus  },
         ] as const).map(t => {
           const active = tab === t.value
           const Icon = t.icon
@@ -1127,6 +1130,11 @@ export default function AdminPage() {
       {/* ─── Tab Reglas por mercado ─── */}
       {tab === 'markets' && (
         <MarketRulesTab toast={toast} />
+      )}
+
+      {/* ─── Tab Sugerencias ─── */}
+      {tab === 'improvements' && (
+        <ImprovementsTab toast={toast} />
       )}
 
       {/* ─── Tab Estrategia & Marca ─── */}

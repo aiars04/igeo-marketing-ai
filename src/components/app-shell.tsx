@@ -19,6 +19,7 @@ import {
   Search,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { SuggestImprovementDrawer } from '@/components/SuggestImprovementDrawer'
 
 type Profile = {
   user_id: string
@@ -49,6 +50,7 @@ export function AppShell({
   const router = useRouter()
   const isLogin = pathname.startsWith('/login')
   const [alertCount, setAlertCount] = useState(0)
+  const [suggestOpen, setSuggestOpen] = useState(false)
 
   // Poll alertas activas cada 60s para mantener el badge actualizado
   useEffect(() => {
@@ -219,14 +221,15 @@ export function AppShell({
           {/* ── Bloque ayuda (pegado abajo) ── */}
           <div className="nav-block" style={{ marginTop: 'auto' }}>
             <div className="section-label">Ayuda</div>
-            <a
+            <button
+              type="button"
               className="nav-button"
-              href="mailto:ai@igeoerp.com?subject=Sugerencia%20iGEO%20Marketing%20AI"
+              onClick={() => setSuggestOpen(true)}
               title="Sugerir mejoras"
             >
               <MessageSquarePlus />
               <span className="sidebar-label">Sugerir mejoras</span>
-            </a>
+            </button>
           </div>
 
           {/* ── Tarjeta usuario abajo ── */}
@@ -258,6 +261,13 @@ export function AppShell({
       </aside>
 
       <main className="main">{children}</main>
+
+      {/* Drawer global de sugerir mejoras */}
+      <SuggestImprovementDrawer
+        open={suggestOpen}
+        onClose={() => setSuggestOpen(false)}
+        userId={profile?.user_id ?? null}
+      />
     </div>
   )
 }

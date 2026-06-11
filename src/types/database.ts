@@ -200,6 +200,27 @@ export interface MarketRules {
   updated_at:         string
 }
 
+// ─── Sistema de Sugerencias / Mejoras ────────────────────────────────────
+
+export type ImprovementType     = 'bug' | 'mejora' | 'idea'
+export type ImprovementPriority = 'baja' | 'media' | 'alta'
+export type ImprovementStatus   = 'pendiente' | 'revisada' | 'completada' | 'descartada'
+
+export interface Improvement {
+  id:                string
+  title:             string
+  description:       string
+  attachment_url:    string
+  type:              ImprovementType
+  priority:          ImprovementPriority
+  status:            ImprovementStatus
+  created_by:        string | null
+  created_by_email:  string | null
+  created_by_name:   string | null
+  created_at:        string
+  updated_at:        string
+}
+
 // ─── Fase 3: SEO Intelligence ────────────────────────────────────────────
 
 export type SeoIntent = 'informational' | 'commercial' | 'transactional' | 'navigational'
