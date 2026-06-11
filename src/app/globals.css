@@ -1089,16 +1089,22 @@ textarea.input {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
+  height: 100%;
+  min-height: 0;
   overflow-x: hidden;
-  align-items: start;       /* cada columna crece a su tamaño natural; scroll de la página */
-  padding-bottom: 32px;     /* aire al final para que la última card no se pegue */
+  align-items: stretch;     /* cada columna ocupa el alto completo de la fila */
 }
 
 .pipeline-column {
   min-width: 0;
   width: 100%;
-  display: flex;
-  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  /* Grid 2-row para layout determinista: header (auto) + stack (1fr).
+     El 1fr garantiza que el stack ocupa EXACTAMENTE el resto sin
+     crecer fuera del padre, permitiendo overflow-y real. */
+  display: grid;
+  grid-template-rows: auto 1fr;
   gap: 8px;
   background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(10px);
@@ -1106,15 +1112,34 @@ textarea.input {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 12px;
+  overflow: hidden;
   transition: border-color 0.2s ease;
 }
 .pipeline-column:hover {
   border-color: var(--border-hover);
 }
 
-/* Stack interno: el scroll real lo hace el contenedor del board en la página */
-.pipeline-column > div[class*="overflow-y-auto"] {
-  overflow: visible !important;
+/* Stack interno — scroll vertical real, no se sale al padre */
+.pipeline-column-stack {
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.20) transparent;
+}
+.pipeline-column-stack::-webkit-scrollbar { width: 6px; }
+.pipeline-column-stack::-webkit-scrollbar-track { background: transparent; }
+.pipeline-column-stack::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.20);
+  border-radius: 999px;
+}
+.pipeline-column-stack::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.32);
 }
 
 /* ── Pipeline card — refinada minimalista ── */

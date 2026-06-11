@@ -1201,8 +1201,8 @@ function Column({
         </div>
       </header>
 
-      {/* ── Stack de cards — gap 6px ── */}
-      <div className="flex-1 overflow-y-auto min-h-0" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {/* ── Stack de cards — scroll vertical real (grid 1fr + overflow-y-auto) ── */}
+      <div className="pipeline-column-stack">
         {filtered.map(item => (
           <Card
             key={item.id}
