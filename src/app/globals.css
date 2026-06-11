@@ -1132,6 +1132,12 @@ textarea.input {
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.20) transparent;
 }
+/* Cada hijo directo (card o botón "Añadir tarjeta") mantiene su tamaño
+   natural — sin esto, flex-shrink:1 comprimía las cards en columnas llenas
+   y el scroll nunca se activaba. */
+.pipeline-column-stack > * {
+  flex-shrink: 0;
+}
 .pipeline-column-stack::-webkit-scrollbar { width: 6px; }
 .pipeline-column-stack::-webkit-scrollbar-track { background: transparent; }
 .pipeline-column-stack::-webkit-scrollbar-thumb {
