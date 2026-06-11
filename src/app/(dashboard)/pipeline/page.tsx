@@ -255,7 +255,7 @@ export default function PipelinePage() {
   }
 
   return (
-    <div className="flex flex-col h-screen relative">
+    <div className="flex flex-col h-full relative" style={{ minHeight: 0 }}>
       {/* Header pipeline */}
       <header
         className="shrink-0"
@@ -360,7 +360,7 @@ export default function PipelinePage() {
       )}
 
       {/* Board */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
         {loading ? (
           <div className="flex items-center justify-center h-full gap-2" style={{ color: 'var(--ink-3)' }}>
             <Loader2 size={20} className="animate-spin" aria-hidden="true" />
