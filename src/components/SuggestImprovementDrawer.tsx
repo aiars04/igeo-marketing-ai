@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import {
   X, Send, CheckCircle2, Bug, Wrench, Sparkles,
   AlertTriangle, Zap, Upload, Trash2, Loader2, Image as ImageIcon,
+  ChevronsRight, ChevronsLeft,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { ImprovementType, ImprovementPriority } from '@/types/database'
@@ -41,10 +42,11 @@ export function SuggestImprovementDrawer({ open, onClose, userId }: Props) {
   const [sending, setSending] = useState(false)
   const [sentOk, setSentOk] = useState(false)
   const [generalError, setGeneralError] = useState<string | null>(null)
+  const [minimized, setMinimized] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const dropZoneRef = useRef<HTMLDivElement | null>(null)
 
-  // Reset al cerrar
+  // Reset al cerrar — incluye 'minimized' para que la próxima vez abra expandido
   useEffect(() => {
     if (open) return
     const t = setTimeout(() => {
@@ -57,6 +59,7 @@ export function SuggestImprovementDrawer({ open, onClose, userId }: Props) {
       setFileError(null)
       setSentOk(false)
       setGeneralError(null)
+      setMinimized(false)
     }, 250)
     return () => clearTimeout(t)
   }, [open])
@@ -67,13 +70,17 @@ export function SuggestImprovementDrawer({ open, onClose, userId }: Props) {
     return () => { URL.revokeObjectURL(filePreview) }
   }, [filePreview])
 
-  // Tecla ESC cierra
+  // Tecla ESC: expandido → minimizar (no pierde form); minimizado → cerrar
   useEffect(() => {
     if (!open) return
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape' && !sending) onClose() }
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || sending) return
+      if (minimized) onClose()
+      else setMinimized(true)
+    }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [open, sending, onClose])
+  }, [open, sending, minimized, onClose])
 
   const acceptFile = (f: File) => {
     setFileError(null)
@@ -195,25 +202,57 @@ export function SuggestImprovementDrawer({ open, onClose, userId }: Props) {
 
   return (
     <>
-      {/* Overlay */}
-      <div
-        onClick={() => !sending && onClose()}
+      {/* Tab MINIMIZADA — pegada a la derecha cuando minimized=true */}
+      <button
+        type="button"
+        onClick={() => setMinimized(false)}
+        aria-label="Expandir formulario de sugerencia"
+        title="Continuar con la sugerencia"
         style={{
           position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.35)',
-          backdropFilter: 'blur(4px)',
-          opacity: open ? 1 : 0,
-          pointerEvents: open ? 'auto' : 'none',
-          transition: 'opacity 0.22s ease',
-          zIndex: 70,
+          top: '50%',
+          right: 0,
+          transform: open && minimized ? 'translate(0, -50%)' : 'translate(100%, -50%)',
+          transition: 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)',
+          width: 44,
+          padding: '14px 0',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 12,
+          background: '#fff',
+          border: '1px solid #e2e8f0',
+          borderRight: 'none',
+          borderRadius: '10px 0 0 10px',
+          boxShadow: '-8px 0 24px rgba(15, 23, 42, 0.10)',
+          cursor: 'pointer',
+          zIndex: 80,
+          color: '#0f172a',
         }}
-      />
+      >
+        <span style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+          color: '#b45309',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Sparkles size={14} aria-hidden="true" />
+        </span>
+        <ChevronsLeft size={16} aria-hidden="true" style={{ color: '#64748b' }} />
+        {/* Etiqueta de draft activo si hay contenido */}
+        {(title.trim() || description.trim() || file) && (
+          <span style={{
+            width: 8, height: 8, borderRadius: 999,
+            background: '#f59e0b',
+            boxShadow: '0 0 0 3px rgba(245, 158, 11, 0.20)',
+          }} aria-hidden="true" />
+        )}
+      </button>
 
-      {/* Drawer desde la derecha */}
+      {/* Drawer desde la derecha — SIN overlay difuminado, fondo de la app visible */}
       <aside
         aria-label="Sugerir mejora"
-        aria-hidden={!open}
+        aria-hidden={!open || minimized}
         style={{
           position: 'fixed',
           top: 0,
@@ -221,13 +260,15 @@ export function SuggestImprovementDrawer({ open, onClose, userId }: Props) {
           bottom: 0,
           width: 'min(560px, 100vw)',
           background: '#ffffff',
-          boxShadow: '-12px 0 48px rgba(15, 23, 42, 0.14)',
-          transform: open ? 'translateX(0)' : 'translateX(100%)',
+          boxShadow: '-12px 0 48px rgba(15, 23, 42, 0.18)',
+          transform: open && !minimized ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)',
           zIndex: 80,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          border: '1px solid #e2e8f0',
+          borderRight: 'none',
         }}
       >
         {sentOk ? (
@@ -271,21 +312,37 @@ export function SuggestImprovementDrawer({ open, onClose, userId }: Props) {
                   Describe el cambio y adjunta una captura — la enviamos directo a desarrollo.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => !sending && onClose()}
-                aria-label="Cerrar"
-                disabled={sending}
-                style={{
-                  width: 32, height: 32, borderRadius: 10,
-                  border: '1px solid #e2e8f0', background: '#fff', color: '#64748b',
-                  cursor: sending ? 'not-allowed' : 'pointer',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <X size={18} aria-hidden="true" />
-              </button>
+              <div style={{ display: 'inline-flex', gap: 6, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => !sending && setMinimized(true)}
+                  aria-label="Minimizar (mantiene el formulario)"
+                  title="Minimizar (mantiene el formulario)"
+                  disabled={sending}
+                  style={{
+                    width: 32, height: 32, borderRadius: 10,
+                    border: '1px solid #e2e8f0', background: '#fff', color: '#64748b',
+                    cursor: sending ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <ChevronsRight size={16} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => !sending && onClose()}
+                  aria-label="Cerrar"
+                  disabled={sending}
+                  style={{
+                    width: 32, height: 32, borderRadius: 10,
+                    border: '1px solid #e2e8f0', background: '#fff', color: '#64748b',
+                    cursor: sending ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <X size={18} aria-hidden="true" />
+                </button>
+              </div>
             </header>
 
             {/* Form scrollable */}
