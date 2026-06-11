@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import type { Profile, SeoBrief, SeoBriefStatus } from '@/types/database'
+import type { Profile, SeoBrief, SeoBriefStatus, SeoIntent } from '@/types/database'
 
 const STATUSES: SeoBriefStatus[] = ['draft', 'approved', 'converted', 'archived']
+const VALID_INTENTS: SeoIntent[] = ['informational', 'commercial', 'transactional', 'navigational']
 
 async function requireActor() {
   const supabase = await createClient()
@@ -59,8 +60,26 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     patch.secondary_keywords = Array.isArray(body.secondary_keywords)
       ? body.secondary_keywords.map(x => String(x).trim()).filter(Boolean) : []
   }
-  if (body.intent !== undefined) patch.intent = body.intent
-  if (body.target_length !== undefined) patch.target_length = body.target_length
+  if (body.intent !== undefined) {
+    if (body.intent === null) {
+      patch.intent = null
+    } else if (typeof body.intent === 'string' && VALID_INTENTS.includes(body.intent as SeoIntent)) {
+      patch.intent = body.intent
+    } else {
+      return NextResponse.json({ error: 'invalid_intent' }, { status: 400 })
+    }
+  }
+  if (body.target_length !== undefined) {
+    if (body.target_length === null) {
+      patch.target_length = null
+    } else {
+      const tl = Number(body.target_length)
+      if (!Number.isFinite(tl) || tl < 200 || tl > 5000) {
+        return NextResponse.json({ error: 'invalid_target_length' }, { status: 400 })
+      }
+      patch.target_length = Math.floor(tl)
+    }
+  }
   if (body.suggested_h2 !== undefined) {
     patch.suggested_h2 = Array.isArray(body.suggested_h2)
       ? body.suggested_h2.map(x => String(x).trim()).filter(Boolean) : []
