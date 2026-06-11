@@ -16,6 +16,7 @@ import {
   Users,
   AlertTriangle,
   Wand2,
+  Search,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -131,6 +132,14 @@ export function AppShell({
             >
               <ImageIcon />
               <span className="sidebar-label">Imágenes</span>
+            </Link>
+            <Link
+              className={`nav-link ${isActive(pathname, '/seo') ? 'active' : ''}`}
+              href="/seo"
+              title="SEO Intelligence"
+            >
+              <Search />
+              <span className="sidebar-label">SEO</span>
             </Link>
             <Link
               className={`nav-link ${isActive(pathname, '/analytics') ? 'active' : ''}`}

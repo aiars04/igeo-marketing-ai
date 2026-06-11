@@ -200,6 +200,55 @@ export interface MarketRules {
   updated_at:         string
 }
 
+// ─── Fase 3: SEO Intelligence ────────────────────────────────────────────
+
+export type SeoIntent = 'informational' | 'commercial' | 'transactional' | 'navigational'
+export type SeoLevel  = 'high' | 'medium' | 'low'
+export type SeoBriefStatus = 'draft' | 'approved' | 'converted' | 'archived'
+
+export interface SeoResearchSession {
+  id:         string
+  topic:      string
+  market:     Market
+  channel:    Channel | null
+  notes:      string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SeoKeyword {
+  id:                  string
+  research_session_id: string
+  keyword:             string
+  intent:              SeoIntent | null
+  estimated_volume:    SeoLevel | null
+  difficulty:          SeoLevel | null
+  suggested_format:    string | null
+  notes:               string | null
+  created_at:          string
+}
+
+export interface SeoBrief {
+  id:                       string
+  title:                    string
+  primary_keyword:          string
+  secondary_keywords:       string[]
+  market:                   Market
+  channel:                  Channel | null
+  intent:                   SeoIntent | null
+  target_length:            number | null
+  suggested_h2:             string[]
+  cta:                      string | null
+  content_outline:          string | null
+  research_session_id:      string | null
+  related_content_item_id:  string | null
+  status:                   SeoBriefStatus
+  created_by:               string | null
+  created_at:               string
+  updated_at:               string
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 
 export interface ContentItem {
