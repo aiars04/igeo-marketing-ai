@@ -15,6 +15,7 @@ import {
   LogOut,
   Users,
   AlertTriangle,
+  Wand2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -106,6 +107,14 @@ export function AppShell({
             >
               <Calendar />
               <span className="sidebar-label">Calendario</span>
+            </Link>
+            <Link
+              className={`nav-link ${isActive(pathname, '/orchestrator') ? 'active' : ''}`}
+              href="/orchestrator"
+              title="Orquestrador"
+            >
+              <Wand2 />
+              <span className="sidebar-label">Orquestrador</span>
             </Link>
             <Link
               className={`nav-link ${isActive(pathname, '/ideas') ? 'active' : ''}`}
