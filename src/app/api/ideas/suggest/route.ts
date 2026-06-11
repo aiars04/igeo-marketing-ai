@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { genai } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { buildMarketRulesPrompt } from '@/lib/market-rules'
 import type { Idea, Profile, Channel, Market } from '@/types/database'
 
 const ALLOWED_COUNT = [3, 5, 10] as const
@@ -61,13 +62,17 @@ export async function POST(req: NextRequest) {
     userPromptParts.push('Reparte entre canales relevantes: linkedin, instagram, blog, newsletter.')
   }
 
+  // Inyectar market_rules en el system prompt
+  const marketRulesSection = await buildMarketRulesPrompt(admin, market)
+  const systemWithRules = SYSTEM_PROMPT + marketRulesSection
+
   try {
     // 4) Llamar Gemini 2.5 Flash
     const res = await genai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: userPromptParts.join('\n') }] }],
       config: {
-        systemInstruction: SYSTEM_PROMPT,
+        systemInstruction: systemWithRules,
         maxOutputTokens: 2000,
         responseMimeType: 'application/json',
       },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { genai } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { buildMarketRulesPrompt, detectForbiddenTerms } from '@/lib/market-rules'
 import type { ContentItem, ContentType, BrandContext, Profile, Channel, Market } from '@/types/database'
 
 const MARKET_LANG: Record<Market, string> = {
@@ -104,14 +105,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     ? `\n\n════ CONTEXTO DE MARCA iGEO ════\n${brandBlocks.map(b => b.content).join('\n\n')}`
     : ''
 
+  // 4c) Cargar market_rules estructuradas (keywords, terminología, no-decir, CTA)
+  const marketRulesSection = await buildMarketRulesPrompt(
+    admin, item.market as Market, item.channel as Channel,
+  )
+
   // 5) Construir prompts
   const systemPrompt = ct
-    ? `${SYSTEM_BASE}${brandSection}
+    ? `${SYSTEM_BASE}${brandSection}${marketRulesSection}
 
 ════ INSTRUCCIONES ESPECÍFICAS PARA ESTE CONTENIDO (${ct.name}) ════
 PROCESO: ${ct.process}
 ESTILO: ${ct.style}`
-    : `${SYSTEM_BASE}${brandSection}
+    : `${SYSTEM_BASE}${brandSection}${marketRulesSection}
 
 (No hay content_type configurado para canal ${item.channel}. Usa criterio general de marketing B2B.)`
 
@@ -141,12 +147,21 @@ ESTILO: ${ct.style}`
     const text = (res.text ?? '').trim()
     if (!text) return NextResponse.json({ error: 'empty_llm_response' }, { status: 502 })
 
+    // 6b) Validador post-generación: detectar términos prohibidos
+    const forbiddenMatches = await detectForbiddenTerms(admin, item.market as Market, text)
+    const clarityPass = forbiddenMatches.length === 0
+    const claritySummary = clarityPass
+      ? null
+      : `Detectados términos prohibidos por reglas de mercado (${item.market}): ${forbiddenMatches.map(m => `"${m}"`).join(', ')}. Revisa antes de aprobar.`
+
     // 7) Guardar en el item
     const { data: updated, error: upErr } = await admin
       .from('content_items')
       .update({
         content: text,
         ai_generated: true,
+        clarity_pass: clarityPass,
+        clarity_summary: claritySummary,
       } as never)
       .eq('id', id)
       .select('*')
@@ -162,6 +177,7 @@ ESTILO: ${ct.style}`
         model: modelUsed,
         content_type_id: ct?.id ?? null,
         content_type_name: ct?.name ?? null,
+        forbidden_matches: forbiddenMatches,
       },
     })
   } catch (err: unknown) {
