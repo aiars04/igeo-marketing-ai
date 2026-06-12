@@ -12,6 +12,7 @@ import { cn, STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
 import { Modal } from '@/components/ui/Modal'
 import { ImageDrivePanel } from '@/components/pipeline/ImageDrivePanel'
+import { ExportContentMenu } from '@/components/pipeline/ExportContentMenu'
 import type { ContentItem, Stage, Channel } from '@/types/database'
 import type { LucideIcon } from 'lucide-react'
 
@@ -649,7 +650,7 @@ function ContentDetailModal({
               disabled={savingContent}
             />
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div>
+              <div className="flex items-center gap-2 flex-wrap">
                 {confirmRegenerate ? (
                   <div className="flex items-center gap-2">
                     <span style={{ fontSize: 12, color: 'var(--red-2)' }}>
@@ -678,6 +679,19 @@ function ContentDetailModal({
                   >
                     <RefreshCw size={12} aria-hidden="true" /> Regenerar
                   </button>
+                )}
+                {/* Exportar a Clientify / WordPress / Markdown / Plain — copia al portapapeles */}
+                {!confirmRegenerate && (
+                  <ExportContentMenu
+                    content={editContent}
+                    ctx={{
+                      title: item.title,
+                      imageUrl: imageUrl,
+                      imageAlt: item.title,
+                      channel: item.channel,
+                      authorName: resolveUserName(item.approved_by, profilesById) || undefined,
+                    }}
+                  />
                 )}
               </div>
               <button
