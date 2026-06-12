@@ -25,6 +25,7 @@ import {
   MapPin,
   Upload,
   Download,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -168,6 +169,15 @@ function SelectField({
   )
 }
 
+// Definición mínima de un Playbook desde el punto de vista del calendario.
+// El componente es genérico; quien lo monta carga la lista y maneja la instanciación.
+export interface PlaybookSummary {
+  id:           string
+  name:         string
+  type:         string
+  description:  string | null
+}
+
 export interface EventManagerProps {
   events?: Event[]
   onEventCreate?: (event: Event) => void
@@ -180,6 +190,18 @@ export interface EventManagerProps {
   availableTags?: string[]
   onImportCSV?: (file: File) => void
   onDownloadTemplate?: () => void
+  /** Lista de playbooks activos que aparecen como opción primaria en el creador. */
+  playbooks?: PlaybookSummary[]
+  /** Markets disponibles para instanciar un playbook. Si vacío, no se pide market. */
+  playbookMarkets?: Array<{ value: string; label: string }>
+  /**
+   * Instancia un playbook en una fecha. Devuelve ok=true si se creó.
+   * El padre se encarga de POST a /api/playbooks/[id]/instantiate y de refrescar eventos.
+   */
+  onPlaybookInstantiate?: (
+    playbookId: string,
+    payload: { title: string; anchor_date: string; market?: string; objective?: string }
+  ) => Promise<{ ok: boolean; error?: string }>
 }
 
 // Paleta Apple apagada para las píldoras de evento
@@ -214,6 +236,9 @@ export function EventManager({
   onDownloadTemplate,
   className,
   availableTags = ["Importante", "Urgente", "Trabajo", "Personal", "Equipo", "Cliente"],
+  playbooks = [],
+  playbookMarkets = [],
+  onPlaybookInstantiate,
 }: EventManagerProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [view, setView] = useState<"month" | "week" | "day" | "list">(defaultView)
@@ -222,6 +247,19 @@ export function EventManager({
   const [isCreating, setIsCreating] = useState(false)
   const [eventType, setEventType] = useState<'presential' | 'digital' | null>(null)
   const [draggedEvent, setDraggedEvent] = useState<Event | null>(null)
+  // Flujo de creación desde playbook — null = no estamos en flujo playbook.
+  const [playbookFlow, setPlaybookFlow] = useState<{
+    playbook: PlaybookSummary
+    anchorDate: Date
+    title: string
+    market: string
+    objective: string
+    submitting: boolean
+    error: string | null
+  } | null>(null)
+  // Cuando el usuario hace click en día/slot pero aún no eligió tipo, mostramos
+  // primero el selector (playbooks + Personalizado) si hay playbooks disponibles.
+  const [customPickerOpen, setCustomPickerOpen] = useState(false)
   const [allDay, setAllDay] = useState(false)
   const csvInputRef = useRef<HTMLInputElement | null>(null)
   const [newEvent, setNewEvent] = useState<Partial<Event>>({
@@ -426,6 +464,67 @@ export function EventManager({
     setSelectedEvent(null)
     setEventType(null)
     setAllDay(false)
+    setPlaybookFlow(null)
+    setCustomPickerOpen(false)
+  }
+
+  /**
+   * Abre el modal de creación pre-cargando una fecha (y opcionalmente una hora).
+   * Si hay playbooks disponibles, deja al usuario en el selector inicial
+   * (lista de playbooks + "Personalizado"). Si no hay playbooks, salta directamente
+   * al selector legacy (presencial / digital).
+   */
+  const openCreateAt = (date: Date, hour?: number) => {
+    const start = new Date(date)
+    if (typeof hour === 'number') start.setHours(hour, 0, 0, 0)
+    else start.setHours(12, 0, 0, 0)
+    const end = new Date(start.getTime() + 60 * 60 * 1000)
+    setSelectedEvent(null)
+    setIsCreating(true)
+    setEventType(null)
+    setPlaybookFlow(null)
+    setCustomPickerOpen(false)
+    setAllDay(false)
+    setNewEvent({
+      title: "",
+      description: "",
+      color: colors[0].value,
+      tags: [],
+      startTime: start,
+      endTime: end,
+    })
+    setIsDialogOpen(true)
+  }
+
+  /** Maneja la selección de un playbook del listado. */
+  const selectPlaybook = (pb: PlaybookSummary, anchorDate: Date) => {
+    setPlaybookFlow({
+      playbook: pb,
+      anchorDate,
+      title: pb.name,
+      market: playbookMarkets[0]?.value ?? '',
+      objective: '',
+      submitting: false,
+      error: null,
+    })
+  }
+
+  /** Confirma la instanciación de un playbook contra el backend. */
+  const handleInstantiatePlaybook = async () => {
+    if (!playbookFlow || !onPlaybookInstantiate) return
+    if (!playbookFlow.title.trim()) return
+    setPlaybookFlow(prev => prev ? { ...prev, submitting: true, error: null } : prev)
+    const res = await onPlaybookInstantiate(playbookFlow.playbook.id, {
+      title: playbookFlow.title.trim(),
+      anchor_date: playbookFlow.anchorDate.toISOString(),
+      market: playbookFlow.market || undefined,
+      objective: playbookFlow.objective.trim() || undefined,
+    })
+    if (res.ok) {
+      closeDialog()
+    } else {
+      setPlaybookFlow(prev => prev ? { ...prev, submitting: false, error: res.error ?? 'error' } : prev)
+    }
   }
 
   const selectEventType = (type: 'presential' | 'digital') => {
@@ -958,6 +1057,7 @@ export function EventManager({
             setIsCreating(false)
             setIsDialogOpen(true)
           }}
+          onDayClick={(date) => openCreateAt(date)}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDrop={handleDrop}
@@ -974,6 +1074,7 @@ export function EventManager({
             setIsCreating(false)
             setIsDialogOpen(true)
           }}
+          onSlotClick={(date, hour) => openCreateAt(date, hour)}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDrop={handleDrop}
@@ -990,6 +1091,7 @@ export function EventManager({
             setIsCreating(false)
             setIsDialogOpen(true)
           }}
+          onSlotClick={(date, hour) => openCreateAt(date, hour)}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDrop={handleDrop}
@@ -1035,9 +1137,13 @@ export function EventManager({
                   {isCreating ? 'Crear evento' : 'Editar evento'}
                 </h2>
                 <p style={{ fontSize: 12, color: 'var(--ink-3)', margin: '2px 0 0' }}>
-                  {eventType === 'presential' ? 'Evento presencial'
-                    : eventType === 'digital' ? 'Publicación / Contenido'
-                    : 'Selecciona el tipo de evento'}
+                  {playbookFlow
+                    ? `Playbook · ${playbookFlow.playbook.name}`
+                    : eventType === 'presential' ? 'Evento presencial'
+                    : eventType === 'digital'    ? 'Publicación / Contenido'
+                    : isCreating && playbooks.length > 0 && !customPickerOpen
+                      ? 'Elige un playbook o crea un evento personalizado'
+                      : 'Selecciona el tipo de evento'}
                 </p>
               </div>
               <button className="image-menu-trigger" onClick={closeDialog} aria-label="Cerrar">
@@ -1048,9 +1154,189 @@ export function EventManager({
             {/* Body (scrollable) */}
             <div className="overflow-y-auto flex-1" style={{ padding: 24 }}>
 
-              {/* Type selector — solo al crear sin tipo */}
-              {isCreating && !eventType && (
+              {/* Playbook-instantiate form — el usuario ha elegido un playbook */}
+              {isCreating && playbookFlow && (
+                <div className="flex flex-col" style={{ gap: 16 }}>
+                  <button
+                    type="button"
+                    onClick={() => setPlaybookFlow(null)}
+                    style={{
+                      alignSelf: 'flex-start',
+                      background: 'transparent', border: 'none',
+                      color: 'var(--accent)', fontSize: 12, fontWeight: 500,
+                      cursor: 'pointer', padding: 0,
+                    }}
+                  >
+                    ← Cambiar de opción
+                  </button>
+
+                  <div style={{
+                    padding: 12,
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-md)',
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+                      {playbookFlow.playbook.name}
+                    </div>
+                    {playbookFlow.playbook.description && (
+                      <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>
+                        {playbookFlow.playbook.description}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 8 }}>
+                      Fecha ancla: <strong style={{ color: 'var(--ink-2)' }}>
+                        {playbookFlow.anchorDate.toLocaleDateString('es-ES', {
+                          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                        })}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <Field label="Título de la campaña">
+                    <input
+                      autoFocus
+                      className="input"
+                      placeholder="Webinar — Sanidad ambiental Q3"
+                      value={playbookFlow.title}
+                      onChange={(e) => setPlaybookFlow(prev => prev ? { ...prev, title: e.target.value } : prev)}
+                    />
+                  </Field>
+
+                  {playbookMarkets.length > 0 && (
+                    <Field label="Mercado">
+                      <SelectField
+                        value={playbookFlow.market}
+                        onChange={(e) => setPlaybookFlow(prev => prev ? { ...prev, market: e.target.value } : prev)}
+                      >
+                        {playbookMarkets.map(m => (
+                          <option key={m.value} value={m.value}>{m.label}</option>
+                        ))}
+                      </SelectField>
+                    </Field>
+                  )}
+
+                  <Field label="Objetivo (opcional)">
+                    <textarea
+                      className="input"
+                      rows={3}
+                      placeholder="Captar 50 leads cualificados de empresas medianas..."
+                      value={playbookFlow.objective}
+                      onChange={(e) => setPlaybookFlow(prev => prev ? { ...prev, objective: e.target.value } : prev)}
+                      style={{ resize: 'vertical', minHeight: 60 }}
+                    />
+                  </Field>
+
+                  {playbookFlow.error && (
+                    <div style={{
+                      padding: '8px 12px',
+                      background: 'var(--red-soft)',
+                      border: '1px solid rgba(239,68,68,0.25)',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: 12,
+                      color: 'var(--red-2)',
+                    }}>
+                      Error al instanciar: {playbookFlow.error}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Selector inicial — playbooks + Personalizado */}
+              {isCreating && !eventType && !playbookFlow && !customPickerOpen && playbooks.length > 0 && (
                 <div>
+                  <div style={fieldLabelStyle}>¿Qué quieres crear?</div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                    gap: 10,
+                  }}>
+                    {playbooks.map(pb => (
+                      <button
+                        key={pb.id}
+                        type="button"
+                        onClick={() => {
+                          const anchor = newEvent.startTime instanceof Date
+                            ? newEvent.startTime
+                            : new Date()
+                          selectPlaybook(pb, anchor)
+                        }}
+                        style={{
+                          padding: '14px 16px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1px solid var(--border)',
+                          background: 'var(--surface-2)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          textAlign: 'left',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6,
+                          minHeight: 84,
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-soft)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--surface-2)' }}
+                      >
+                        <Sparkles size={16} aria-hidden="true" style={{ color: 'var(--accent)' }} />
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3 }}>
+                          {pb.name}
+                        </div>
+                        {pb.description && (
+                          <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.4 }} className="line-clamp-2">
+                            {pb.description}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setCustomPickerOpen(true)}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px dashed var(--border)',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        textAlign: 'left',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
+                        minHeight: 84,
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--ink-2)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)' }}
+                    >
+                      <Plus size={16} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3 }}>
+                        Personalizado
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.4 }}>
+                        Crea un evento libre (presencial o publicación)
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Selector legacy presencial / digital — sólo si:
+                  - no hay playbooks disponibles, o
+                  - el usuario eligió "Personalizado" */}
+              {isCreating && !eventType && !playbookFlow && (playbooks.length === 0 || customPickerOpen) && (
+                <div>
+                  {customPickerOpen && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomPickerOpen(false)}
+                      style={{
+                        background: 'transparent', border: 'none',
+                        color: 'var(--accent)', fontSize: 12, fontWeight: 500,
+                        cursor: 'pointer', padding: 0, marginBottom: 12,
+                      }}
+                    >
+                      ← Volver
+                    </button>
+                  )}
                   <div style={fieldLabelStyle}>Tipo de evento</div>
                   <div style={{ display: 'flex', gap: 12 }}>
                     {[
@@ -1371,14 +1657,25 @@ export function EventManager({
               <button type="button" className="btn-secondary" onClick={closeDialog}>
                 Cancelar
               </button>
-              <button
-                type="button"
-                className="btn-cta"
-                disabled={!canSave}
-                onClick={isCreating ? handleCreateEvent : handleUpdateEvent}
-              >
-                {isCreating ? 'Crear evento' : 'Guardar cambios'}
-              </button>
+              {playbookFlow ? (
+                <button
+                  type="button"
+                  className="btn-cta"
+                  disabled={!playbookFlow.title.trim() || playbookFlow.submitting}
+                  onClick={handleInstantiatePlaybook}
+                >
+                  {playbookFlow.submitting ? 'Creando…' : 'Crear desde playbook'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-cta"
+                  disabled={!canSave || (isCreating && !eventType)}
+                  onClick={isCreating ? handleCreateEvent : handleUpdateEvent}
+                >
+                  {isCreating ? 'Crear evento' : 'Guardar cambios'}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1551,7 +1848,7 @@ function EventCard({
         draggable
         onDragStart={() => onDragStart(event)}
         onDragEnd={onDragEnd}
-        onClick={() => onEventClick(event)}
+        onClick={(e) => { e.stopPropagation(); onEventClick(event) }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className="relative cursor-pointer"
@@ -1585,7 +1882,7 @@ function EventCard({
         draggable
         onDragStart={() => onDragStart(event)}
         onDragEnd={onDragEnd}
-        onClick={() => onEventClick(event)}
+        onClick={(e) => { e.stopPropagation(); onEventClick(event) }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={cn("cursor-pointer transition-all duration-200", isHovered && "shadow-md")}
@@ -1684,6 +1981,7 @@ function MonthView({
   currentDate,
   events,
   onEventClick,
+  onDayClick,
   onDragStart,
   onDragEnd,
   onDrop,
@@ -1692,6 +1990,7 @@ function MonthView({
   currentDate: Date
   events: Event[]
   onEventClick: (event: Event) => void
+  onDayClick: (date: Date) => void
   onDragStart: (event: Event) => void
   onDragEnd: () => void
   onDrop: (date: Date) => void
@@ -1771,8 +2070,11 @@ function MonthView({
           return (
             <div
               key={index}
+              role="button"
+              tabIndex={0}
+              aria-label={`Crear evento el ${day.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`}
               className={cn(
-                "min-h-20 sm:min-h-24 transition-colors",
+                "min-h-20 sm:min-h-24 transition-colors cursor-pointer",
                 !isToday && "hover:bg-[var(--surface-2)]",
               )}
               style={{
@@ -1783,6 +2085,8 @@ function MonthView({
               }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => onDrop(day)}
+              onClick={() => onDayClick(day)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onDayClick(day) } }}
             >
               {/* Número de día */}
               <div
@@ -1851,6 +2155,7 @@ function WeekView({
   currentDate,
   events,
   onEventClick,
+  onSlotClick,
   onDragStart,
   onDragEnd,
   onDrop,
@@ -1859,6 +2164,7 @@ function WeekView({
   currentDate: Date
   events: Event[]
   onEventClick: (event: Event) => void
+  onSlotClick: (date: Date, hour: number) => void
   onDragStart: (event: Event) => void
   onDragEnd: () => void
   onDrop: (date: Date, hour: number) => void
@@ -1976,7 +2282,10 @@ function WeekView({
               return (
                 <div
                   key={`${day.toISOString()}-${hour}`}
-                  className="min-h-12 sm:min-h-16 transition-colors hover:bg-[var(--surface-2)]"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Crear evento ${day.toLocaleDateString('es-ES')} ${hour.toString().padStart(2, '0')}:00`}
+                  className="min-h-12 sm:min-h-16 transition-colors hover:bg-[var(--surface-2)] cursor-pointer"
                   style={{
                     padding: 4,
                     borderBottom: hour === 23 ? "none" : "1px solid var(--border-soft)",
@@ -1984,6 +2293,8 @@ function WeekView({
                   }}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => onDrop(day, hour)}
+                  onClick={() => onSlotClick(day, hour)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSlotClick(day, hour) } }}
                 >
                   <div className="space-y-1">
                     {dayEvents.map((event) => (
@@ -2012,6 +2323,7 @@ function DayView({
   currentDate,
   events,
   onEventClick,
+  onSlotClick,
   onDragStart,
   onDragEnd,
   onDrop,
@@ -2020,6 +2332,7 @@ function DayView({
   currentDate: Date
   events: Event[]
   onEventClick: (event: Event) => void
+  onSlotClick: (date: Date, hour: number) => void
   onDragStart: (event: Event) => void
   onDragEnd: () => void
   onDrop: (date: Date, hour: number) => void
@@ -2052,12 +2365,17 @@ function DayView({
           return (
             <div
               key={hour}
-              className="flex transition-colors hover:bg-[var(--surface-2)]"
+              role="button"
+              tabIndex={0}
+              aria-label={`Crear evento ${currentDate.toLocaleDateString('es-ES')} ${hour.toString().padStart(2, '0')}:00`}
+              className="flex transition-colors hover:bg-[var(--surface-2)] cursor-pointer"
               style={{
                 borderBottom: hour === 23 ? "none" : "1px solid var(--border-soft)",
               }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => onDrop(currentDate, hour)}
+              onClick={() => onSlotClick(currentDate, hour)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSlotClick(currentDate, hour) } }}
             >
               {/* Columna de hora */}
               <div
@@ -2162,7 +2480,7 @@ function ListView({
               return (
                 <div
                   key={event.id}
-                  onClick={() => onEventClick(event)}
+                  onClick={(e) => { e.stopPropagation(); onEventClick(event) }}
                   className="cursor-pointer transition-colors hover:bg-[var(--surface-2)]"
                   style={{
                     padding: "12px 14px",

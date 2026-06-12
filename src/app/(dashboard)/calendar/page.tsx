@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { EventManager, type Event } from '@/components/ui/event-manager'
+import { EventManager, type Event, type PlaybookSummary } from '@/components/ui/event-manager'
 import { addPipelineItemFromCalendar } from '@/lib/stores/pipeline-store'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import { Modal } from '@/components/ui/Modal'
@@ -117,9 +117,20 @@ function deserializeLegacy(raw: string | null): Event[] {
   }
 }
 
+const PLAYBOOK_MARKETS = [
+  { value: 'spain',    label: '🇪🇸 España'   },
+  { value: 'latam',    label: 'LATAM'        },
+  { value: 'uk',       label: '🇬🇧 UK'       },
+  { value: 'france',   label: '🇫🇷 Francia'  },
+  { value: 'italy',    label: '🇮🇹 Italia'   },
+  { value: 'portugal', label: '🇵🇹 Portugal' },
+  { value: 'brasil',   label: '🇧🇷 Brasil'   },
+]
+
 export default function CalendarPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [pipelineEvents, setPipelineEvents] = useState<Event[]>([])
+  const [playbooks, setPlaybooks] = useState<PlaybookSummary[]>([])
   const [loading, setLoading] = useState(true)
   const { items: toasts, show: showToast, remove: removeToast } = useToast()
   const [csvPreview, setCsvPreview] = useState<{
@@ -173,14 +184,56 @@ export default function CalendarPage() {
     }
   }, [])
 
+  // ── Carga playbooks activos para el selector del modal "Nuevo evento" ─────
+  const loadPlaybooks = useCallback(async () => {
+    try {
+      const res = await fetch('/api/playbooks?active=true')
+      if (!res.ok) return
+      const data = await res.json() as Array<{ id: string; name: string; type: string; description: string | null }>
+      setPlaybooks(data.map(p => ({
+        id: p.id, name: p.name, type: p.type, description: p.description,
+      })))
+    } catch {}
+  }, [])
+
   // ── Carga inicial + escucha cambios del pipeline ──────────────────────────
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadEvents()
     loadPipelineEvents()
+    loadPlaybooks()
     const onPipelineChanged = () => loadPipelineEvents()
     window.addEventListener('pipeline:changed', onPipelineChanged)
     return () => window.removeEventListener('pipeline:changed', onPipelineChanged)
-  }, [loadEvents, loadPipelineEvents])
+  }, [loadEvents, loadPipelineEvents, loadPlaybooks])
+
+  // ── Instancia un playbook desde el modal del calendario ──────────────────
+  const instantiatePlaybook = useCallback(async (
+    playbookId: string,
+    payload: { title: string; anchor_date: string; market?: string; objective?: string },
+  ): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const res = await fetch(`/api/playbooks/${playbookId}/instantiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({})) as { error?: string }
+        showToast(`Error instanciando playbook: ${j.error ?? res.statusText}`, 'error')
+        return { ok: false, error: j.error }
+      }
+      showToast('Playbook instanciado — tarjetas creadas en el pipeline', 'success')
+      // Refrescar pipeline events para que aparezcan los nuevos content_items con fecha
+      await loadPipelineEvents()
+      window.dispatchEvent(new CustomEvent('pipeline:changed'))
+      return { ok: true }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'desconocido'
+      showToast(`Error de red: ${msg}`, 'error')
+      return { ok: false, error: msg }
+    }
+  }, [showToast, loadPipelineEvents])
 
   // ── Migración one-shot de localStorage → Supabase ─────────────────────────
   const runMigration = async () => {
@@ -534,6 +587,9 @@ export default function CalendarPage() {
           defaultView="month"
           onImportCSV={handleCSVImport}
           onDownloadTemplate={downloadCSVTemplate}
+          playbooks={playbooks}
+          playbookMarkets={PLAYBOOK_MARKETS}
+          onPlaybookInstantiate={instantiatePlaybook}
         />
       )}
 
