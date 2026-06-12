@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { ContentItem, Profile, Stage } from '@/types/database'
 
-const STAGES: Stage[] = ['ideas', 'copy', 'design', 'scheduled', 'analyzed']
+const STAGES: Stage[] = ['ideas', 'copy', 'design', 'approval', 'scheduled', 'analyzed']
 const STATUSES = ['pending', 'in_progress', 'approved', 'rejected'] as const
 
 async function requireActor() {

@@ -1,4 +1,4 @@
-export type Stage = 'ideas' | 'copy' | 'design' | 'scheduled' | 'analyzed'
+export type Stage = 'ideas' | 'copy' | 'design' | 'approval' | 'scheduled' | 'analyzed'
 export type Channel = 'linkedin' | 'instagram' | 'facebook' | 'x' | 'blog' | 'email' | 'newsletter'
 export type Market = 'spain' | 'latam' | 'uk' | 'france' | 'italy' | 'portugal' | 'brasil'
 export type ContentStatus = 'pending' | 'in_progress' | 'approved' | 'rejected'

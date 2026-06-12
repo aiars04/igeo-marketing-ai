@@ -8,7 +8,7 @@ import {
   CheckCircle2, CheckCheck, ChevronRight, ArrowRight, Trash2,
   ImageIcon, RefreshCw, Loader2,
 } from 'lucide-react'
-import { cn, STAGE_CONFIG, STAGES } from '@/lib/utils'
+import { STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
 import { Modal } from '@/components/ui/Modal'
 import { ImageDrivePanel } from '@/components/pipeline/ImageDrivePanel'
@@ -31,20 +31,33 @@ const STAGE_ICONS: Record<Stage, LucideIcon> = {
   ideas:     Lightbulb,
   copy:      PenLine,
   design:    Layers,
+  approval:  CheckCircle2,
   scheduled: Zap,
   analyzed:  BarChart2,
 }
 
-const APPROVAL_STAGES: Stage[] = ['ideas', 'copy', 'design']
+// Estado visible (texto + color) según status + human_approved.
+// Prioridad: rejected > approved > in_progress > pending.
+function displayStatus(item: ContentItem): { label: string; bg: string; color: string; border: string } {
+  if (item.status === 'rejected') {
+    return { label: 'Rechazado', bg: 'rgba(239,68,68,0.10)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.30)' }
+  }
+  if (item.human_approved) {
+    return { label: 'Aprobado', bg: 'rgba(16,185,129,0.12)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.30)' }
+  }
+  if (item.status === 'in_progress') {
+    return { label: 'En revisión', bg: 'rgba(245,158,11,0.12)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.30)' }
+  }
+  return { label: 'Pendiente', bg: 'rgba(107,114,128,0.14)', color: '#cbd5e1', border: '1px solid rgba(107,114,128,0.32)' }
+}
+
+// Solo en la etapa 'approval' se marca human_approved=true. En el resto (ideas/copy/design)
+// el botón "Avanzar a [next]" mueve de stage sin marcar aprobación formal.
+const APPROVAL_STAGES: Stage[] = ['approval']
 
 const MARKET_LABEL: Record<string, string> = {
   spain: 'ES', latam: 'LATAM', uk: 'UK', france: 'FR',
   italy: 'IT', portugal: 'PT', brasil: 'BR',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendiente', in_progress: 'En progreso',
-  approved: 'Aprobado',  rejected: 'Rechazado',
 }
 
 interface BoardProps {
@@ -54,6 +67,7 @@ interface BoardProps {
   onMove:              (id: string, newStage: Stage) => void
   onDelete:            (id: string) => void
   onApprove:           (id: string, currentStage: Stage) => void
+  onReject:            (id: string) => void
   onItemUpdated?:      (item: ContentItem) => void
   itemImageMap?:       Record<string, { id: string; url: string }>
   onImageAssigned?:    (contentItemId: string, assetId: string, url: string) => void
@@ -83,26 +97,6 @@ function nameInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
   return name.slice(0, 2).toUpperCase()
-}
-
-// ─── StatusDot ───────────────────────────────────────────────────────────────
-
-const STATUS_COLOR: Record<string, string> = {
-  pending:     '#6b7280',
-  in_progress: '#f59e0b',
-  approved:    '#10b981',
-  rejected:    '#ef4444',
-}
-
-function StatusDot({ status }: { status: string }) {
-  const color = STATUS_COLOR[status] ?? '#6b7280'
-  return (
-    <span
-      aria-hidden="true"
-      className={cn('inline-block w-1.5 h-1.5 rounded-full shrink-0', status === 'in_progress' && 'animate-pulse-dot')}
-      style={{ background: color }}
-    />
-  )
 }
 
 // ─── CardMenu (lógica intacta) ───────────────────────────────────────────────
@@ -296,7 +290,7 @@ function stripMarkdown(text: string): string {
 }
 
 function ContentDetailModal({
-  item, imageUrl, imageId, onClose, onApprove, onMove, onDelete, onItemUpdated,
+  item, imageUrl, imageId, onClose, onApprove, onReject, onMove, onDelete, onItemUpdated,
   onImageAssigned, onImageUnassigned, profilesById,
 }: {
   item:              ContentItem
@@ -304,6 +298,7 @@ function ContentDetailModal({
   imageId:           string | null
   onClose:           () => void
   onApprove:         (id: string, s: Stage) => void
+  onReject:          (id: string) => void
   onMove:            (id: string, s: Stage) => void
   onDelete:          (id: string) => void
   onItemUpdated?:    (item: ContentItem) => void
@@ -316,7 +311,11 @@ function ContentDetailModal({
   const idx = STAGES.indexOf(item.stage as Stage)
   const next = idx < STAGES.length - 1 ? STAGES[idx + 1] : null
   const nextCfg = next ? STAGE_CONFIG[next] : null
-  const needsApproval = APPROVAL_STAGES.includes(item.stage as Stage) && !item.human_approved
+  const isApprovalStage = APPROVAL_STAGES.includes(item.stage as Stage)
+  const needsApproval = isApprovalStage && !item.human_approved
+  const canAdvanceWithoutApproval = !isApprovalStage && !!next && !stageCfg.automatic
+  const missingDateForApproval = needsApproval && !item.scheduled_at
+  const isRejected = item.status === 'rejected'
 
   // ── Generación / edición de contenido ──────────────────────────────────────
   const [editContent, setEditContent] = useState<string>(item.content ?? '')
@@ -540,10 +539,28 @@ function ContentDetailModal({
         <MetaRow label="Canal"><ChannelBadge channel={item.channel as Channel} /></MetaRow>
         <MetaRow label="Mercado">{MARKET_LABEL[item.market] ?? item.market}</MetaRow>
         <MetaRow label="Estado">
-          <div className="flex items-center gap-2">
-            <StatusDot status={item.status} />
-            <span>{STATUS_LABELS[item.status] ?? item.status}</span>
-          </div>
+          {(() => {
+            const ds = displayStatus(item)
+            return (
+              <span
+                className="inline-flex items-center"
+                style={{
+                  height: 22,
+                  padding: '0 10px',
+                  gap: 5,
+                  borderRadius: 'var(--radius-pill)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  lineHeight: 1,
+                  background: ds.bg,
+                  color: ds.color,
+                  border: ds.border,
+                }}
+              >
+                {ds.label}
+              </span>
+            )
+          })()}
         </MetaRow>
         {item.campaign && <MetaRow label="Campaña">{item.campaign}</MetaRow>}
         <MetaRow label="Creado">
@@ -884,20 +901,49 @@ function ContentDetailModal({
 
             <div style={{ flex: 1 }} />
 
-            {/* Mover a X — CTA primario derecha */}
+            {/* Rechazar — gris-rojo cuando aplica */}
+            {!isRejected && (needsApproval || canAdvanceWithoutApproval) && (
+              <button
+                onClick={() => { onReject(item.id); onClose() }}
+                className="inline-flex items-center transition-colors"
+                style={{
+                  gap: 6,
+                  height: 36,
+                  padding: '0 14px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--ink-2)',
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-pill)',
+                }}
+              >
+                Rechazar
+              </button>
+            )}
+
+            {/* CTA primario derecha — diferenciado por stage */}
             {needsApproval ? (
               <button
-                onClick={() => { onApprove(item.id, item.stage as Stage); onClose() }}
+                onClick={() => {
+                  if (missingDateForApproval) return
+                  onApprove(item.id, item.stage as Stage); onClose()
+                }}
+                disabled={missingDateForApproval}
                 className="btn-cta"
+                title={missingDateForApproval ? 'Define la fecha de publicación primero' : 'Aprueba y envía a Programación'}
+                style={missingDateForApproval ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
               >
-                <CheckCircle2 size={14} aria-hidden="true" /> Aprobar y avanzar
+                <CheckCircle2 size={14} aria-hidden="true" />
+                {missingDateForApproval ? 'Falta fecha de publicación' : 'Aprobar y enviar a Programación'}
               </button>
-            ) : next && nextCfg ? (
+            ) : canAdvanceWithoutApproval && next && nextCfg ? (
               <button
                 onClick={() => { onMove(item.id, next); onClose() }}
                 className="btn-cta"
+                title={`Mover a ${nextCfg.label} (sin marcar aprobación)`}
               >
-                Mover a {nextCfg.label} <ArrowRight size={13} aria-hidden="true" />
+                Avanzar a {nextCfg.label} <ArrowRight size={13} aria-hidden="true" />
               </button>
             ) : null}
           </>
@@ -912,17 +958,25 @@ function ContentDetailModal({
 // ═══════════════════════════════════════════════════════════════════════════
 
 function Card({
-  item, hasImage, onMove, onApprove, onSelect, onGenerateImage, profilesById,
+  item, hasImage, onMove, onApprove, onReject, onSelect, onGenerateImage, profilesById,
 }: {
   item: ContentItem
   hasImage?: boolean
   onMove: (id: string, s: Stage) => void
   onApprove: (id: string, s: Stage) => void
+  onReject: (id: string) => void
   onSelect: (item: ContentItem) => void
   onGenerateImage?: (itemId: string, title: string, channel: Channel) => Promise<void>
   profilesById?: Record<string, { full_name: string | null; email: string }>
 }) {
-  const needsApproval = APPROVAL_STAGES.includes(item.stage as Stage) && !item.human_approved
+  const stageIdx = STAGES.indexOf(item.stage as Stage)
+  const nextStage = stageIdx < STAGES.length - 1 ? STAGES[stageIdx + 1] : null
+  const nextCfg = nextStage ? STAGE_CONFIG[nextStage] : null
+  const isApprovalStage = APPROVAL_STAGES.includes(item.stage as Stage)
+  const needsApproval = isApprovalStage && !item.human_approved
+  const canAdvanceWithoutApproval = !isApprovalStage && !!nextStage && !STAGE_CONFIG[item.stage as Stage].automatic
+  const missingDateForApproval = needsApproval && !item.scheduled_at
+  const isRejected = item.status === 'rejected'
   const [generatingImage, setGeneratingImage] = useState(false)
   const [generateError, setGenerateError] = useState(false)
 
@@ -979,7 +1033,30 @@ function Card({
           >
             {MARKET_LABEL[item.market] ?? item.market.toUpperCase()}
           </span>
-          <StatusDot status={item.status} />
+          {(() => {
+            const ds = displayStatus(item)
+            return (
+              <span
+                className="inline-flex items-center shrink-0"
+                style={{
+                  height: 18,
+                  padding: '0 7px',
+                  gap: 4,
+                  borderRadius: 'var(--radius-pill)',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  lineHeight: 1,
+                  letterSpacing: '0.01em',
+                  background: ds.bg,
+                  color: ds.color,
+                  border: ds.border,
+                }}
+                aria-label={`Estado: ${ds.label}`}
+              >
+                {ds.label}
+              </span>
+            )
+          })()}
           <div onClick={e => e.stopPropagation()}>
             <CardMenu item={item} onMove={onMove} />
           </div>
@@ -1090,14 +1167,41 @@ function Card({
         </div>
       )}
 
-      {/* ── Botón Aprobar y avanzar ── */}
-      {needsApproval && (
+      {/* ── Acciones por stage ── */}
+      {!isRejected && needsApproval && (
+        <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+          <button
+            onClick={e => {
+              e.stopPropagation()
+              if (missingDateForApproval) { onSelect(item); return }
+              onApprove(item.id, item.stage as Stage)
+            }}
+            className="btn-pill-ghost"
+            style={{ flex: 1, opacity: missingDateForApproval ? 0.6 : 1 }}
+            title={missingDateForApproval ? 'Define la fecha de publicación primero' : 'Aprobar y enviar a Programación'}
+          >
+            <CheckCircle2 size={13} aria-hidden="true" />
+            {missingDateForApproval ? 'Falta fecha' : 'Aprobar'}
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onReject(item.id) }}
+            className="btn-pill-ghost"
+            style={{ flex: '0 0 auto', color: 'var(--red, #ef4444)', borderColor: 'rgba(239,68,68,0.30)' }}
+            title="Rechazar"
+            aria-label="Rechazar"
+          >
+            Rechazar
+          </button>
+        </div>
+      )}
+      {!isRejected && canAdvanceWithoutApproval && nextCfg && (
         <button
-          onClick={e => { e.stopPropagation(); onApprove(item.id, item.stage as Stage) }}
+          onClick={e => { e.stopPropagation(); onMove(item.id, nextStage!) }}
           className="btn-pill-ghost"
           style={{ marginTop: 8 }}
+          title={`Mover a ${nextCfg.label} sin marcar aprobación`}
         >
-          Aprobar y avanzar
+          Avanzar a {nextCfg.label}
           <ArrowRight size={13} aria-hidden="true" />
         </button>
       )}
@@ -1145,7 +1249,7 @@ function Card({
 // ═══════════════════════════════════════════════════════════════════════════
 
 function Column({
-  stage, items, filterChannels, onAdd, onMove, onApprove, onSelectItem, index, itemImageMap, onGenerateImage, profilesById,
+  stage, items, filterChannels, onAdd, onMove, onApprove, onReject, onSelectItem, index, itemImageMap, onGenerateImage, profilesById,
 }: {
   stage: Stage
   items: ContentItem[]
@@ -1153,6 +1257,7 @@ function Column({
   onAdd: (s: Stage, data: { title: string; channel: Channel }) => void
   onMove: (id: string, s: Stage) => void
   onApprove: (id: string, s: Stage) => void
+  onReject: (id: string) => void
   onSelectItem: (item: ContentItem) => void
   index: number
   itemImageMap?: Record<string, { id: string; url: string }>
@@ -1255,6 +1360,7 @@ function Column({
             hasImage={Boolean(itemImageMap?.[item.id])}
             onMove={onMove}
             onApprove={onApprove}
+            onReject={onReject}
             onSelect={onSelectItem}
             onGenerateImage={onGenerateImage}
             profilesById={profilesById}
@@ -1301,7 +1407,7 @@ function Column({
 // BOARD — scroll horizontal funcional, gap 16px entre columnas
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, onItemUpdated, itemImageMap, onImageAssigned, onImageUnassigned, profilesById }: BoardProps) {
+export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, onReject, onItemUpdated, itemImageMap, onImageAssigned, onImageUnassigned, profilesById }: BoardProps) {
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
 
   // Sincroniza selectedItem con la última versión cuando items se actualiza
@@ -1355,6 +1461,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
             onAdd={onAdd}
             onMove={onMove}
             onApprove={onApprove}
+            onReject={onReject}
             onSelectItem={setSelectedItem}
             index={idx}
             itemImageMap={itemImageMap}
@@ -1371,6 +1478,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
           imageId={itemImageMap?.[selectedItem.id]?.id ?? null}
           onClose={() => setSelectedItem(null)}
           onApprove={(id, s) => { onApprove(id, s) }}
+          onReject={(id)     => { onReject(id) }}
           onMove={(id, s)    => { onMove(id, s) }}
           onDelete={(id)     => { onDelete(id); setSelectedItem(null) }}
           onItemUpdated={(updated) => {

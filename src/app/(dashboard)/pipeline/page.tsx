@@ -7,7 +7,7 @@ import { Sparkles, Filter, X, Loader2 } from 'lucide-react'
 import { cn, STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
 import { useToast, Toasts } from '@/components/ui/Toast'
-import type { ContentItem, Stage, Channel } from '@/types/database'
+import type { ContentItem, Stage, Channel, Market } from '@/types/database'
 import { PIPELINE_CHANGED_EVENT } from '@/lib/stores/pipeline-store'
 
 const ALL_CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
@@ -15,6 +15,13 @@ const ALL_CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog
 const CHANNEL_LABELS: Record<Channel, string> = {
   linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook',
   x: 'X / Twitter', blog: 'Blog', email: 'Email', newsletter: 'Newsletter',
+}
+
+const ALL_MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil']
+
+const MARKET_LABELS: Record<Market, string> = {
+  spain: '🇪🇸 España', latam: 'LATAM', uk: '🇬🇧 UK', france: '🇫🇷 Francia',
+  italy: '🇮🇹 Italia', portugal: '🇵🇹 Portugal', brasil: '🇧🇷 Brasil',
 }
 
 // ─── StatPill ─────────────────────────────────────────────────────────────────
@@ -61,6 +68,7 @@ export default function PipelinePage() {
   const [itemImageMap, setItemImageMap] = useState<Record<string, { id: string; url: string }>>({}) // content_item_id → {id, url}
   const [filterOpen, setFilterOpen] = useState(false)
   const [filterChannels, setFilterChannels] = useState<Channel[]>([])
+  const [filterMarkets, setFilterMarkets] = useState<Market[]>([])
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null)
   const [detailPackage, setDetailPackage] = useState<PackageWithStats | null>(null)
   const [packageBarRefresh, setPackageBarRefresh] = useState(0)
@@ -110,7 +118,6 @@ export default function PipelinePage() {
         if (cancelled) return
         const map: Record<string, { full_name: string | null; email: string }> = {}
         for (const p of rows) map[p.id] = { full_name: p.full_name, email: p.email }
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setProfilesById(map)
       })
       .catch(() => {})
@@ -124,13 +131,14 @@ export default function PipelinePage() {
     return () => window.removeEventListener(PIPELINE_CHANGED_EVENT, onChanged)
   }, [fetchItems])
 
-  // ── Items filtrados por package seleccionado ──────────────────────────────
-  const visibleItems = useMemo(
-    () => selectedPackageId
-      ? items.filter(i => i.package_id === selectedPackageId)
-      : items,
-    [items, selectedPackageId],
-  )
+  // ── Items filtrados por package + mercado seleccionado ─────────────────────
+  // Nota: el filtro de canal se aplica dentro de PipelineBoard (cada columna).
+  const visibleItems = useMemo(() => {
+    let list = items
+    if (selectedPackageId) list = list.filter(i => i.package_id === selectedPackageId)
+    if (filterMarkets.length > 0) list = list.filter(i => filterMarkets.includes(i.market))
+    return list
+  }, [items, selectedPackageId, filterMarkets])
 
   // ── Computed stats (sobre items visibles) ─────────────────────────────────
   const totalItems = visibleItems.length
@@ -139,6 +147,7 @@ export default function PipelinePage() {
 
   // Refresca la PackageBar cuando cambian los items (al aprobar, mover, etc.)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPackageBarRefresh(r => r + 1)
   }, [items])
 
@@ -232,6 +241,27 @@ export default function PipelinePage() {
     }
   }, [showToast, fetchItems])
 
+  const handleReject = useCallback(async (id: string) => {
+    if (inFlightRef.current.has(`reject-${id}`)) return
+    inFlightRef.current.add(`reject-${id}`)
+    setItems(p => p.map(i => i.id === id ? { ...i, status: 'rejected', human_approved: false } : i))
+    try {
+      const res = await fetch(`/api/content-items/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'rejected', human_approved: false }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        showToast(`Error: ${j.error ?? res.statusText}`, 'error')
+        fetchItems()
+        return
+      }
+      showToast('Rechazado', 'success')
+    } finally {
+      inFlightRef.current.delete(`reject-${id}`)
+    }
+  }, [showToast, fetchItems])
+
   const handleGenerateAI = useCallback(async () => {
     setAiLoading(true)
     // Stub demo — crea 2 ideas básicas en BD. Sustituir por LLM real más adelante.
@@ -271,6 +301,12 @@ export default function PipelinePage() {
     )
   }
 
+  const toggleFilterMarket = (m: Market) => {
+    setFilterMarkets(prev =>
+      prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]
+    )
+  }
+
   return (
     <div className="flex flex-col h-full relative" style={{ minHeight: 0 }}>
       {/* Header pipeline */}
@@ -307,12 +343,12 @@ export default function PipelinePage() {
           >
             <Filter size={13} aria-hidden="true" />
             Filtrar
-            {filterChannels.length > 0 && (
+            {(filterChannels.length + filterMarkets.length) > 0 && (
               <span
                 className="absolute -top-1 -right-1 rounded-full text-[10px] font-bold flex items-center justify-center text-white tabular-nums"
                 style={{ width: 16, height: 16, background: 'var(--accent)' }}
               >
-                {filterChannels.length}
+                {filterChannels.length + filterMarkets.length}
               </span>
             )}
           </button>
@@ -373,6 +409,47 @@ export default function PipelinePage() {
               Limpiar
             </button>
           )}
+
+          <span
+            aria-hidden="true"
+            style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 6px' }}
+          />
+
+          <span className="section-label mr-2">Mercado</span>
+          {ALL_MARKETS.map(m => (
+            <button
+              key={m}
+              onClick={() => toggleFilterMarket(m)}
+              className={cn(
+                'px-2.5 rounded-md text-[11px] font-semibold transition-all',
+                filterMarkets.includes(m) ? 'text-white' : 'text-[var(--ink-2)] hover:text-[var(--ink)]'
+              )}
+              style={{
+                height: 28,
+                ...(filterMarkets.includes(m)
+                  ? { background: 'var(--accent)', border: '1px solid var(--accent)' }
+                  : { background: 'var(--surface-2)', border: '1px solid var(--border)' }
+                ),
+              }}
+            >
+              {MARKET_LABELS[m]}
+            </button>
+          ))}
+          {filterMarkets.length > 0 && (
+            <button
+              onClick={() => setFilterMarkets([])}
+              className="flex items-center gap-1 px-2.5 rounded-md text-[11px] font-medium transition-colors"
+              style={{
+                height: 28,
+                background: 'var(--red-soft)',
+                border: '1px solid rgba(239,68,68,0.25)',
+                color: 'var(--red-2)',
+              }}
+            >
+              <X size={11} />
+              Limpiar
+            </button>
+          )}
         </div>
       )}
 
@@ -391,6 +468,7 @@ export default function PipelinePage() {
             onMove={handleMove}
             onDelete={handleDelete}
             onApprove={handleApprove}
+            onReject={handleReject}
             onItemUpdated={(updated) => setItems(prev => prev.map(i => i.id === updated.id ? updated : i))}
             itemImageMap={itemImageMap}
             onImageAssigned={handleImageAssigned}

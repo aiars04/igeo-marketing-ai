@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { ContentItem, Profile, Stage, Channel, Market } from '@/types/database'
 
-const STAGES: Stage[] = ['ideas', 'copy', 'design', 'scheduled', 'analyzed']
+const STAGES: Stage[] = ['ideas', 'copy', 'design', 'approval', 'scheduled', 'analyzed']
 const CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
 
 async function requireActor() {
