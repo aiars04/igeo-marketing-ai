@@ -759,7 +759,15 @@ function ContentTypeModal({
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto flex-1 p-5" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div
+          className="overflow-y-auto flex-1"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 22,
+            padding: '24px 28px 28px',
+          }}
+        >
           <div>
             <label className="section-label block mb-1.5">Nombre</label>
             <input
