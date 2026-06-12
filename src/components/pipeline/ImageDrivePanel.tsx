@@ -6,6 +6,7 @@ import {
   Maximize2, Download,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
+import { ImageBankPicker } from '@/components/pipeline/ImageBankPicker'
 import type { Channel, ContentType } from '@/types/database'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -67,6 +68,9 @@ export function ImageDrivePanel({
   const [variants, setVariants]         = useState<ImageAsset[] | null>(null)
   const [assigningId, setAssigningId]   = useState<string | null>(null)
 
+  // Bank picker: elegir imagen del banco existente o subir una nueva propia
+  const [bankPickerOpen, setBankPickerOpen] = useState(false)
+
   // Format spec del content_type del canal — muestra el checklist informativo
   // de qué imágenes espera este formato (sin tocar la lógica de generación).
   const [formatSpec, setFormatSpec] = useState<ContentType['format_spec'] | null>(null)
@@ -124,6 +128,12 @@ export function ImageDrivePanel({
       setAssigningId(null)
     }
   }, [assignedImageId, itemId, onAssigned])
+
+  // Picker del banco: cuando elige imagen → asignar al item y cerrar el modal
+  const handleBankSelected = useCallback(async (assetId: string, url: string) => {
+    await assignAsset(assetId, url)
+    setBankPickerOpen(false)
+  }, [assignAsset])
 
   // ── Quitar imagen asignada ───────────────────────────────────────────────
   const handleUnassign = useCallback(async () => {
@@ -463,13 +473,22 @@ export function ImageDrivePanel({
                 </button>
               </div>
             ) : (
-              <button
-                className="btn-pill-secondary"
-                onClick={() => setConfirmRegen(true)}
-                disabled={unassigning}
-              >
-                <RefreshCw size={12} aria-hidden="true" /> Regenerar
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  className="btn-pill-secondary"
+                  onClick={() => setConfirmRegen(true)}
+                  disabled={unassigning}
+                >
+                  <RefreshCw size={12} aria-hidden="true" /> Regenerar
+                </button>
+                <button
+                  className="btn-pill-secondary"
+                  onClick={() => setBankPickerOpen(true)}
+                  disabled={unassigning}
+                >
+                  <ImagePlus size={12} aria-hidden="true" /> Cambiar del banco
+                </button>
+              </div>
             )}
           </div>
           <button
@@ -505,6 +524,14 @@ export function ImageDrivePanel({
           onAfterAssign={() => setGenModalOpen(false)}
           itemTitle={itemTitle}
         />
+
+        {/* Picker del banco — elegir o subir imagen propia */}
+        <ImageBankPicker
+          open={bankPickerOpen}
+          onClose={() => setBankPickerOpen(false)}
+          channel={channel}
+          onSelected={handleBankSelected}
+        />
       </div>
     )
   }
@@ -519,12 +546,18 @@ export function ImageDrivePanel({
       <p style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
         Genera el visual con todas las opciones: una imagen, varias variantes del mismo prompt, o un carrusel con prompts distintos.
       </p>
-      <button className="btn-cta" onClick={openGenerate}>
-        <Sparkles size={13} aria-hidden="true" />
-        Generar imagen con IA
-      </button>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button className="btn-cta" onClick={openGenerate}>
+          <Sparkles size={13} aria-hidden="true" />
+          Generar imagen con IA
+        </button>
+        <button className="btn-pill-secondary" onClick={() => setBankPickerOpen(true)}>
+          <ImagePlus size={13} aria-hidden="true" />
+          Elegir del banco
+        </button>
+      </div>
       <p style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-        Nano Banana 2 para el canal <strong>{channel}</strong> · 4 ratios disponibles · 3 modos
+        Nano Banana 2 para el canal <strong>{channel}</strong> · 4 ratios · 3 modos · o sube/elige una propia
       </p>
 
       {/* Modal de generación */}
@@ -545,6 +578,14 @@ export function ImageDrivePanel({
         onAssignVariant={assignAsset}
         onAfterAssign={() => setGenModalOpen(false)}
         itemTitle={itemTitle}
+      />
+
+      {/* Picker del banco — elegir o subir imagen propia */}
+      <ImageBankPicker
+        open={bankPickerOpen}
+        onClose={() => setBankPickerOpen(false)}
+        channel={channel}
+        onSelected={handleBankSelected}
       />
     </div>
   )
