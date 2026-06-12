@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { normalizeFormatSpec } from '@/lib/content-type-format-spec'
 import type { ContentType, Profile, Channel } from '@/types/database'
 
 const CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
@@ -38,6 +39,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if (body.process !== undefined) patch.process = body.process
   if (body.style !== undefined) patch.style = body.style
   if (body.active !== undefined) patch.active = body.active
+  if ((body as { format_spec?: unknown }).format_spec !== undefined) {
+    patch.format_spec = normalizeFormatSpec((body as { format_spec?: unknown }).format_spec)
+  }
 
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'no_changes' }, { status: 400 })
 

@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   Sparkles, Loader2, RefreshCw, X, Check, ImagePlus, Layers, Grid3x3, Wand2, AlertCircle,
   Maximize2, Download,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
-import type { Channel } from '@/types/database'
+import type { Channel, ContentType } from '@/types/database'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -66,6 +66,21 @@ export function ImageDrivePanel({
   // Post-generation variants/curated selection
   const [variants, setVariants]         = useState<ImageAsset[] | null>(null)
   const [assigningId, setAssigningId]   = useState<string | null>(null)
+
+  // Format spec del content_type del canal — muestra el checklist informativo
+  // de qué imágenes espera este formato (sin tocar la lógica de generación).
+  const [formatSpec, setFormatSpec] = useState<ContentType['format_spec'] | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/content-types?channel=${channel}&active=true`)
+      .then(r => r.ok ? r.json() as Promise<ContentType[]> : Promise.resolve([]))
+      .then(list => {
+        if (cancelled) return
+        setFormatSpec(list[0]?.format_spec ?? null)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [channel])
 
   // ── Reset modal cuando se abre ───────────────────────────────────────────
   const openGenerate = useCallback(() => {
@@ -265,9 +280,60 @@ export function ImageDrivePanel({
   // RENDER — Estado: imagen ya asignada
   // ═══════════════════════════════════════════════════════════════════════
 
+  // Banner informativo: qué imágenes espera este formato según el content_type.
+  // Solo aparece si el content_type del canal tiene format_spec.images o carousel definidos.
+  const expectedImages = formatSpec?.images ?? []
+  const expectedCarousel = formatSpec?.carousel ?? null
+  const hasFormatExpectations = expectedImages.length > 0 || !!expectedCarousel
+  const checklistBanner = hasFormatExpectations ? (
+    <div
+      style={{
+        background: 'var(--accent-soft)',
+        border: '1px solid var(--accent-border)',
+        borderRadius: 'var(--radius-md)',
+        padding: 12,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <ImagePlus size={12} aria-hidden="true" style={{ color: 'var(--accent-2)' }} />
+        <span style={{
+          fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase',
+          letterSpacing: '0.06em', color: 'var(--accent-2)',
+        }}>
+          Este formato espera
+        </span>
+      </div>
+      <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {expectedImages.map((img, i) => {
+          const dims = img.width && img.height ? ` · ${img.width}×${img.height}` : ''
+          const req = img.required ? '' : ' (opcional)'
+          return (
+            <li key={i} style={{ fontSize: 12, color: 'var(--ink-2)' }}>
+              <strong style={{ color: 'var(--ink)' }}>{img.label}</strong>{dims}{req}
+              {img.notes && <span style={{ color: 'var(--ink-3)' }}> — {img.notes}</span>}
+            </li>
+          )
+        })}
+        {expectedCarousel && (
+          <li style={{ fontSize: 12, color: 'var(--ink-2)' }}>
+            <strong style={{ color: 'var(--ink)' }}>Carrusel</strong>
+            {' '}({expectedCarousel.min}–{expectedCarousel.max} slides
+            {expectedCarousel.width && expectedCarousel.height
+              ? ` · ${expectedCarousel.width}×${expectedCarousel.height}`
+              : ''})
+          </li>
+        )}
+      </ul>
+    </div>
+  ) : null
+
   if (assignedImageUrl) {
     return (
       <div className="flex flex-col gap-2">
+        {checklistBanner}
         {/* Preview: contain para ver imagen completa + click para ampliar */}
         <button
           onClick={() => setLightboxOpen(true)}
@@ -449,6 +515,7 @@ export function ImageDrivePanel({
 
   return (
     <div className="flex flex-col items-start gap-2">
+      {checklistBanner}
       <p style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
         Genera el visual con todas las opciones: una imagen, varias variantes del mismo prompt, o un carrusel con prompts distintos.
       </p>

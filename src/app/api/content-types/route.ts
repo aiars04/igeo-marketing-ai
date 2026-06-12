@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { normalizeFormatSpec } from '@/lib/content-type-format-spec'
 import type { ContentType, Profile, Channel } from '@/types/database'
 
 const CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
   const insertRow = {
     name, channel, description, process, style,
     active: body.active ?? true,
+    format_spec: normalizeFormatSpec((body as { format_spec?: unknown }).format_spec),
     created_by: me.id,
   }
   const { data, error } = await admin

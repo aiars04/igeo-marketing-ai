@@ -15,6 +15,7 @@ import { BrandContextEditor } from '@/components/admin/BrandContextEditor'
 import { PlaybooksTab } from '@/components/admin/PlaybooksTab'
 import { MarketRulesTab } from '@/components/admin/MarketRulesTab'
 import { ImprovementsTab } from '@/components/admin/ImprovementsTab'
+import { FormatSpecEditor } from '@/components/admin/FormatSpecEditor'
 import { useContentTypes, type ContentType } from '@/lib/content-types-store'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import {
@@ -630,7 +631,15 @@ function ContentTypeCard({
 }
 
 /* ─── Form fields ─── */
-const EMPTY_FORM = { name: '', channel: 'linkedin' as Channel, description: '', process: '', style: '', active: true }
+const EMPTY_FORM = {
+  name: '',
+  channel: 'linkedin' as Channel,
+  description: '',
+  process: '',
+  style: '',
+  active: true,
+  formatSpec: {} as import('@/types/database').ContentTypeFormatSpec,
+}
 
 function ContentTypeModal({
   open, onClose, onSave, initial,
@@ -659,6 +668,8 @@ function ContentTypeModal({
 
   if (!open) return null
   const set = (k: keyof typeof EMPTY_FORM, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
+  const setSpec = (next: import('@/types/database').ContentTypeFormatSpec) =>
+    setForm(p => ({ ...p, formatSpec: next }))
   const canSave =
     form.name.trim().length >= 3 &&
     form.description.trim().length >= 10 &&
@@ -875,6 +886,9 @@ function ContentTypeModal({
               </div>
             )}
           </div>
+
+          {/* ── Assets que necesita este formato ── */}
+          <FormatSpecEditor spec={form.formatSpec} onChange={setSpec} />
         </div>
 
         {/* Error de guardado inline */}

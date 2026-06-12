@@ -4,7 +4,7 @@
  * surface que /admin consume para minimizar cambios.
  */
 import { useState, useEffect, useCallback } from 'react'
-import type { Channel, ContentType as DbContentType } from '@/types/database'
+import type { Channel, ContentType as DbContentType, ContentTypeFormatSpec } from '@/types/database'
 
 /* ─── Type usado por /admin (mismo shape que antes, snake_case BD ↔ alias camelCase) ─── */
 export type ContentType = {
@@ -15,7 +15,8 @@ export type ContentType = {
   process: string
   style: string
   active: boolean
-  createdAt: string   // alias camelCase de created_at (no rompe /admin)
+  formatSpec: ContentTypeFormatSpec   // alias camelCase de format_spec
+  createdAt: string                    // alias camelCase de created_at
 }
 
 function fromDb(db: DbContentType): ContentType {
@@ -27,6 +28,7 @@ function fromDb(db: DbContentType): ContentType {
     process: db.process,
     style: db.style,
     active: db.active,
+    formatSpec: db.format_spec ?? {},
     createdAt: (db.created_at ?? '').slice(0, 10),
   }
 }
@@ -64,6 +66,7 @@ export function useContentTypes() {
         name: t.name, channel: t.channel,
         description: t.description, process: t.process, style: t.style,
         active: t.active,
+        format_spec: t.formatSpec ?? {},
       }),
     })
     if (!res.ok) {
@@ -75,9 +78,15 @@ export function useContentTypes() {
   }, [])
 
   const update = useCallback(async (id: string, changes: Partial<Omit<ContentType, 'id' | 'createdAt'>>) => {
+    // Mapear formatSpec (camel) → format_spec (snake) para el endpoint
+    const body: Record<string, unknown> = { ...changes }
+    if ('formatSpec' in body) {
+      body.format_spec = body.formatSpec
+      delete body.formatSpec
+    }
     const res = await fetch(`/api/content-types/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(changes),
+      body: JSON.stringify(body),
     })
     if (!res.ok) {
       const j = await res.json().catch(() => ({}))

@@ -372,15 +372,38 @@ export interface BrandContext {
   updated_at: string
 }
 
+// Definición estructurada de qué assets necesita un content_type.
+// Las dimensiones son SUGERIDAS (no se valida obligatoriedad en BD).
+// Se inyectan en el prompt de Gemini para que sepa qué piezas describir,
+// y se muestran como checklist en el ImageDrivePanel del pipeline.
+export interface ContentTypeFormatSpec {
+  needs_copy?:   boolean
+  needs_script?: boolean
+  images?: Array<{
+    label:    string         // ej. "Banner principal", "Thumbnail"
+    width?:   number | null
+    height?:  number | null
+    required?: boolean        // sugerida obligatoria sí/no
+    notes?:   string | null
+  }>
+  carousel?: {
+    min:     number          // mínimo de slides
+    max:     number          // máximo de slides
+    width?:  number | null
+    height?: number | null
+  } | null
+}
+
 export interface ContentType {
-  id:          string
-  name:        string
-  channel:     Channel
-  description: string
-  process:     string
-  style:       string
-  active:      boolean
-  created_by:  string | null
-  created_at:  string
-  updated_at:  string
+  id:           string
+  name:         string
+  channel:      Channel
+  description:  string
+  process:      string
+  style:        string
+  active:       boolean
+  format_spec:  ContentTypeFormatSpec
+  created_by:   string | null
+  created_at:   string
+  updated_at:   string
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { genai } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { buildMarketRulesPrompt, detectForbiddenTerms } from '@/lib/market-rules'
+import { buildFormatSpecPromptBlock } from '@/lib/content-type-format-spec'
 import type { ContentItem, ContentType, BrandContext, Profile, Channel, Market } from '@/types/database'
 
 const MARKET_LANG: Record<Market, string> = {
@@ -110,9 +111,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     admin, item.market as Market, item.channel as Channel,
   )
 
+  // 4d) Bloque de estructura del formato (assets esperados, tamaños sugeridos)
+  const formatSpecSection = ct ? buildFormatSpecPromptBlock(ct.format_spec) : ''
+
   // 5) Construir prompts
   const systemPrompt = ct
-    ? `${SYSTEM_BASE}${brandSection}${marketRulesSection}
+    ? `${SYSTEM_BASE}${brandSection}${marketRulesSection}${formatSpecSection}
 
 ════ INSTRUCCIONES ESPECÍFICAS PARA ESTE CONTENIDO (${ct.name}) ════
 PROCESO: ${ct.process}
