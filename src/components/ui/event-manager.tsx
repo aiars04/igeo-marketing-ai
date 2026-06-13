@@ -2138,7 +2138,10 @@ function MonthView({
                   />
                 ))}
                 {dayEvents.length > 3 && (
-                  <div style={{ fontSize: 10, color: "var(--ink-3)", padding: "0 4px" }}>
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ fontSize: 10, color: "var(--ink-3)", padding: "0 4px" }}
+                  >
                     +{dayEvents.length - 3} más
                   </div>
                 )}
