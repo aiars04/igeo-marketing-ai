@@ -596,7 +596,9 @@ function ContentDetailModal({
             <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--amber-2)', margin: 0, lineHeight: 1.3 }}>
               {item.published_at
                 ? 'Publicación ya enviada a la red social'
-                : 'Publicación programada en Postiz'}
+                : item.postiz_id
+                  ? 'Publicación programada en Postiz'
+                  : 'Item ya en fase de programación'}
             </p>
             <p style={{ fontSize: 12, color: 'var(--ink-2)', margin: '4px 0 0', lineHeight: 1.5 }}>
               Puedes editar título, contenido y fecha aquí y se guardarán en iGEO.
