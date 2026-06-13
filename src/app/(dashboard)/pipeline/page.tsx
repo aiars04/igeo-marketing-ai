@@ -3,9 +3,9 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { PipelineBoard } from '@/components/pipeline/PipelineBoard'
 import { PackageBar, PackageDetailModal, type PackageWithStats } from '@/components/pipeline/PackageBar'
+import { BatchGenerateModal } from '@/components/pipeline/BatchGenerateModal'
 import { Sparkles, Filter, X, Loader2 } from 'lucide-react'
 import { cn, STAGE_CONFIG, STAGES } from '@/lib/utils'
-import { Modal } from '@/components/ui/Modal'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import type { ContentItem, Stage, Channel, Market } from '@/types/database'
 import { PIPELINE_CHANGED_EVENT } from '@/lib/stores/pipeline-store'
@@ -262,25 +262,40 @@ export default function PipelinePage() {
     }
   }, [showToast, fetchItems])
 
-  const handleGenerateAI = useCallback(async () => {
+  /**
+   * Genera N ideas en una sola llamada a partir de un prompt + matriz de
+   * mercados × canales. Crea esqueletos en stage 'ideas'; el usuario dispara
+   * la generación de contenido con Gemini por item desde el modal del pipeline.
+   */
+  const handleGenerateBatch = useCallback(async (payload: {
+    prompt: string
+    campaign?: string
+    matrix: Array<{ market: Market; channels: Channel[] }>
+  }): Promise<{ ok: boolean; created: number; error?: string }> => {
     setAiLoading(true)
-    // Stub demo — crea 2 ideas básicas en BD. Sustituir por LLM real más adelante.
-    const drafts = [
-      { title: 'LinkedIn: Transformación digital en empresas de control de plagas — caso real iGEO', channel: 'linkedin' as Channel },
-      { title: 'Instagram: 5 pasos para digitalizar tu equipo de campo en 30 días',                  channel: 'instagram' as Channel },
-    ]
-    const created: ContentItem[] = []
-    for (const d of drafts) {
-      const res = await fetch('/api/content-items', {
+    try {
+      const res = await fetch('/api/content-items/batch', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...d, stage: 'ideas', ai_generated: true }),
+        body: JSON.stringify(payload),
       })
-      if (res.ok) created.push(await res.json())
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({})) as { error?: string }
+        showToast(`Error: ${j.error ?? res.statusText}`, 'error')
+        return { ok: false, created: 0, error: j.error }
+      }
+      const data = await res.json() as { items: ContentItem[] }
+      const created = data.items ?? []
+      if (created.length) setItems(prev => [...created, ...prev])
+      showToast(`✓ ${created.length} idea${created.length === 1 ? '' : 's'} creada${created.length === 1 ? '' : 's'} en el pipeline`, 'success')
+      setAiModalOpen(false)
+      return { ok: true, created: created.length }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'desconocido'
+      showToast(`Error de red: ${msg}`, 'error')
+      return { ok: false, created: 0, error: msg }
+    } finally {
+      setAiLoading(false)
     }
-    if (created.length) setItems(prev => [...created, ...prev])
-    setAiLoading(false)
-    setAiModalOpen(false)
-    showToast(`IA generó ${created.length} ideas`, 'success')
   }, [showToast])
 
   const handleImageAssigned = useCallback((contentItemId: string, assetId: string, url: string) => {
@@ -478,59 +493,17 @@ export default function PipelinePage() {
         )}
       </div>
 
-      {/* AI Modal */}
-      <Modal
+      {/* Batch Generate Modal — prompt + matriz mercado × canal */}
+      <BatchGenerateModal
         open={aiModalOpen}
-        onClose={() => { if (!aiLoading) setAiModalOpen(false) }}
-        title="Generar ideas con IA"
-        size="sm"
-      >
-        {aiLoading ? (
-          <div className="flex flex-col items-center justify-center py-8 gap-4">
-            <Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent-2)' }} />
-            <div className="text-center">
-              <p className="text-[14px] font-semibold" style={{ color: 'var(--ink)' }}>
-                Generando ideas con IA...
-              </p>
-              <p className="text-[12px] mt-1" style={{ color: 'var(--ink-2)' }}>
-                Analizando contexto de marca y mercado
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            <p className="text-[13px]" style={{ color: 'var(--ink-2)' }}>
-              La IA analizará tu contexto de marca y generará nuevas ideas de contenido para tu pipeline.
-            </p>
-            <div className="rounded-lg p-3 flex flex-col gap-1.5" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ink-3)' }}>
-                Canales objetivo
-              </p>
-              {(['linkedin', 'instagram', 'x'] as Channel[]).map(ch => (
-                <div key={ch} className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--ink)' }}>
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: 'var(--accent-2)', flexShrink: 0 }}
-                  />
-                  {CHANNEL_LABELS[ch]}
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setAiModalOpen(false)} className="btn-ghost flex-1">
-                Cancelar
-              </button>
-              <button
-                onClick={handleGenerateAI}
-                className="btn-primary flex-1 flex items-center justify-center gap-1.5"
-              >
-                <Sparkles size={13} />
-                Generar ahora
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
+        onClose={() => setAiModalOpen(false)}
+        loading={aiLoading}
+        onSubmit={handleGenerateBatch}
+        channels={ALL_CHANNELS}
+        channelLabels={CHANNEL_LABELS}
+        markets={ALL_MARKETS}
+        marketLabels={MARKET_LABELS}
+      />
 
       {/* Package detail modal */}
       {detailPackage && (
