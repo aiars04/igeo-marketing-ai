@@ -13,7 +13,10 @@ import { ChannelBadge } from '@/components/ui/ChannelBadge'
 import { Modal } from '@/components/ui/Modal'
 import { ImageDrivePanel } from '@/components/pipeline/ImageDrivePanel'
 import { ExportContentMenu } from '@/components/pipeline/ExportContentMenu'
-import type { ContentItem, Stage, Channel } from '@/types/database'
+import {
+  getMarketTimezone, MARKET_TZ_LABEL, marketLocalToUtcISO, utcISOToMarketLocal, formatInTimezone,
+} from '@/lib/market-timezones'
+import type { ContentItem, Stage, Channel, Market } from '@/types/database'
 import type { LucideIcon } from 'lucide-react'
 
 /** Convierte un hex (#RRGGBB) a rgba con alpha [0,1]. */
@@ -355,19 +358,19 @@ function ContentDetailModal({
     }
   }, [item.id, editTitle, isTitleDirty, onItemUpdated])
 
-  // ── Fecha de publicación editable ─────────────────────────────────────────
-  const toLocalDatetimeValue = (iso: string | null) => {
-    if (!iso) return ''
-    try {
-      const d = new Date(iso)
-      const pad = (n: number) => String(n).padStart(2, '0')
-      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-    } catch { return '' }
-  }
-  const [editScheduledAt, setEditScheduledAt] = useState<string>(() => toLocalDatetimeValue(item.scheduled_at))
+  // ── Fecha de publicación editable (hora local del MERCADO) ────────────────
+  // La hora que el usuario introduce en el datetime-local se interpreta en el
+  // huso del mercado del item (Madrid para ES, Bogotá para LATAM, etc.), no
+  // del navegador. Persistimos siempre como UTC ISO.
+  const itemMarket = item.market as Market
+  const marketTz = getMarketTimezone(itemMarket)
+  const marketCity = MARKET_TZ_LABEL[itemMarket] ?? marketTz
+  const [editScheduledAt, setEditScheduledAt] = useState<string>(
+    () => utcISOToMarketLocal(item.scheduled_at, itemMarket),
+  )
 
   const handleSaveScheduledAt = useCallback(async (val: string) => {
-    const isoVal = val ? new Date(val).toISOString() : null
+    const isoVal = marketLocalToUtcISO(val, itemMarket)
     const current = item.scheduled_at ?? null
     if (isoVal === current) return
     const res = await fetch(`/api/content-items/${item.id}`, {
@@ -379,7 +382,7 @@ function ContentDetailModal({
       onItemUpdated?.(updated)
       window.dispatchEvent(new CustomEvent('pipeline:changed'))
     }
-  }, [item.id, item.scheduled_at, onItemUpdated])
+  }, [item.id, item.scheduled_at, itemMarket, onItemUpdated])
 
   // Sync editContent cuando el item cambia (regenerar trae content nuevo) — mirror de prop
   useEffect(() => {
@@ -395,11 +398,12 @@ function ContentDetailModal({
     setTitleError(null)
   }, [item.id, item.title])
 
-  // Sync editScheduledAt cuando el item cambia desde fuera
+  // Sync editScheduledAt cuando el item cambia desde fuera. Reinterpretamos
+  // el ISO en el TZ del mercado del item por si el market también cambió.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setEditScheduledAt(toLocalDatetimeValue(item.scheduled_at))
-  }, [item.id, item.scheduled_at])
+    setEditScheduledAt(utcISOToMarketLocal(item.scheduled_at, itemMarket))
+  }, [item.id, item.scheduled_at, itemMarket])
 
   const canGenerate = item.stage === 'ideas' || item.stage === 'copy'
   const isDirty = (editContent ?? '') !== (item.content ?? '')
@@ -688,9 +692,10 @@ function ContentDetailModal({
         <MetaRow label="Actualizado">
           {new Date(item.updated_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
         </MetaRow>
-        {/* Fecha de publicación — editable, span 2 cols */}
+        {/* Fecha de publicación — editable, span 2 cols.
+            La hora se interpreta como hora local del mercado del item. */}
         <div style={{ gridColumn: 'span 2' }}>
-          <MetaRow label="Fecha de publicación">
+          <MetaRow label={`Fecha de publicación (hora de ${marketCity})`}>
             <div className="flex items-center gap-2">
               <input
                 type="datetime-local"
@@ -715,6 +720,20 @@ function ContentDetailModal({
                 </button>
               )}
             </div>
+            {(() => {
+              // Mostramos hora equivalente en el navegador (TZ local del usuario)
+              // solo si difiere del TZ del mercado, para no añadir ruido.
+              if (!editScheduledAt) return null
+              const isoUtc = marketLocalToUtcISO(editScheduledAt, itemMarket)
+              if (!isoUtc) return null
+              const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+              if (browserTz === marketTz) return null
+              return (
+                <p style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6, lineHeight: 1.4 }}>
+                  ≈ {formatInTimezone(isoUtc, browserTz)} en tu hora local
+                </p>
+              )
+            })()}
           </MetaRow>
         </div>
       </div>
@@ -1278,9 +1297,10 @@ function Card({
               }}
             >
               <Calendar size={10} aria-hidden="true" />
-              {new Date(item.scheduled_at).toLocaleDateString('es-ES', {
+              {new Intl.DateTimeFormat('es-ES', {
+                timeZone: getMarketTimezone(item.market as Market),
                 day: '2-digit', month: 'short',
-              })}
+              }).format(new Date(item.scheduled_at))}
             </span>
           )}
         </div>
