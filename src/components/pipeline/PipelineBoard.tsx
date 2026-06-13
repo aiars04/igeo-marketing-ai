@@ -6,7 +6,7 @@ import {
   Plus, Sparkles, MoreHorizontal, Calendar,
   Lightbulb, PenLine, Layers, Zap, BarChart2,
   CheckCircle2, CheckCheck, ChevronRight, ArrowRight, Trash2,
-  ImageIcon, RefreshCw, Loader2,
+  ImageIcon, RefreshCw, Loader2, AlertCircle,
 } from 'lucide-react'
 import { STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
@@ -324,6 +324,37 @@ function ContentDetailModal({
   const [confirmRegenerate, setConfirmRegenerate] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
 
+  // ── Edición de título inline ──────────────────────────────────────────────
+  // Útil sobre todo para items ya programados/publicados, donde antes el título
+  // solo se mostraba como texto en la cabecera del Modal.
+  const [editTitle, setEditTitle] = useState<string>(item.title ?? '')
+  const [savingTitle, setSavingTitle] = useState(false)
+  const [titleError, setTitleError] = useState<string | null>(null)
+  const isTitleDirty = editTitle.trim() !== (item.title ?? '').trim() && editTitle.trim().length > 0
+
+  const handleSaveTitle = useCallback(async () => {
+    if (!isTitleDirty) return
+    setSavingTitle(true)
+    setTitleError(null)
+    try {
+      const res = await fetch(`/api/content-items/${item.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editTitle.trim() }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setTitleError(j.error ?? `HTTP ${res.status}`)
+        return
+      }
+      const updated = await res.json() as ContentItem
+      onItemUpdated?.(updated)
+    } catch (e) {
+      setTitleError(e instanceof Error ? e.message : 'unknown')
+    } finally {
+      setSavingTitle(false)
+    }
+  }, [item.id, editTitle, isTitleDirty, onItemUpdated])
+
   // ── Fecha de publicación editable ─────────────────────────────────────────
   const toLocalDatetimeValue = (iso: string | null) => {
     if (!iso) return ''
@@ -356,6 +387,13 @@ function ContentDetailModal({
     setEditContent(item.content ?? '')
     setConfirmRegenerate(false)
   }, [item.id, item.content])
+
+  // Sync editTitle cuando el item cambia desde fuera
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEditTitle(item.title ?? '')
+    setTitleError(null)
+  }, [item.id, item.title])
 
   // Sync editScheduledAt cuando el item cambia desde fuera
   useEffect(() => {
@@ -484,6 +522,87 @@ function ContentDetailModal({
           )
         })}
       </div>
+
+      {/* ── Editor de título inline ──
+         Antes el título solo aparecía como texto en la cabecera del Modal.
+         Lo hacemos editable para que se pueda corregir incluso en items ya
+         programados / publicados (cumple sugerencia "modificar publicación"). */}
+      <div style={{ marginBottom: 16 }}>
+        <p
+          className="uppercase"
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            color: 'var(--ink-3)',
+            marginBottom: 6,
+          }}
+        >
+          Título
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            className="input"
+            style={{ flex: 1, height: 36, fontSize: 14, fontWeight: 600 }}
+            disabled={savingTitle}
+            placeholder="Título del contenido"
+          />
+          {isTitleDirty && (
+            <button
+              className="btn-cta"
+              onClick={handleSaveTitle}
+              disabled={savingTitle}
+              style={{ height: 36, fontSize: 12 }}
+            >
+              {savingTitle
+                ? <><Loader2 size={12} className="animate-spin" aria-hidden="true" /> Guardando…</>
+                : 'Guardar'}
+            </button>
+          )}
+        </div>
+        {titleError && (
+          <p style={{ fontSize: 11, color: 'var(--red-2)', marginTop: 4 }}>
+            Error: {titleError}
+          </p>
+        )}
+      </div>
+
+      {/* ── Banner informativo para publicaciones ya programadas / enviadas ──
+         La sugerencia del usuario era poder modificar una publicación ya hecha.
+         La edición de título / content / fecha ya escribe contra la BD, pero
+         si el post salió a Postiz (postiz_id) o ya está publicado, hay que
+         decirle al usuario que la red social no se actualiza sola. */}
+      {(item.stage === 'scheduled' || item.stage === 'analyzed' || item.published_at) && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+            padding: '12px 14px',
+            background: 'var(--amber-soft)',
+            border: '1px solid var(--amber-border)',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 20,
+          }}
+        >
+          <AlertCircle size={16} style={{ color: 'var(--amber-2)', flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--amber-2)', margin: 0, lineHeight: 1.3 }}>
+              {item.published_at
+                ? 'Publicación ya enviada a la red social'
+                : 'Publicación programada en Postiz'}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--ink-2)', margin: '4px 0 0', lineHeight: 1.5 }}>
+              Puedes editar título, contenido y fecha aquí y se guardarán en iGEO.
+              {item.postiz_id || item.published_at
+                ? ' Para reflejar los cambios en el post real, cancélalo y reprograma desde Postiz.'
+                : ''}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Thumbnail imagen asignada (solo en stages sin ImageDrivePanel) ── */}
       {imageUrl && (item.stage === 'ideas' || item.stage === 'copy') && (
