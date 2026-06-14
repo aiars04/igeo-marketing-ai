@@ -2007,12 +2007,20 @@ function MonthView({
   const startDate = new Date(firstDayOfMonth)
   startDate.setDate(startDate.getDate() - startDate.getDay())
 
-  const days: Date[] = []
+  const allDays: Date[] = []
   const currentDay = new Date(startDate)
   for (let i = 0; i < 42; i++) {
-    days.push(new Date(currentDay))
+    allDays.push(new Date(currentDay))
     currentDay.setDate(currentDay.getDate() + 1)
   }
+
+  // Si la última fila (índices 35-41) es enteramente del mes siguiente, la
+  // recortamos para no malgastar altura del viewport con una fila gris. Es el
+  // mismo comportamiento que Google Calendar / Apple Calendar.
+  const lastWeekAllNextMonth = allDays
+    .slice(35, 42)
+    .every(d => d.getMonth() !== currentDate.getMonth())
+  const days = lastWeekAllNextMonth ? allDays.slice(0, 35) : allDays
 
   const getEventsForDay = (date: Date) =>
     events.filter((event) => {
@@ -2081,7 +2089,7 @@ function MonthView({
               tabIndex={0}
               aria-label={`Crear evento el ${day.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`}
               className={cn(
-                "min-h-20 sm:min-h-24 transition-colors cursor-pointer",
+                "min-h-16 sm:min-h-20 transition-colors cursor-pointer",
                 !isToday && "hover:bg-[var(--surface-2)]",
               )}
               style={{
