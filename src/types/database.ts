@@ -1,6 +1,8 @@
 export type Stage = 'ideas' | 'copy' | 'design' | 'approval' | 'scheduled' | 'analyzed'
 export type Channel = 'linkedin' | 'instagram' | 'facebook' | 'x' | 'blog' | 'email' | 'newsletter'
-export type Market = 'spain' | 'latam' | 'uk' | 'france' | 'italy' | 'portugal' | 'brasil'
+// Nota: `uk` se reetiqueta visualmente como "Internacional" en MARKET_CONFIG —
+// se mantiene el slug `uk` para no romper datos / migraciones existentes.
+export type Market = 'spain' | 'latam' | 'uk' | 'france' | 'italy' | 'portugal' | 'brasil' | 'mexico'
 export type ContentStatus = 'pending' | 'in_progress' | 'approved' | 'rejected'
 export type UserRole = 'admin' | 'manager' | 'user'
 

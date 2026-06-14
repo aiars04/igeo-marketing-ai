@@ -7,7 +7,7 @@ import type {
   SeoBrief, SeoIntent,
 } from '@/types/database'
 
-const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil']
+const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
 const CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
 const VALID_INTENTS: SeoIntent[] = ['informational', 'commercial', 'transactional', 'navigational']
 

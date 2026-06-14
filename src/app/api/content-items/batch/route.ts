@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { ContentItem, Profile, Channel, Market } from '@/types/database'
 
 const CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
-const MARKETS:  Market[]  = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil']
+const MARKETS:  Market[]  = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
 
 // Tope conservador para evitar inserts masivos accidentales por un slip de UI.
 const MAX_BATCH_ITEMS = 50
@@ -13,8 +13,8 @@ const CHANNEL_LABEL: Record<Channel, string> = {
   x: 'X', blog: 'Blog', email: 'Email', newsletter: 'Newsletter',
 }
 const MARKET_LABEL: Record<Market, string> = {
-  spain: 'ES', latam: 'LATAM', uk: 'UK', france: 'FR',
-  italy: 'IT', portugal: 'PT', brasil: 'BR',
+  spain: 'ES', latam: 'LATAM', uk: 'INT', france: 'FR',
+  italy: 'IT', portugal: 'PT', brasil: 'BR', mexico: 'MX',
 }
 
 async function requireActor() {

@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { instantiatePlaybook } from '@/lib/playbook-instantiate'
 import type { Market, Profile } from '@/types/database'
 
-const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil']
+const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
 
 async function requireActor() {
   const supabase = await createClient()

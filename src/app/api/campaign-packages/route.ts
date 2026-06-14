@@ -6,7 +6,7 @@ import type {
 } from '@/types/database'
 
 const STATUSES: PackageStatus[] = ['draft', 'active', 'completed', 'cancelled']
-const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil']
+const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
 
 async function requireActor() {
   const supabase = await createClient()

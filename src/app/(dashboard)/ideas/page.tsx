@@ -41,17 +41,18 @@ const CHANNEL_COLORS: Record<Channel, string> = {
 
 const MARKETS: { value: Market; label: string }[] = [
   { value: 'spain',    label: 'España' },
-  { value: 'uk',       label: 'UK' },
+  { value: 'uk',       label: 'Internacional' },
   { value: 'latam',    label: 'LATAM' },
   { value: 'france',   label: 'Francia' },
   { value: 'italy',    label: 'Italia' },
   { value: 'portugal', label: 'Portugal' },
   { value: 'brasil',   label: 'Brasil' },
+  { value: 'mexico',   label: 'México' },
 ]
 
 const MARKET_LABELS: Record<Market, string> = {
-  spain: 'España', uk: 'UK', latam: 'LATAM',
-  france: 'Francia', italy: 'Italia', portugal: 'Portugal', brasil: 'Brasil',
+  spain: 'España', uk: 'Internacional', latam: 'LATAM',
+  france: 'Francia', italy: 'Italia', portugal: 'Portugal', brasil: 'Brasil', mexico: 'México',
 }
 
 const SUGGEST_COUNTS = [3, 5, 10] as const

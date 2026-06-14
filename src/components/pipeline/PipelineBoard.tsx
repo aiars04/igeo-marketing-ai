@@ -59,8 +59,8 @@ function displayStatus(item: ContentItem): { label: string; bg: string; color: s
 const APPROVAL_STAGES: Stage[] = ['approval']
 
 const MARKET_LABEL: Record<string, string> = {
-  spain: 'ES', latam: 'LATAM', uk: 'UK', france: 'FR',
-  italy: 'IT', portugal: 'PT', brasil: 'BR',
+  spain: 'ES', latam: 'LATAM', uk: 'INT', france: 'FR',
+  italy: 'IT', portugal: 'PT', brasil: 'BR', mexico: 'MX',
 }
 
 interface BoardProps {

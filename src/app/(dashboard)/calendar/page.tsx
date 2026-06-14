@@ -118,13 +118,14 @@ function deserializeLegacy(raw: string | null): Event[] {
 }
 
 const PLAYBOOK_MARKETS = [
-  { value: 'spain',    label: '🇪🇸 España'   },
-  { value: 'latam',    label: 'LATAM'        },
-  { value: 'uk',       label: '🇬🇧 UK'       },
-  { value: 'france',   label: '🇫🇷 Francia'  },
-  { value: 'italy',    label: '🇮🇹 Italia'   },
-  { value: 'portugal', label: '🇵🇹 Portugal' },
-  { value: 'brasil',   label: '🇧🇷 Brasil'   },
+  { value: 'spain',    label: '🇪🇸 España'       },
+  { value: 'latam',    label: 'LATAM'            },
+  { value: 'uk',       label: '🌐 Internacional' },
+  { value: 'france',   label: '🇫🇷 Francia'      },
+  { value: 'italy',    label: '🇮🇹 Italia'       },
+  { value: 'portugal', label: '🇵🇹 Portugal'     },
+  { value: 'brasil',   label: '🇧🇷 Brasil'       },
+  { value: 'mexico',   label: '🇲🇽 México'       },
 ]
 
 export default function CalendarPage() {

@@ -6,7 +6,7 @@ import type {
   ContentItem, CampaignPackage,
 } from '@/types/database'
 
-const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil']
+const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
 const PLAYBOOK_TYPES: PlaybookType[] = [
   'webinar', 'event_presential', 'event_online', 'release',
   'newsletter', 'campaign', 'alliance', 'workshop',

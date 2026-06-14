@@ -13,21 +13,25 @@ import type { Market } from '@/types/database'
 export const MARKET_TIMEZONE: Record<Market, string> = {
   spain:    'Europe/Madrid',
   latam:    'America/Bogota',
-  uk:       'Europe/London',
+  // 'uk' se reetiqueta visualmente como "Internacional"; mantenemos el TZ
+  // anclado a UTC para tratarlo como referencia neutra global.
+  uk:       'UTC',
   france:   'Europe/Paris',
   italy:    'Europe/Rome',
   portugal: 'Europe/Lisbon',
   brasil:   'America/Sao_Paulo',
+  mexico:   'America/Mexico_City',
 }
 
 export const MARKET_TZ_LABEL: Record<Market, string> = {
   spain:    'Madrid',
   latam:    'Bogotá',
-  uk:       'Londres',
+  uk:       'UTC',
   france:   'París',
   italy:    'Roma',
   portugal: 'Lisboa',
   brasil:   'São Paulo',
+  mexico:   'Ciudad de México',
 }
 
 export function getMarketTimezone(market: Market | string | null | undefined): string {

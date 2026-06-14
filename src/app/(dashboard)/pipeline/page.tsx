@@ -17,11 +17,11 @@ const CHANNEL_LABELS: Record<Channel, string> = {
   x: 'X / Twitter', blog: 'Blog', email: 'Email', newsletter: 'Newsletter',
 }
 
-const ALL_MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil']
+const ALL_MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
 
 const MARKET_LABELS: Record<Market, string> = {
-  spain: '🇪🇸 España', latam: 'LATAM', uk: '🇬🇧 UK', france: '🇫🇷 Francia',
-  italy: '🇮🇹 Italia', portugal: '🇵🇹 Portugal', brasil: '🇧🇷 Brasil',
+  spain: '🇪🇸 España', latam: 'LATAM', uk: '🌐 Internacional', france: '🇫🇷 Francia',
+  italy: '🇮🇹 Italia', portugal: '🇵🇹 Portugal', brasil: '🇧🇷 Brasil', mexico: '🇲🇽 México',
 }
 
 // ─── StatPill ─────────────────────────────────────────────────────────────────

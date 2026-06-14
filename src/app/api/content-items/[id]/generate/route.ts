@@ -8,11 +8,13 @@ import type { ContentItem, ContentType, BrandContext, Profile, Channel, Market }
 const MARKET_LANG: Record<Market, string> = {
   spain:    'español (España, voseo/tuteo neutro)',
   latam:    'español neutro (LATAM)',
-  uk:       'inglés británico',
+  // `uk` reetiquetado a "Internacional"; usamos inglés como idioma neutro global.
+  uk:       'inglés internacional (neutro, sin regionalismos)',
   france:   'francés',
   italy:    'italiano',
   portugal: 'portugués (Portugal)',
   brasil:   'portugués (Brasil)',
+  mexico:   'español (México, voseo/tuteo neutro mexicano)',
 }
 
 // Auto-router: canales cortos → Flash; canales largos → Pro

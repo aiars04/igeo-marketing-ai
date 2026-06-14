@@ -6,7 +6,7 @@ import type { Idea, Profile, Channel, Market } from '@/types/database'
 
 const ALLOWED_COUNT = [3, 5, 10] as const
 const VALID_CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
-const VALID_MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil']
+const VALID_MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
 
 export const runtime = 'nodejs'
 export const maxDuration = 60

@@ -40,10 +40,10 @@ const TASK_TYPES: { value: PlaybookTaskType; label: string }[] = [
 ]
 
 const CHANNELS: Channel[] = ['linkedin','instagram','facebook','x','blog','email','newsletter']
-const MARKETS: Market[] = ['spain','latam','uk','france','italy','portugal','brasil']
+const MARKETS: Market[] = ['spain','latam','uk','france','italy','portugal','brasil','mexico']
 const MARKET_LABEL: Record<Market, string> = {
-  spain: 'España', latam: 'LATAM', uk: 'Reino Unido', france: 'Francia',
-  italy: 'Italia', portugal: 'Portugal', brasil: 'Brasil',
+  spain: 'España', latam: 'LATAM', uk: 'Internacional', france: 'Francia',
+  italy: 'Italia', portugal: 'Portugal', brasil: 'Brasil', mexico: 'México',
 }
 
 const typeIcon = (t: PlaybookType) => PLAYBOOK_TYPES.find(x => x.value === t)?.icon ?? '📄'

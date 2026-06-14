@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { CalendarEvent, Market, Profile } from '@/types/database'
 
 const EVENT_TYPES = ['presential', 'digital'] as const
-const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil']
+const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
 
 async function requireActor() {
   const supabase = await createClient()

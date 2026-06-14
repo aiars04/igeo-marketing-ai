@@ -35,13 +35,22 @@ export const CHANNEL_CONFIG: Record<Channel, { label: string; color: string; ico
 }
 
 export const MARKET_CONFIG: Record<Market, { label: string; flag: string; abbr?: string }> = {
-  spain:    { label: 'España',   flag: '🇪🇸' },
-  latam:    { label: 'LATAM',    flag: '', abbr: 'LTM' },
-  uk:       { label: 'UK',       flag: '🇬🇧' },
-  france:   { label: 'Francia',  flag: '🇫🇷' },
-  italy:    { label: 'Italia',   flag: '🇮🇹' },
-  portugal: { label: 'Portugal', flag: '🇵🇹' },
-  brasil:   { label: 'Brasil',   flag: '🇧🇷' },
+  spain:    { label: 'España',        flag: '🇪🇸' },
+  latam:    { label: 'LATAM',         flag: '',   abbr: 'LTM' },
+  // El slug interno sigue siendo `uk` por compatibilidad con datos existentes,
+  // pero conceptualmente el usuario lo trata como "mercado internacional".
+  uk:       { label: 'Internacional', flag: '🌐', abbr: 'INT' },
+  france:   { label: 'Francia',       flag: '🇫🇷' },
+  italy:    { label: 'Italia',        flag: '🇮🇹' },
+  portugal: { label: 'Portugal',      flag: '🇵🇹' },
+  brasil:   { label: 'Brasil',        flag: '🇧🇷' },
+  mexico:   { label: 'México',        flag: '🇲🇽' },
 }
+
+// Orden canónico para listados/filtros. Importa desde aquí para garantizar que
+// añadir un mercado nuevo solo requiere tocar Market type + MARKET_CONFIG + esto.
+export const ALL_MARKETS: Market[] = [
+  'spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico',
+]
 
 export const STAGES: Stage[] = ['ideas', 'copy', 'design', 'approval', 'scheduled', 'analyzed']
