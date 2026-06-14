@@ -1207,10 +1207,23 @@ function Card({
         }
       }}
     >
-      {/* ── Fila superior: badge canal + (icono imagen) + ES + status dot + menu ── */}
+      {/* ── Fila superior: canal + mercado (izq) · imagen + menú (der) ── */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <ChannelBadge channel={item.channel as Channel} />
+          <span
+            className="shrink-0"
+            style={{
+              fontSize: 11,
+              color: 'var(--ink-3)',
+              fontWeight: 600,
+              letterSpacing: '0.02em',
+            }}
+          >
+            {MARKET_LABEL[item.market] ?? item.market.toUpperCase()}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
           {hasImage && (
             <span
               className="inline-flex items-center justify-center shrink-0"
@@ -1227,42 +1240,6 @@ function Card({
               <ImageIcon size={11} aria-hidden="true" />
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span
-            style={{
-              fontSize: 11,
-              color: 'var(--ink-3)',
-              fontWeight: 500,
-            }}
-          >
-            {MARKET_LABEL[item.market] ?? item.market.toUpperCase()}
-          </span>
-          {(() => {
-            const ds = displayStatus(item)
-            return (
-              <span
-                className="inline-flex items-center shrink-0"
-                style={{
-                  height: 18,
-                  padding: '0 7px',
-                  gap: 4,
-                  borderRadius: 'var(--radius-pill)',
-                  fontSize: 10,
-                  fontWeight: 600,
-                  lineHeight: 1,
-                  letterSpacing: '0.01em',
-                  whiteSpace: 'nowrap',
-                  background: ds.bg,
-                  color: ds.color,
-                  border: ds.border,
-                }}
-                aria-label={`Estado: ${ds.label}`}
-              >
-                {ds.label}
-              </span>
-            )
-          })()}
           <div onClick={e => e.stopPropagation()}>
             <CardMenu item={item} onMove={onMove} />
           </div>
@@ -1297,84 +1274,84 @@ function Card({
         )}
       </h3>
 
-      {/* ── Fila inferior — solo si hay autor aprobado o fecha programada ── */}
-      {(initials || item.scheduled_at) && (
-        <div
-          className="flex items-center justify-between gap-3"
-          style={{ marginTop: 8 }}
-        >
-          {/* Avatar+nombre del responsable */}
-          {initials ? (
-            <div className="flex items-center gap-2 min-w-0">
-              <div
-                className="shrink-0 flex items-center justify-center rounded-full"
-                style={{
-                  width: 22, height: 22,
-                  fontSize: 10, fontWeight: 700,
-                  color: 'var(--green-2)',
-                  background: 'var(--green-soft)',
-                  border: '1px solid var(--green-border)',
-                }}
-              >
-                {initials}
-              </div>
-              <span style={{ fontSize: 12, color: 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {approverName}
-              </span>
-            </div>
-          ) : (
-            <div />
-          )}
-
-          {/* Chip "Aprobado" — pill verde Apple */}
-          {item.human_approved && (
+      {/* ── Fila meta: estado (izq) · autor aprobado o fecha (der) ── */}
+      <div
+        className="flex items-center justify-between gap-2"
+        style={{ marginTop: 8 }}
+      >
+        {/* Estado — única fuente de verdad (ya no se duplica abajo) */}
+        {(() => {
+          const ds = displayStatus(item)
+          return (
             <span
               className="inline-flex items-center shrink-0"
               style={{
-                gap: 4,
                 height: 20,
-                padding: '0 8px',
-                fontSize: 11,
-                fontWeight: 500,
+                padding: '0 9px',
+                gap: 4,
                 borderRadius: 'var(--radius-pill)',
+                fontSize: 11,
+                fontWeight: 600,
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+                background: ds.bg,
+                color: ds.color,
+                border: ds.border,
+              }}
+              aria-label={`Estado: ${ds.label}`}
+            >
+              {ds.label}
+            </span>
+          )
+        })()}
+
+        {/* Derecha: autor que aprobó (si lo hay) o fecha programada */}
+        {initials ? (
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div
+              className="shrink-0 flex items-center justify-center rounded-full"
+              style={{
+                width: 20, height: 20,
+                fontSize: 9, fontWeight: 700,
                 color: 'var(--green-2)',
                 background: 'var(--green-soft)',
                 border: '1px solid var(--green-border)',
-                lineHeight: 1,
-                whiteSpace: 'nowrap',
               }}
+              title={approverName}
             >
-              <CheckCheck size={11} aria-hidden="true" /> Aprobado
+              {initials}
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {approverName}
             </span>
-          )}
-
-          {/* Fecha programada — pill ámbar Apple */}
-          {item.scheduled_at && !item.human_approved && (
-            <span
-              className="inline-flex items-center shrink-0"
-              style={{
-                gap: 5,
-                height: 20,
-                padding: '0 8px',
-                fontSize: 11,
-                fontWeight: 500,
-                borderRadius: 'var(--radius-pill)',
-                color: 'var(--amber-2)',
-                background: 'var(--amber-soft)',
-                border: '1px solid var(--amber-border)',
-                lineHeight: 1,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <Calendar size={10} aria-hidden="true" />
-              {new Intl.DateTimeFormat('es-ES', {
-                timeZone: getMarketTimezone(item.market as Market),
-                day: '2-digit', month: 'short',
-              }).format(new Date(item.scheduled_at))}
-            </span>
-          )}
-        </div>
-      )}
+          </div>
+        ) : item.scheduled_at ? (
+          <span
+            className="inline-flex items-center shrink-0"
+            style={{
+              gap: 5,
+              height: 20,
+              padding: '0 8px',
+              fontSize: 11,
+              fontWeight: 500,
+              borderRadius: 'var(--radius-pill)',
+              color: 'var(--amber-2)',
+              background: 'var(--amber-soft)',
+              border: '1px solid var(--amber-border)',
+              lineHeight: 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Calendar size={10} aria-hidden="true" />
+            {new Intl.DateTimeFormat('es-ES', {
+              timeZone: getMarketTimezone(item.market as Market),
+              day: '2-digit', month: 'short',
+            }).format(new Date(item.scheduled_at))}
+          </span>
+        ) : (
+          <span />
+        )}
+      </div>
 
       {/* ── Acciones por stage ── */}
       {!isRejected && needsApproval && (
