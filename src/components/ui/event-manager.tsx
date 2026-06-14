@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useMemo, useEffect, useRef, Fragment } from "react"
+import { createPortal } from "react-dom"
 import {
   Select,
   SelectContent,
@@ -1701,25 +1702,55 @@ const TOOLTIP_CHANNEL_COLORS: Record<string, { text: string; border: string; bg:
   facebook:   { text: '#0071e3', border: 'rgba(0,113,227,0.2)',   bg: 'rgba(0,113,227,0.07)'   },
 }
 
+const TOOLTIP_W = 288
+const TOOLTIP_EST_H = 180   // alto estimado para decidir si abre arriba o abajo
+
 function EventTooltip({
   event,
   formatTime,
   getDuration,
+  anchorRect,
 }: {
   event: Event
   formatTime: (d: Date) => string
   getDuration: () => string
+  anchorRect: DOMRect | null
 }) {
+  const [mounted, setMounted] = useState(false)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setMounted(true) }, [])
+
+  if (!mounted || !anchorRect || typeof document === 'undefined') return null
+
+  // Posicionamiento: portal con position: fixed para que NO lo recorte el
+  // overflow:hidden de la celda del calendario. Abre hacia abajo si cabe;
+  // si no, hacia arriba para no salirse por el fondo del viewport.
+  const spaceBelow = window.innerHeight - anchorRect.bottom
+  const spaceAbove = anchorRect.top
+  const openUp = spaceBelow < TOOLTIP_EST_H + 12 && spaceAbove > spaceBelow
+
+  // Clamp horizontal para no salirse por el lateral del viewport.
+  const rawLeft = anchorRect.left
+  const left = Math.max(8, Math.min(rawLeft, window.innerWidth - TOOLTIP_W - 8))
+
+  const positionStyle: React.CSSProperties = openUp
+    ? { position: 'fixed', left, bottom: window.innerHeight - anchorRect.top + 4 }
+    : { position: 'fixed', left, top: anchorRect.bottom + 4 }
+
   const dotColor = EVENT_STYLES[event.color]?.text ?? 'var(--ink-3)'
 
-  return (
-    <div className="absolute left-0 top-full z-50 mt-1" style={{ width: 288, minWidth: 240 }}>
+  return createPortal(
+    <div
+      role="tooltip"
+      className="pointer-events-none animate-fade-in"
+      style={{ ...positionStyle, zIndex: 60, width: TOOLTIP_W, minWidth: 240 }}
+    >
       <div
         style={{
           background: 'var(--surface)',
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-md)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
           padding: 12,
           display: 'flex',
           flexDirection: 'column',
@@ -1813,7 +1844,8 @@ function EventTooltip({
           </p>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -1833,8 +1865,21 @@ function EventCard({
   variant?: "default" | "compact" | "detailed"
 }) {
   const [isHovered, setIsHovered] = useState(false)
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null)
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const colorClasses = getColorClasses(event.color)
+
+  /** Captura el rect del wrapper al entrar; el tooltip lo usa para anclarse. */
+  const handleMouseEnter = useCallback(() => {
+    setIsHovered(true)
+    const r = wrapperRef.current?.getBoundingClientRect()
+    setAnchorRect(r ?? null)
+  }, [])
+  const handleMouseLeave = useCallback(() => {
+    setIsHovered(false)
+    setAnchorRect(null)
+  }, [])
 
   const formatTime = (date: Date) =>
     date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
@@ -1852,12 +1897,13 @@ function EventCard({
   if (variant === "compact") {
     return (
       <div
+        ref={wrapperRef}
         draggable
         onDragStart={() => onDragStart(event)}
         onDragEnd={onDragEnd}
         onClick={(e) => { e.stopPropagation(); onEventClick(event) }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         className="relative cursor-pointer"
       >
         <div
@@ -1877,7 +1923,7 @@ function EventCard({
           {event.title}
         </div>
         {isHovered && (
-          <EventTooltip event={event} formatTime={formatTime} getDuration={getDuration} />
+          <EventTooltip event={event} formatTime={formatTime} getDuration={getDuration} anchorRect={anchorRect} />
         )}
       </div>
     )
@@ -1886,12 +1932,13 @@ function EventCard({
   if (variant === "detailed") {
     return (
       <div
+        ref={wrapperRef}
         draggable
         onDragStart={() => onDragStart(event)}
         onDragEnd={onDragEnd}
         onClick={(e) => { e.stopPropagation(); onEventClick(event) }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         className={cn("cursor-pointer transition-all duration-200", isHovered && "shadow-md")}
         style={{
           borderRadius: "var(--radius-md)",
@@ -1955,12 +2002,13 @@ function EventCard({
 
   return (
     <div
+      ref={wrapperRef}
       draggable
       onDragStart={() => onDragStart(event)}
       onDragEnd={onDragEnd}
       onClick={() => onEventClick(event)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className="relative"
     >
       <div
@@ -1978,7 +2026,7 @@ function EventCard({
         <div className="truncate">{event.title}</div>
       </div>
       {isHovered && (
-        <EventTooltip event={event} formatTime={formatTime} getDuration={getDuration} />
+        <EventTooltip event={event} formatTime={formatTime} getDuration={getDuration} anchorRect={anchorRect} />
       )}
     </div>
   )
