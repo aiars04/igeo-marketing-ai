@@ -223,6 +223,24 @@ export interface Improvement {
   updated_at:        string
 }
 
+// ─── Repositorio de menciones sociales ───────────────────────────────────
+
+// Handle por canal — puede ser un @user, una URL completa o un id de cuenta.
+// El frontend normaliza al insertar en un post (p.ej. añade @ si falta).
+export type SocialMentionHandles = Partial<Record<Channel, string>>
+
+export interface SocialMention {
+  id:          string
+  name:        string
+  description: string | null
+  handles:     SocialMentionHandles
+  tags:        string[]
+  active:      boolean
+  created_by:  string | null
+  created_at:  string
+  updated_at:  string
+}
+
 // ─── Fase 3: SEO Intelligence ────────────────────────────────────────────
 
 export type SeoIntent = 'informational' | 'commercial' | 'transactional' | 'navigational'

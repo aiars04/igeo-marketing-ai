@@ -13,6 +13,7 @@ import { ChannelBadge } from '@/components/ui/ChannelBadge'
 import { Modal } from '@/components/ui/Modal'
 import { ImageDrivePanel } from '@/components/pipeline/ImageDrivePanel'
 import { ExportContentMenu } from '@/components/pipeline/ExportContentMenu'
+import { MentionPicker } from '@/components/pipeline/MentionPicker'
 import {
   getMarketTimezone, MARKET_TZ_LABEL, marketLocalToUtcISO, utcISOToMarketLocal, formatInTimezone,
 } from '@/lib/market-timezones'
@@ -326,6 +327,37 @@ function ContentDetailModal({
   const [savingContent, setSavingContent] = useState(false)
   const [confirmRegenerate, setConfirmRegenerate] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
+  // Ref al textarea para insertar @menciones en la posición del cursor.
+  const contentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  /**
+   * Inserta `text` en la posición actual del caret del textarea de contenido.
+   * Si no hay caret (textarea sin foco), añade al final con un separador.
+   * Reposiciona el caret justo después del texto insertado.
+   */
+  const insertIntoContent = useCallback((text: string) => {
+    const ta = contentTextareaRef.current
+    if (!ta) {
+      setEditContent(prev => prev + (prev.endsWith(' ') || prev.length === 0 ? '' : ' ') + text)
+      return
+    }
+    const start = ta.selectionStart ?? ta.value.length
+    const end   = ta.selectionEnd ?? ta.value.length
+    const before = ta.value.slice(0, start)
+    const after  = ta.value.slice(end)
+    // Asegura un espacio antes/después si no lo hay para que la mención no quede pegada.
+    const needsLead  = before.length > 0 && !/\s$/.test(before)
+    const needsTrail = after.length > 0 && !/^\s/.test(after)
+    const insertion  = `${needsLead ? ' ' : ''}${text}${needsTrail ? ' ' : ''}`
+    const next = before + insertion + after
+    setEditContent(next)
+    // Reposicionar caret tras el texto insertado en el siguiente tick (post-render).
+    const caretPos = before.length + insertion.length
+    requestAnimationFrame(() => {
+      ta.focus()
+      try { ta.setSelectionRange(caretPos, caretPos) } catch {}
+    })
+  }, [])
 
   // ── Edición de título inline ──────────────────────────────────────────────
   // Útil sobre todo para items ya programados/publicados, donde antes el título
@@ -790,6 +822,7 @@ function ContentDetailModal({
           /* Textarea editable + botones */
           <div className="flex flex-col gap-2">
             <textarea
+              ref={contentTextareaRef}
               value={editContent}
               onChange={e => setEditContent(e.target.value)}
               rows={12}
@@ -848,6 +881,13 @@ function ContentDetailModal({
                       channel: item.channel,
                       authorName: resolveUserName(item.approved_by, profilesById) || undefined,
                     }}
+                  />
+                )}
+                {/* Insertar @mención del repositorio de perfiles */}
+                {!confirmRegenerate && (
+                  <MentionPicker
+                    channel={item.channel as Channel}
+                    onInsert={insertIntoContent}
                   />
                 )}
               </div>
