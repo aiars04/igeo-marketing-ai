@@ -1024,7 +1024,7 @@ export default function AdminPage() {
 
       {/* ─── Tab bar ─── */}
       <div
-        className="flex items-center gap-1 px-6 shrink-0"
+        className="flex items-center gap-1 px-6 shrink-0 overflow-x-auto"
         style={{
           borderBottom: '1px solid var(--border)',
           paddingTop: 6,
@@ -1056,6 +1056,8 @@ export default function AdminPage() {
                 borderBottom: `2px solid ${active ? 'var(--accent)' : 'transparent'}`,
                 cursor: 'pointer',
                 marginBottom: -1,
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
                 transition: 'color 0.12s ease, border-color 0.12s ease',
               }}
             >

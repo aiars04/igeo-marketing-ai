@@ -75,11 +75,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     .returns<ContentType[]>()
   const ct = ctRows?.[0] ?? null
 
-  // 4b) Cargar brand_context: bloques relevantes para canal + mercado del item
-  const marketBlockKey =
-    item.market === 'spain' || item.market === 'latam' ? 'market_spain_latam'
-    : item.market === 'uk' ? 'market_uk'
-    : null
+  // 4b) Cargar brand_context: bloques relevantes para canal + mercado del item.
+  // spain y latam comparten bloque; el resto tiene el suyo (market_<slug>).
+  const MARKET_BLOCK: Record<Market, string> = {
+    spain:    'market_spain_latam',
+    latam:    'market_spain_latam',
+    uk:       'market_uk',
+    france:   'market_france',
+    italy:    'market_italy',
+    portugal: 'market_portugal',
+    brasil:   'market_brasil',
+    mexico:   'market_mexico',
+  }
+  const marketBlockKey: string | null = MARKET_BLOCK[item.market as Market] ?? null
 
   const channelBlockKey = `channel_${item.channel}` // channel_linkedin, channel_instagram, ...
 

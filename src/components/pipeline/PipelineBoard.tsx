@@ -43,16 +43,18 @@ const STAGE_ICONS: Record<Stage, LucideIcon> = {
 // Estado visible (texto + color) según status + human_approved.
 // Prioridad: rejected > approved > in_progress > pending.
 function displayStatus(item: ContentItem): { label: string; bg: string; color: string; border: string } {
+  // Colores de texto OSCUROS y saturados: la app es light mode, así que los
+  // chips usan fondo translúcido claro + texto oscuro para cumplir contraste (WCAG AA).
   if (item.status === 'rejected') {
-    return { label: 'Rechazado', bg: 'rgba(239,68,68,0.10)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.30)' }
+    return { label: 'Rechazado', bg: 'rgba(239,68,68,0.12)', color: '#c0392b', border: '1px solid rgba(239,68,68,0.30)' }
   }
   if (item.human_approved) {
-    return { label: 'Aprobado', bg: 'rgba(16,185,129,0.12)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.30)' }
+    return { label: 'Aprobado', bg: 'rgba(16,185,129,0.14)', color: '#1a7a36', border: '1px solid rgba(16,185,129,0.32)' }
   }
   if (item.status === 'in_progress') {
-    return { label: 'En revisión', bg: 'rgba(245,158,11,0.12)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.30)' }
+    return { label: 'En revisión', bg: 'rgba(245,158,11,0.14)', color: '#b25000', border: '1px solid rgba(245,158,11,0.32)' }
   }
-  return { label: 'Pendiente', bg: 'rgba(107,114,128,0.14)', color: '#cbd5e1', border: '1px solid rgba(107,114,128,0.32)' }
+  return { label: 'Pendiente', bg: 'rgba(107,114,128,0.14)', color: '#4b5563', border: '1px solid rgba(107,114,128,0.32)' }
 }
 
 // Solo en la etapa 'approval' se marca human_approved=true. En el resto (ideas/copy/design)
@@ -138,9 +140,9 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
 
       {mounted && pos && createPortal(
         <>
-          <div className="fixed inset-0 z-[9998]" onClick={e => { e.stopPropagation(); setPos(null) }} />
+          <div className="fixed inset-0 z-[60]" onClick={e => { e.stopPropagation(); setPos(null) }} />
           <div
-            className="fixed z-[9999] rounded-[var(--radius-md)] py-2 animate-scale-in min-w-[220px]"
+            className="fixed z-[61] rounded-[var(--radius-md)] py-2 animate-scale-in min-w-[220px]"
             style={{
               top: pos.top, right: pos.right,
               background: 'var(--surface)',
@@ -400,19 +402,34 @@ function ContentDetailModal({
   const [editScheduledAt, setEditScheduledAt] = useState<string>(
     () => utcISOToMarketLocal(item.scheduled_at, itemMarket),
   )
+  const [scheduledError, setScheduledError] = useState<string | null>(null)
 
   const handleSaveScheduledAt = useCallback(async (val: string) => {
+    setScheduledError(null)
     const isoVal = marketLocalToUtcISO(val, itemMarket)
+    // Si el usuario escribió una fecha que no se puede interpretar, avisamos
+    // en vez de guardar null silenciosamente.
+    if (val && isoVal === null) {
+      setScheduledError('Fecha no válida')
+      return
+    }
     const current = item.scheduled_at ?? null
     if (isoVal === current) return
-    const res = await fetch(`/api/content-items/${item.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scheduled_at: isoVal }),
-    }).catch(() => null)
-    if (res?.ok) {
+    try {
+      const res = await fetch(`/api/content-items/${item.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduled_at: isoVal }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setScheduledError(j.error ?? `HTTP ${res.status}`)
+        return
+      }
       const updated = await res.json() as ContentItem
       onItemUpdated?.(updated)
       window.dispatchEvent(new CustomEvent('pipeline:changed'))
+    } catch (e) {
+      setScheduledError(e instanceof Error ? e.message : 'Error de red')
     }
   }, [item.id, item.scheduled_at, itemMarket, onItemUpdated])
 
@@ -435,6 +452,7 @@ function ContentDetailModal({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setEditScheduledAt(utcISOToMarketLocal(item.scheduled_at, itemMarket))
+    setScheduledError(null)
   }, [item.id, item.scheduled_at, itemMarket])
 
   const canGenerate = item.stage === 'ideas' || item.stage === 'copy'
@@ -768,6 +786,11 @@ function ContentDetailModal({
                 </p>
               )
             })()}
+            {scheduledError && (
+              <p style={{ fontSize: 11, color: 'var(--red-2)', marginTop: 6, lineHeight: 1.4 }}>
+                No se pudo guardar la fecha: {scheduledError}
+              </p>
+            )}
           </MetaRow>
         </div>
       </div>

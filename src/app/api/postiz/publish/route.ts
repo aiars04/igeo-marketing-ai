@@ -15,8 +15,10 @@ function isAllowedImageUrl(url: string): boolean {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     if (!supabaseUrl) return false
     const supabaseHost = new URL(supabaseUrl).host
-    // Solo aceptamos URLs de nuestro Supabase Storage público
-    return u.host === supabaseHost && u.pathname.includes('/storage/v1/object/public/')
+    if (u.host !== supabaseHost) return false
+    // El pathname DEBE EMPEZAR por la ruta de storage público — no basta con
+    // includes() (que se puede burlar con query strings o path traversal).
+    return /^\/storage\/v1\/object\/public\//.test(u.pathname)
   } catch {
     return false
   }
@@ -96,8 +98,9 @@ export async function POST(req: NextRequest) {
         const media = await postizUploadFromUrl(imageUrl)
         postizImagePath = media.path
       } catch (imgErr) {
-        // No bloqueamos la publicación si falla la imagen — lo logamos y continuamos sin ella
-        console.warn('[postiz/publish] No se pudo subir la imagen:', imgErr)
+        // No bloqueamos la publicación si falla la imagen — logamos solo el
+        // mensaje (no el objeto completo, que podría arrastrar URLs/tokens internos).
+        console.warn('[postiz/publish] No se pudo subir la imagen:', imgErr instanceof Error ? imgErr.message : String(imgErr))
       }
     }
 

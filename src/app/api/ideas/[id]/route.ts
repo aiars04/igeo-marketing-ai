@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import type { Idea, Profile } from '@/types/database'
+import type { Idea, Profile, Channel, Market } from '@/types/database'
 
 const STATUSES: Idea['status'][] = ['pending', 'accepted', 'rejected', 'converted']
+const CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
+const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
 
 async function requireActor() {
   const supabase = await createClient()
@@ -38,8 +40,18 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   }
   if (body.title !== undefined) patch.title = body.title
   if (body.description !== undefined) patch.description = body.description
-  if (body.channel !== undefined) patch.channel = body.channel
-  if (body.market !== undefined) patch.market = body.market
+  if (body.channel !== undefined) {
+    if (body.channel !== null && !CHANNELS.includes(body.channel)) {
+      return NextResponse.json({ error: 'invalid_channel' }, { status: 400 })
+    }
+    patch.channel = body.channel
+  }
+  if (body.market !== undefined) {
+    if (!MARKETS.includes(body.market)) {
+      return NextResponse.json({ error: 'invalid_market' }, { status: 400 })
+    }
+    patch.market = body.market
+  }
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'no_changes' }, { status: 400 })

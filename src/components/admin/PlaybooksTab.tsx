@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Plus, Pencil, Trash2, Play, Loader2, X,
-  GripVertical, ToggleLeft, ToggleRight,
-  BookOpen, Calendar, Layers,
+  Plus, Pencil, Trash2, Play, Loader2,
+  ToggleLeft, ToggleRight,
+  BookOpen,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import type {
@@ -48,7 +48,6 @@ const MARKET_LABEL: Record<Market, string> = {
 
 const typeIcon = (t: PlaybookType) => PLAYBOOK_TYPES.find(x => x.value === t)?.icon ?? '📄'
 const typeLabel = (t: PlaybookType) => PLAYBOOK_TYPES.find(x => x.value === t)?.label ?? t
-const taskLabel = (t: PlaybookTaskType) => TASK_TYPES.find(x => x.value === t)?.label ?? t
 
 interface PlaybookWithSteps extends Playbook {
   steps?: PlaybookStep[]
@@ -84,6 +83,7 @@ export function PlaybooksTab({
     }
   }, [toast])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [load])
 
   const handleToggleActive = async (pb: Playbook) => {
@@ -441,6 +441,7 @@ function PlaybookDetailModal({
     }
   }, [playbookId])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [load])
 
   const handleSaveMeta = async (patch: Partial<Playbook>) => {

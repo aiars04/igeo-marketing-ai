@@ -46,14 +46,20 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
-  // Si va a asignar, verificar que el ítem exista
+  // Si va a asignar, verificar que el ítem exista Y que el usuario tenga
+  // permiso sobre él (dueño o admin/manager). Si no, un usuario podría adjuntar
+  // imágenes a content_items de otros.
   if (contentItemId) {
     const { data: item } = await admin
       .from('content_items')
-      .select('id')
+      .select('id, created_by')
       .eq('id', contentItemId)
-      .single<{ id: string }>()
+      .single<{ id: string; created_by: string | null }>()
     if (!item) return NextResponse.json({ error: 'content_item_not_found' }, { status: 404 })
+    const itemOwner = item.created_by === me.id
+    if (!itemOwner && !isPriv) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+    }
   }
 
   const { error } = await admin

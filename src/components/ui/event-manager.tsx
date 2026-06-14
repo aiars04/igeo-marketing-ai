@@ -514,16 +514,23 @@ export function EventManager({
     if (!playbookFlow || !onPlaybookInstantiate) return
     if (!playbookFlow.title.trim()) return
     setPlaybookFlow(prev => prev ? { ...prev, submitting: true, error: null } : prev)
-    const res = await onPlaybookInstantiate(playbookFlow.playbook.id, {
-      title: playbookFlow.title.trim(),
-      anchor_date: playbookFlow.anchorDate.toISOString(),
-      market: playbookFlow.market || undefined,
-      objective: playbookFlow.objective.trim() || undefined,
-    })
-    if (res.ok) {
-      closeDialog()
-    } else {
-      setPlaybookFlow(prev => prev ? { ...prev, submitting: false, error: res.error ?? 'error' } : prev)
+    try {
+      const res = await onPlaybookInstantiate(playbookFlow.playbook.id, {
+        title: playbookFlow.title.trim(),
+        anchor_date: playbookFlow.anchorDate.toISOString(),
+        market: playbookFlow.market || undefined,
+        objective: playbookFlow.objective.trim() || undefined,
+      })
+      if (res.ok) {
+        closeDialog()
+      } else {
+        setPlaybookFlow(prev => prev ? { ...prev, submitting: false, error: res.error ?? 'error' } : prev)
+      }
+    } catch (e) {
+      // Si onPlaybookInstantiate rechaza (error de red, etc.), liberamos el botón
+      // y mostramos el error en vez de dejar submitting bloqueado para siempre.
+      const msg = e instanceof Error ? e.message : 'Error de red'
+      setPlaybookFlow(prev => prev ? { ...prev, submitting: false, error: msg } : prev)
     }
   }
 

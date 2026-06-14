@@ -7,6 +7,11 @@ import type {
 
 const STATUSES: PackageStatus[] = ['draft', 'active', 'completed', 'cancelled']
 const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
+const PLAYBOOK_TYPES: PlaybookType[] = [
+  'webinar', 'event_presential', 'event_online', 'release',
+  'newsletter', 'campaign', 'alliance', 'workshop',
+  'lead_magnet', 'reactivation', 'podcast',
+]
 
 async function requireActor() {
   const supabase = await createClient()
@@ -107,8 +112,15 @@ export async function POST(req: NextRequest) {
 
   const packageType = body.package_type as PlaybookType
   if (!packageType) return NextResponse.json({ error: 'package_type_required' }, { status: 400 })
+  if (!PLAYBOOK_TYPES.includes(packageType)) {
+    return NextResponse.json({ error: 'invalid_package_type' }, { status: 400 })
+  }
 
-  const market: Market = (body.market && MARKETS.includes(body.market)) ? body.market : 'spain'
+  // Rechazar market inválido explícitamente (antes hacía fallback silencioso a 'spain')
+  if (body.market && !MARKETS.includes(body.market)) {
+    return NextResponse.json({ error: 'invalid_market' }, { status: 400 })
+  }
+  const market: Market = body.market ?? 'spain'
 
   const insertRow = {
     title,

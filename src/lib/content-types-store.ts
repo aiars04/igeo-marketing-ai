@@ -33,9 +33,6 @@ function fromDb(db: DbContentType): ContentType {
   }
 }
 
-/* ─── Defaults (fallback solo si la API falla) ─── */
-export const DEFAULT_CONTENT_TYPES: ContentType[] = []
-
 /* ─── Hook ─── */
 export function useContentTypes() {
   const [types, setTypes] = useState<ContentType[]>([])

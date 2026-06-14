@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import type { CalendarEvent, Market, Profile } from '@/types/database'
+import type { CalendarEvent, Market, Channel, Profile } from '@/types/database'
 
 const EVENT_TYPES = ['presential', 'digital'] as const
 const MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
+const CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
 
 async function requireActor() {
   const supabase = await createClient()
@@ -70,9 +71,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_event_type' }, { status: 400 })
   }
 
-  // Validar market si está presente (solo para eventos digitales)
+  // Validar market y channel si están presentes (solo para eventos digitales)
   if (eventType === 'digital' && body.market && !MARKETS.includes(body.market as Market)) {
     return NextResponse.json({ error: 'invalid_market' }, { status: 400 })
+  }
+  if (eventType === 'digital' && body.channel && !CHANNELS.includes(body.channel as Channel)) {
+    return NextResponse.json({ error: 'invalid_channel' }, { status: 400 })
   }
 
   // Validar fechas
@@ -80,6 +84,9 @@ export async function POST(req: NextRequest) {
   const endDate = new Date(body.end_time)
   if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
     return NextResponse.json({ error: 'invalid_dates' }, { status: 400 })
+  }
+  if (startDate > endDate) {
+    return NextResponse.json({ error: 'start_after_end' }, { status: 400 })
   }
 
   const insertRow = {

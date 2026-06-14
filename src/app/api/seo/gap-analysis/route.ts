@@ -84,6 +84,10 @@ export async function POST(req: NextRequest) {
   if (!profile || !profile.active) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
+  // Gemini Pro (modelo costoso) → solo admin/manager
+  if (profile.role !== 'admin' && profile.role !== 'manager') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
 
   let body: { market?: Market; channel?: Channel }
   try { body = await req.json() } catch { body = {} }

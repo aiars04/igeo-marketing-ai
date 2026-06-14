@@ -21,7 +21,12 @@ const KEY_META: Record<string, { label: string; group: string; icon: typeof Comp
   channel_newsletter:  { label: 'Guía Newsletter',            group: 'Canales',   icon: Hash       },
   channel_x:           { label: 'Guía X (Twitter)',           group: 'Canales',   icon: Hash       },
   market_spain_latam:  { label: 'Mercado España y LATAM',     group: 'Mercados',  icon: Globe2     },
-  market_uk:           { label: 'Mercado UK',                 group: 'Mercados',  icon: Globe2     },
+  market_uk:           { label: 'Mercado Internacional',      group: 'Mercados',  icon: Globe2     },
+  market_france:       { label: 'Mercado Francia',            group: 'Mercados',  icon: Globe2     },
+  market_italy:        { label: 'Mercado Italia',             group: 'Mercados',  icon: Globe2     },
+  market_portugal:     { label: 'Mercado Portugal',           group: 'Mercados',  icon: Globe2     },
+  market_brasil:       { label: 'Mercado Brasil',             group: 'Mercados',  icon: Globe2     },
+  market_mexico:       { label: 'Mercado México',             group: 'Mercados',  icon: Globe2     },
 }
 
 const GROUP_ORDER = ['Marca', 'Canales', 'Mercados']

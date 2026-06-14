@@ -67,6 +67,8 @@ export function ImageDrivePanel({
   // Post-generation variants/curated selection
   const [variants, setVariants]         = useState<ImageAsset[] | null>(null)
   const [assigningId, setAssigningId]   = useState<string | null>(null)
+  // Error de asignar/quitar imagen (panel principal, distinto de genError del modal)
+  const [actionError, setActionError]   = useState<string | null>(null)
 
   // Bank picker: elegir imagen del banco existente o subir una nueva propia
   const [bankPickerOpen, setBankPickerOpen] = useState(false)
@@ -109,21 +111,30 @@ export function ImageDrivePanel({
   // ── Asignar una imagen al content_item ───────────────────────────────────
   const assignAsset = useCallback(async (assetId: string, url: string) => {
     setAssigningId(assetId)
+    setActionError(null)
     try {
-      // Desasignar la previa si era distinta
+      // Desasignar la previa si era distinta. Si falla no bloqueamos la nueva
+      // asignación, pero sí lo registramos en consola (antes se tragaba en silencio).
       if (assignedImageId && assignedImageId !== assetId) {
-        fetch(`/api/images/${assignedImageId}`, {
+        await fetch(`/api/images/${assignedImageId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content_item_id: null }),
-        }).catch(() => {})
+        }).catch((e) => { console.warn('[ImageDrivePanel] no se pudo desasignar la imagen previa:', e) })
       }
-      await fetch(`/api/images/${assetId}`, {
+      const res = await fetch(`/api/images/${assetId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content_item_id: itemId }),
       })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setActionError(`No se pudo asignar la imagen: ${j.error ?? `HTTP ${res.status}`}`)
+        return
+      }
       onAssigned(assetId, url)
+    } catch (e) {
+      setActionError(e instanceof Error ? `No se pudo asignar la imagen: ${e.message}` : 'No se pudo asignar la imagen')
     } finally {
       setAssigningId(null)
     }
@@ -139,13 +150,21 @@ export function ImageDrivePanel({
   const handleUnassign = useCallback(async () => {
     if (!assignedImageId) return
     setUnassigning(true)
+    setGenError(null)
     try {
-      await fetch(`/api/images/${assignedImageId}`, {
+      const res = await fetch(`/api/images/${assignedImageId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content_item_id: null }),
       })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setActionError(`No se pudo quitar la imagen: ${j.error ?? `HTTP ${res.status}`}`)
+        return
+      }
       onUnassigned()
+    } catch (e) {
+      setActionError(e instanceof Error ? `No se pudo quitar la imagen: ${e.message}` : 'No se pudo quitar la imagen')
     } finally {
       setUnassigning(false)
     }
@@ -505,6 +524,10 @@ export function ImageDrivePanel({
           </button>
         </div>
 
+        {actionError && (
+          <p style={{ fontSize: 12, color: 'var(--red-2)', marginTop: 8 }}>{actionError}</p>
+        )}
+
         {/* Modal de generación (regenerar) */}
         <GenerationModal
           open={genModalOpen}
@@ -559,6 +582,9 @@ export function ImageDrivePanel({
       <p style={{ fontSize: 11, color: 'var(--ink-3)' }}>
         Nano Banana 2 para el canal <strong>{channel}</strong> · 4 ratios · 3 modos · o sube/elige una propia
       </p>
+      {actionError && (
+        <p style={{ fontSize: 12, color: 'var(--red-2)' }}>{actionError}</p>
+      )}
 
       {/* Modal de generación */}
       <GenerationModal

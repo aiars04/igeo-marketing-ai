@@ -25,7 +25,10 @@
   /* ── Ink ── */
   --ink:    #1d1d1f;
   --ink-2:  #6e6e73;
-  --ink-3:  #aeaeb2;
+  /* --ink-3 oscurecido de #aeaeb2 a #8a8a91 para cumplir contraste WCAG AA en
+     textos secundarios (labels, placeholders) sobre fondos claros. Mantiene la
+     jerarquía ink > ink-2 > ink-3. */
+  --ink-3:  #8a8a91;
 
   /* ── Accent — azul Apple ── */
   --accent:         #0071e3;
@@ -1034,6 +1037,9 @@ textarea.input {
 .app-shell .sidebar:hover .sidebar-user-info {
   opacity: 1;
   width: auto;
+  /* Tope para que un nombre/rol muy largo no expanda el sidebar más allá de
+     su ancho abierto ni tape el botón de logout — el texto trunca con ellipsis. */
+  max-width: calc(var(--sidebar-open) - 72px);
   pointer-events: auto;
   transition: opacity 0.2s 0.05s ease, width 0s;
 }

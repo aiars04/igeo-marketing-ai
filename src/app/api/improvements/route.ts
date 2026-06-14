@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type {
-  Improvement, ImprovementPriority, ImprovementType, Profile,
+  Improvement, ImprovementPriority, ImprovementStatus, ImprovementType, Profile,
 } from '@/types/database'
 
 const TYPES:      ImprovementType[]     = ['bug', 'mejora', 'idea']
 const PRIORITIES: ImprovementPriority[] = ['baja', 'media', 'alta']
+const STATUSES:   ImprovementStatus[]   = ['pendiente', 'revisada', 'completada', 'descartada']
 
 async function requireActor() {
   const supabase = await createClient()
@@ -36,14 +37,14 @@ export async function GET(req: NextRequest) {
   }
 
   const url = new URL(req.url)
-  const status = url.searchParams.get('status')
+  const status = url.searchParams.get('status') as ImprovementStatus | null
 
   let query = admin
     .from('improvements')
     .select('*')
     .order('created_at', { ascending: false })
 
-  if (status) query = query.eq('status', status)
+  if (status && STATUSES.includes(status)) query = query.eq('status', status)
 
   const { data, error } = await query.returns<Improvement[]>()
   if (error) {

@@ -107,7 +107,11 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
         .update({ status: 'draft' } as never)
         .eq('id', id)
         .eq('status', 'converted')
-    } catch {}
+    } catch (rErr) {
+      // Si el rollback falla, el brief queda 'converted' sin item vinculado.
+      // Lo registramos para poder detectar el estado inconsistente.
+      console.error('[seo/briefs/convert] rollback failed:', rErr instanceof Error ? rErr.message : String(rErr))
+    }
     return NextResponse.json({ error: 'item_create_failed' }, { status: 500 })
   }
 

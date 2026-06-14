@@ -54,6 +54,9 @@ export async function POST(req: NextRequest) {
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       errors.push({ index: idx, error: 'invalid_dates' }); return
     }
+    if (startDate > endDate) {
+      errors.push({ index: idx, error: 'start_after_end' }); return
+    }
 
     const eventType = ev.event_type ?? null
     if (eventType && !EVENT_TYPES.includes(eventType as typeof EVENT_TYPES[number])) {

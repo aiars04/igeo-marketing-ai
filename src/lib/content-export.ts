@@ -148,16 +148,27 @@ function applyInlines(text: string, opts: { linkColor?: string } = {}): string {
 
 // ─── Helpers de portada ──────────────────────────────────────────────────
 
+// Solo permitimos http(s) e imágenes data: en el src — rechaza javascript:,
+// data:text/html, vbscript:, etc. (defensa en profundidad aunque la URL venga
+// de nuestro propio storage).
+function safeImageSrc(url: string): string {
+  return /^(https?:\/\/|data:image\/)/i.test(url.trim()) ? url.trim() : ''
+}
+
 function imageHtmlInline(ctx: ExportContext): string {
   if (!ctx.imageUrl) return ''
+  const src = safeImageSrc(ctx.imageUrl)
+  if (!src) return ''
   const alt = escapeHtml(ctx.imageAlt ?? ctx.title ?? 'Imagen del contenido')
-  return `<p style="margin:0 0 18px 0;"><img src="${escapeHtml(ctx.imageUrl)}" alt="${alt}" style="max-width:100%;height:auto;border-radius:8px;display:block;" /></p>`
+  return `<p style="margin:0 0 18px 0;"><img src="${escapeHtml(src)}" alt="${alt}" style="max-width:100%;height:auto;border-radius:8px;display:block;" /></p>`
 }
 
 function imageHtmlSemantic(ctx: ExportContext): string {
   if (!ctx.imageUrl) return ''
+  const src = safeImageSrc(ctx.imageUrl)
+  if (!src) return ''
   const alt = escapeHtml(ctx.imageAlt ?? ctx.title ?? 'Imagen del contenido')
-  return `<figure><img src="${escapeHtml(ctx.imageUrl)}" alt="${alt}" /></figure>`
+  return `<figure><img src="${escapeHtml(src)}" alt="${alt}" /></figure>`
 }
 
 // ─── Exporters públicos ─────────────────────────────────────────────────

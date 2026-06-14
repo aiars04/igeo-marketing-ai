@@ -57,6 +57,9 @@ export default function AlertsPage() {
   const [tab, setTab] = useState<FilterTab>('active')
   const [levelFilter, setLevelFilter] = useState<AlertLevel | 'all'>('all')
   const [scanning, setScanning] = useState(false)
+  // "Ahora" capturado al montar — evita llamar Date.now() durante el render
+  // (impuro) y es suficientemente preciso para el cálculo de "días hasta vencer".
+  const [nowMs] = useState(() => Date.now())
   const { items: toasts, show: toast, remove: removeToast } = useToast()
 
   const load = useCallback(async () => {
@@ -73,6 +76,7 @@ export default function AlertsPage() {
     }
   }, [tab, toast])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [load])
 
   const handleScan = async () => {
@@ -277,7 +281,7 @@ export default function AlertsPage() {
           {filteredAlerts.map(alert => {
             const style = LEVEL_STYLE[alert.level]
             const dueDate = alert.due_at ? new Date(alert.due_at) : null
-            const daysToDue = dueDate ? Math.floor((dueDate.getTime() - Date.now()) / 86400000) : null
+            const daysToDue = dueDate ? Math.floor((dueDate.getTime() - nowMs) / 86400000) : null
 
             return (
               <div

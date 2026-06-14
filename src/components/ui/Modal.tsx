@@ -38,6 +38,9 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     >
       <div
         ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className="animate-scale-in w-full relative overflow-hidden flex flex-col"
         style={{
           maxWidth,
@@ -51,13 +54,15 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between shrink-0"
+          className="flex items-center justify-between shrink-0 gap-3"
           style={{
             padding: '20px 28px',
             borderBottom: '1px solid var(--border)',
           }}
         >
           <h2
+            title={title}
+            className="min-w-0"
             style={{
               fontSize: 18,
               fontWeight: 700,
@@ -68,14 +73,13 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
-              paddingRight: 12,
             }}
           >
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="image-menu-trigger"
+            className="image-menu-trigger shrink-0"
             aria-label="Cerrar"
           >
             <X size={14} aria-hidden="true" />

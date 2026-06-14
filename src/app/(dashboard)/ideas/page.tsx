@@ -14,7 +14,7 @@ import type { Channel, Idea, Market } from '@/types/database'
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const FLAGS: Record<string, string> = {
-  spain: '🇪🇸', latam: '🌎', uk: '🇬🇧', france: '🇫🇷', italy: '🇮🇹', portugal: '🇵🇹', brasil: '🇧🇷',
+  spain: '🇪🇸', latam: '🌎', uk: '🌐', france: '🇫🇷', italy: '🇮🇹', portugal: '🇵🇹', brasil: '🇧🇷', mexico: '🇲🇽',
 }
 
 const CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']

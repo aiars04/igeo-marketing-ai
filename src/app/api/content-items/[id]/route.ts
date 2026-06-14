@@ -35,9 +35,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   // Cargar el item primero para verificar permisos + estado actual de aprobación
   const { data: target } = await admin
     .from('content_items')
-    .select('id, created_by, human_approved')
+    .select('id, created_by, human_approved, scheduled_at')
     .eq('id', id)
-    .single<Pick<ContentItem, 'id' | 'human_approved'> & { created_by: string | null }>()
+    .single<Pick<ContentItem, 'id' | 'human_approved' | 'scheduled_at'> & { created_by: string | null }>()
   if (!target) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const isOwner = target.created_by === me.id
@@ -59,13 +59,24 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     }
     patch.stage = body.stage
   }
-  if (body.title !== undefined && typeof body.title === 'string') patch.title = body.title.trim()
+  if (body.title !== undefined && typeof body.title === 'string') {
+    const t = body.title.trim()
+    if (!t) return NextResponse.json({ error: 'title_required' }, { status: 400 })
+    patch.title = t
+  }
   if (body.content !== undefined) patch.content = body.content
   if (body.campaign !== undefined) patch.campaign = body.campaign
   if ((body as { description?: string }).description !== undefined) {
     patch.description = (body as { description?: string }).description
   }
-  if (body.scheduled_at !== undefined) patch.scheduled_at = body.scheduled_at
+  if (body.scheduled_at !== undefined) {
+    // Aceptamos null (quitar fecha) o ISO 8601 UTC con 'Z'. Rechazamos cadenas
+    // sin zona horaria (ej '2026-01-01T10:00') que new Date() interpretaría como local.
+    if (body.scheduled_at !== null && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/.test(String(body.scheduled_at))) {
+      return NextResponse.json({ error: 'invalid_scheduled_at' }, { status: 400 })
+    }
+    patch.scheduled_at = body.scheduled_at
+  }
   if (body.status !== undefined) {
     if (!STATUSES.includes(body.status as typeof STATUSES[number])) {
       return NextResponse.json({ error: 'invalid_status' }, { status: 400 })
@@ -74,6 +85,15 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   }
   if (body.human_approved !== undefined) {
     const wanted = !!body.human_approved
+    // No se puede aprobar (human_approved=true) sin fecha de publicación: ni la
+    // que ya tiene el item ni la que venga en este mismo PATCH. Refuerza en
+    // servidor el bloqueo que la UI hace cosméticamente.
+    if (wanted && !target.human_approved) {
+      const effectiveScheduled = body.scheduled_at !== undefined ? body.scheduled_at : target.scheduled_at
+      if (!effectiveScheduled) {
+        return NextResponse.json({ error: 'scheduled_at_required_for_approval' }, { status: 400 })
+      }
+    }
     patch.human_approved = wanted
     // CLAVE: approved_by/approved_at SIEMPRE desde el servidor — el cliente no
     // puede suplantar a otro usuario. Además: solo sobreescribimos los timestamps

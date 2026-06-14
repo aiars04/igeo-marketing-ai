@@ -47,8 +47,20 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const patch: Record<string, unknown> = {}
   if (body.title !== undefined) patch.title = String(body.title).trim()
   if (body.description !== undefined) patch.description = body.description
-  if (body.start_time !== undefined) patch.start_time = new Date(body.start_time).toISOString()
-  if (body.end_time !== undefined) patch.end_time = new Date(body.end_time).toISOString()
+  if (body.start_time !== undefined) {
+    const d = new Date(body.start_time)
+    if (isNaN(d.getTime())) return NextResponse.json({ error: 'invalid_start_time' }, { status: 400 })
+    patch.start_time = d.toISOString()
+  }
+  if (body.end_time !== undefined) {
+    const d = new Date(body.end_time)
+    if (isNaN(d.getTime())) return NextResponse.json({ error: 'invalid_end_time' }, { status: 400 })
+    patch.end_time = d.toISOString()
+  }
+  // Si el patch trae ambas fechas, validar que start <= end
+  if (patch.start_time && patch.end_time && new Date(patch.start_time as string) > new Date(patch.end_time as string)) {
+    return NextResponse.json({ error: 'start_after_end' }, { status: 400 })
+  }
   if (body.all_day !== undefined) patch.all_day = !!body.all_day
   if (body.color !== undefined) patch.color = body.color
   if (body.category !== undefined) patch.category = body.category

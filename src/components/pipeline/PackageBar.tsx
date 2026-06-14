@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { X, ChevronRight, Layers, Calendar } from 'lucide-react'
+import { X, ChevronRight, Calendar } from 'lucide-react'
 import type { CampaignPackage, PlaybookType, PackageStatus } from '@/types/database'
 
 export interface PackageWithStats extends CampaignPackage {
@@ -61,6 +61,7 @@ export function PackageBar({
     }
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [load, refreshKey])
 
   if (loading) {

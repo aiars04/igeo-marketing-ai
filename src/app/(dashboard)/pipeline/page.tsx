@@ -213,6 +213,9 @@ export default function PipelinePage() {
 
   const handleApprove = useCallback(async (id: string, currentStage: Stage) => {
     if (inFlightRef.current.has(`approve-${id}`)) return // doble-click guard
+    // Marcar human_approved SOLO desde la etapa 'approval' (máquina de estados).
+    // Avanzar de etapas previas se hace con handleMove, no aquí.
+    if (currentStage !== 'approval') return
     const currentIdx = STAGES.indexOf(currentStage)
     const nextStage = currentIdx < STAGES.length - 1 ? STAGES[currentIdx + 1] : null
     if (!nextStage) return

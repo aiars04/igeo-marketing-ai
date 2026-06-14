@@ -76,6 +76,10 @@ async function requireActor() {
   if (!profile || !profile.active) {
     return { response: NextResponse.json({ error: 'unauthorized' }, { status: 401 }) }
   }
+  // Genera planes masivos (instancia múltiples playbooks) → solo admin/manager
+  if (profile.role !== 'admin' && profile.role !== 'manager') {
+    return { response: NextResponse.json({ error: 'forbidden' }, { status: 403 }) }
+  }
   return { profile, admin }
 }
 

@@ -45,6 +45,9 @@ export async function POST(req: Request) {
   const password = body.password?.trim() || randomPassword()
 
   if (!email) return NextResponse.json({ error: 'email_required' }, { status: 400 })
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: 'invalid_email' }, { status: 400 })
+  }
   if (!['admin', 'manager', 'user'].includes(role)) {
     return NextResponse.json({ error: 'invalid_role' }, { status: 400 })
   }
