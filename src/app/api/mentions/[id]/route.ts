@@ -80,7 +80,9 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   const { profile: me, admin } = auth
   const { id } = await ctx.params
 
-  if (me.role !== 'admin') {
+  // El repositorio de menciones es colaborativo: admin y manager (que ya pueden
+  // crear/editar) también pueden borrar, para que un manager gestione todo.
+  if (!isPriv(me.role)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 

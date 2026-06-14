@@ -277,6 +277,7 @@ function StatusChip({
         fontSize: 12,
         fontWeight: 600,
         lineHeight: 1,
+        whiteSpace: 'nowrap',
       }}
     >
       {Icon && <Icon size={12} aria-hidden="true" />}
@@ -727,6 +728,7 @@ function ContentDetailModal({
                   fontSize: 12,
                   fontWeight: 600,
                   lineHeight: 1,
+                  whiteSpace: 'nowrap',
                   background: ds.bg,
                   color: ds.color,
                   border: ds.border,
@@ -1250,6 +1252,7 @@ function Card({
                   fontWeight: 600,
                   lineHeight: 1,
                   letterSpacing: '0.01em',
+                  whiteSpace: 'nowrap',
                   background: ds.bg,
                   color: ds.color,
                   border: ds.border,
@@ -1338,6 +1341,7 @@ function Card({
                 background: 'var(--green-soft)',
                 border: '1px solid var(--green-border)',
                 lineHeight: 1,
+                whiteSpace: 'nowrap',
               }}
             >
               <CheckCheck size={11} aria-hidden="true" /> Aprobado
@@ -1359,6 +1363,7 @@ function Card({
                 background: 'var(--amber-soft)',
                 border: '1px solid var(--amber-border)',
                 lineHeight: 1,
+                whiteSpace: 'nowrap',
               }}
             >
               <Calendar size={10} aria-hidden="true" />

@@ -3,8 +3,11 @@
 /**
  * Picker para insertar @menciones en el textarea de contenido del item del pipeline.
  *
- * Carga las menciones que tienen handle para el `channel` del item y, al hacer
- * click en una, llama a `onInsert(text)` con el handle ya formateado para pegar.
+ * Muestra TODAS las menciones activas del repositorio (no solo las que tienen
+ * handle del canal actual). Al hacer click:
+ *   - si la mención tiene handle para el canal del item → inserta ese handle formateado.
+ *   - si no lo tiene → inserta el nombre como mención en texto plano y avisa visualmente.
+ * Así se puede mencionar perfiles en CUALQUIER red social.
  *
  * El desplegable se renderiza con createPortal en document.body y posición fija,
  * para que NO lo recorte el overflow del Modal (que es overflow-hidden + body
@@ -25,6 +28,18 @@ interface Props {
 const DROPDOWN_W = 320
 const DROPDOWN_MAXH = 360
 
+const CHANNEL_LABELS: Record<Channel, string> = {
+  linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook',
+  x: 'X', blog: 'Blog', email: 'Email', newsletter: 'Newsletter',
+}
+
+/** Texto que se insertará para una mención en el canal dado: handle del canal o el nombre. */
+function mentionInsertText(m: SocialMention, channel: Channel): string {
+  const raw = m.handles[channel]
+  if (raw && raw.trim()) return formatHandleForInsert(channel, raw.trim())
+  return m.name.trim()
+}
+
 export function MentionPicker({ channel, onInsert }: Props) {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -37,14 +52,15 @@ export function MentionPicker({ channel, onInsert }: Props) {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true) }, [])
 
-  // Cargar al abrir (re-fetch si cambia channel)
+  // Cargar TODAS las menciones activas al abrir (sin filtrar por canal — se
+  // pueden mencionar perfiles en cualquier red, usando el nombre como fallback).
   useEffect(() => {
     if (!open) return
     let cancelled = false
     const controller = new AbortController()
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
-    fetch(`/api/mentions?channel=${encodeURIComponent(channel)}&activeOnly=true`, { signal: controller.signal })
+    fetch(`/api/mentions?activeOnly=true`, { signal: controller.signal })
       .then(r => r.ok ? r.json() : [])
       .then((data: SocialMention[]) => {
         if (!cancelled) setItems(Array.isArray(data) ? data : [])
@@ -54,7 +70,7 @@ export function MentionPicker({ channel, onInsert }: Props) {
       })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true; controller.abort() }
-  }, [open, channel])
+  }, [open])
 
   const toggle = () => {
     if (open) { setOpen(false); return }
@@ -69,18 +85,19 @@ export function MentionPicker({ channel, onInsert }: Props) {
     setOpen(true)
   }
 
-  const filtered = (search.trim()
+  // Sin filtro por canal: se muestran todas las menciones activas. La búsqueda
+  // matchea por nombre o por cualquier handle guardado.
+  const filtered = search.trim()
     ? items.filter(m =>
         m.name.toLowerCase().includes(search.toLowerCase()) ||
-        (m.handles[channel] ?? '').toLowerCase().includes(search.toLowerCase())
+        Object.values(m.handles).some(h => (h ?? '').toLowerCase().includes(search.toLowerCase()))
       )
     : items
-  ).filter(m => typeof m.handles[channel] === 'string' && (m.handles[channel] as string).trim().length > 0)
 
   const handleInsert = (m: SocialMention) => {
-    const raw = m.handles[channel]
-    if (!raw) return
-    onInsert(formatHandleForInsert(channel, raw))
+    const text = mentionInsertText(m, channel)
+    if (!text) return
+    onInsert(text)
     setOpen(false)
     setSearch('')
   }
@@ -157,7 +174,7 @@ export function MentionPicker({ channel, onInsert }: Props) {
               ) : filtered.length === 0 ? (
                 <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: 'var(--ink-3)' }}>
                   {items.length === 0
-                    ? `Sin menciones configuradas para ${channel}.`
+                    ? 'Aún no hay menciones en el repositorio.'
                     : 'Sin resultados.'}
                   <p style={{ fontSize: 11, marginTop: 4, color: 'var(--ink-3)', opacity: 0.7 }}>
                     Añade menciones desde Admin → Menciones
@@ -165,15 +182,17 @@ export function MentionPicker({ channel, onInsert }: Props) {
                 </div>
               ) : (
                 filtered.map(m => {
-                  const handle = m.handles[channel] ?? ''
-                  const formatted = formatHandleForInsert(channel, handle)
+                  const raw = (m.handles[channel] ?? '').trim()
+                  const hasChannelHandle = raw.length > 0
+                  // Lo que realmente se insertará en este canal.
+                  const insertText = mentionInsertText(m, channel)
                   return (
                     <button
                       key={m.id}
                       type="button"
                       onClick={() => handleInsert(m)}
                       className="w-full text-left transition-colors hover:bg-[var(--accent-soft)]"
-                      title={formatted}
+                      title={hasChannelHandle ? insertText : `Sin handle de ${CHANNEL_LABELS[channel]} — se insertará el nombre`}
                       style={{
                         padding: '8px 12px',
                         display: 'flex',
@@ -191,14 +210,17 @@ export function MentionPicker({ channel, onInsert }: Props) {
                       <span
                         style={{
                           fontSize: 11,
-                          color: 'var(--ink-2)',
-                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                          color: hasChannelHandle ? 'var(--ink-2)' : 'var(--ink-3)',
+                          fontStyle: hasChannelHandle ? 'normal' : 'italic',
+                          fontFamily: hasChannelHandle ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : 'inherit',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {formatted}
+                        {hasChannelHandle
+                          ? insertText
+                          : `Sin handle de ${CHANNEL_LABELS[channel]} · se insertará "${m.name}"`}
                       </span>
                     </button>
                   )
