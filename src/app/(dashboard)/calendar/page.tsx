@@ -1,12 +1,25 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { EventManager, type Event, type PlaybookSummary } from '@/components/ui/event-manager'
 import { addPipelineItemFromCalendar } from '@/lib/stores/pipeline-store'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import { Modal } from '@/components/ui/Modal'
-import { AlertCircle, Check, X, Upload } from 'lucide-react'
-import type { ContentItem, CalendarEvent } from '@/types/database'
+import { AlertCircle, Check, X, Upload, Filter } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import type { ContentItem, CalendarEvent, Channel, Market } from '@/types/database'
+
+// Filtros disponibles — mismos valores y orden que el pipeline.
+const ALL_CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
+const CHANNEL_LABELS: Record<Channel, string> = {
+  linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook',
+  x: 'X / Twitter', blog: 'Blog', email: 'Email', newsletter: 'Newsletter',
+}
+const ALL_MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
+const MARKET_LABELS: Record<Market, string> = {
+  spain: 'España', latam: 'LATAM', uk: 'Internacional', france: 'Francia',
+  italy: 'Italia', portugal: 'Portugal', brasil: 'Brasil', mexico: 'México',
+}
 
 // ─── CSV helpers ─────────────────────────────────────────────────────────────
 
@@ -144,6 +157,40 @@ export default function CalendarPage() {
   } | null>(null)
   const [pendingMigration, setPendingMigration] = useState<Event[] | null>(null)
   const [migrating, setMigrating] = useState(false)
+
+  // ── Filtros canal × mercado (misma UX que el pipeline) ───────────────────
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [filterChannels, setFilterChannels] = useState<Channel[]>([])
+  const [filterMarkets, setFilterMarkets] = useState<Market[]>([])
+
+  const toggleFilterChannel = (ch: Channel) => {
+    setFilterChannels(prev => prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch])
+  }
+  const toggleFilterMarket = (m: Market) => {
+    setFilterMarkets(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m])
+  }
+
+  /**
+   * Aplica los filtros sobre el conjunto unificado (eventos nativos + items
+   * de pipeline). Si un filtro está vacío, no descarta por ese eje.
+   *
+   * Eventos presenciales (sin channel) y eventos sin market quedan ocultos
+   * cuando hay filtro activo en ese eje — coherente con la expectativa del
+   * usuario al filtrar "solo LinkedIn" o "solo España".
+   */
+  const visibleEvents = useMemo(() => {
+    const all = [...events, ...pipelineEvents]
+    if (filterChannels.length === 0 && filterMarkets.length === 0) return all
+    return all.filter(ev => {
+      if (filterChannels.length > 0) {
+        if (!ev.channel || !filterChannels.includes(ev.channel as Channel)) return false
+      }
+      if (filterMarkets.length > 0) {
+        if (!ev.market || !filterMarkets.includes(ev.market as Market)) return false
+      }
+      return true
+    })
+  }, [events, pipelineEvents, filterChannels, filterMarkets])
 
   // ── Carga eventos de Supabase ─────────────────────────────────────────────
   const loadEvents = useCallback(async () => {
@@ -475,13 +522,183 @@ export default function CalendarPage() {
         </div>
       )}
 
+      {/* ── Barra de filtros (canal × mercado) — misma UX que el pipeline ── */}
+      <div className="flex items-center justify-end mb-3">
+        <button
+          onClick={() => setFilterOpen(v => !v)}
+          className={cn('btn-pill-secondary relative', filterOpen && 'is-active')}
+        >
+          <Filter size={13} aria-hidden="true" />
+          Filtrar
+          {(filterChannels.length + filterMarkets.length) > 0 && (
+            <span
+              className="absolute -top-1 -right-1 rounded-full text-[10px] font-bold flex items-center justify-center text-white tabular-nums"
+              style={{ width: 16, height: 16, background: 'var(--accent)' }}
+            >
+              {filterChannels.length + filterMarkets.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {filterOpen && (
+        <div
+          className="flex flex-col shrink-0 animate-fade-up mb-4"
+          style={{
+            padding: '20px 28px 24px',
+            gap: 16,
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--surface)',
+          }}
+        >
+          {/* Fila Canal */}
+          <div className="flex items-center flex-wrap" style={{ gap: 10 }}>
+            <span
+              className="uppercase shrink-0"
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                color: 'var(--ink-3)',
+                minWidth: 72,
+              }}
+            >
+              Canal
+            </span>
+            {ALL_CHANNELS.map(ch => {
+              const active = filterChannels.includes(ch)
+              return (
+                <button
+                  key={ch}
+                  onClick={() => toggleFilterChannel(ch)}
+                  className={cn(
+                    'transition-all whitespace-nowrap',
+                    active ? 'text-white' : 'text-[var(--ink-2)] hover:text-[var(--ink)]',
+                  )}
+                  style={{
+                    height: 32,
+                    padding: '0 14px',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    lineHeight: 1,
+                    ...(active
+                      ? { background: 'var(--accent)', border: '1px solid var(--accent)' }
+                      : { background: 'var(--surface-2)', border: '1px solid var(--border)' }
+                    ),
+                  }}
+                >
+                  {CHANNEL_LABELS[ch]}
+                </button>
+              )
+            })}
+            {filterChannels.length > 0 && (
+              <button
+                onClick={() => setFilterChannels([])}
+                className="inline-flex items-center transition-colors whitespace-nowrap"
+                style={{
+                  height: 32,
+                  padding: '0 12px',
+                  gap: 6,
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'var(--red-soft)',
+                  border: '1px solid rgba(239,68,68,0.25)',
+                  color: 'var(--red-2)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  lineHeight: 1,
+                  marginLeft: 'auto',
+                }}
+              >
+                <X size={12} aria-hidden="true" />
+                Limpiar
+              </button>
+            )}
+          </div>
+
+          {/* Fila Mercado */}
+          <div className="flex items-center flex-wrap" style={{ gap: 10 }}>
+            <span
+              className="uppercase shrink-0"
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                color: 'var(--ink-3)',
+                minWidth: 72,
+              }}
+            >
+              Mercado
+            </span>
+            {ALL_MARKETS.map(m => {
+              const active = filterMarkets.includes(m)
+              return (
+                <button
+                  key={m}
+                  onClick={() => toggleFilterMarket(m)}
+                  className={cn(
+                    'transition-all whitespace-nowrap',
+                    active ? 'text-white' : 'text-[var(--ink-2)] hover:text-[var(--ink)]',
+                  )}
+                  style={{
+                    height: 32,
+                    padding: '0 14px',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    lineHeight: 1,
+                    ...(active
+                      ? { background: 'var(--accent)', border: '1px solid var(--accent)' }
+                      : { background: 'var(--surface-2)', border: '1px solid var(--border)' }
+                    ),
+                  }}
+                >
+                  {MARKET_LABELS[m]}
+                </button>
+              )
+            })}
+            {filterMarkets.length > 0 && (
+              <button
+                onClick={() => setFilterMarkets([])}
+                className="inline-flex items-center transition-colors whitespace-nowrap"
+                style={{
+                  height: 32,
+                  padding: '0 12px',
+                  gap: 6,
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'var(--red-soft)',
+                  border: '1px solid rgba(239,68,68,0.25)',
+                  color: 'var(--red-2)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  lineHeight: 1,
+                  marginLeft: 'auto',
+                }}
+              >
+                <X size={12} aria-hidden="true" />
+                Limpiar
+              </button>
+            )}
+          </div>
+
+          {/* Resumen */}
+          {(filterChannels.length + filterMarkets.length) > 0 && (
+            <p style={{ fontSize: 11, color: 'var(--ink-3)', margin: 0 }}>
+              Mostrando {visibleEvents.length} evento{visibleEvents.length === 1 ? '' : 's'} de {events.length + pipelineEvents.length}.
+              Los eventos sin canal o sin mercado quedan ocultos cuando se filtra por ese eje.
+            </p>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
           Cargando eventos…
         </div>
       ) : (
         <EventManager
-          events={[...events, ...pipelineEvents]}
+          events={visibleEvents}
           onEventCreate={async (ev) => {
             // 1) Optimistic — añadir al estado con id temporal
             const tempId = ev.id
