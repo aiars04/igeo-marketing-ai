@@ -117,15 +117,17 @@ function deserializeLegacy(raw: string | null): Event[] {
   }
 }
 
+// Labels limpios sin emojis de bandera — en Windows los flags no se renderizan
+// y aparecen los códigos ISO ("ES", "BR", "MX"…) pegados al nombre.
 const PLAYBOOK_MARKETS = [
-  { value: 'spain',    label: '🇪🇸 España'       },
-  { value: 'latam',    label: 'LATAM'            },
-  { value: 'uk',       label: '🌐 Internacional' },
-  { value: 'france',   label: '🇫🇷 Francia'      },
-  { value: 'italy',    label: '🇮🇹 Italia'       },
-  { value: 'portugal', label: '🇵🇹 Portugal'     },
-  { value: 'brasil',   label: '🇧🇷 Brasil'       },
-  { value: 'mexico',   label: '🇲🇽 México'       },
+  { value: 'spain',    label: 'España'        },
+  { value: 'latam',    label: 'LATAM'         },
+  { value: 'uk',       label: 'Internacional' },
+  { value: 'france',   label: 'Francia'       },
+  { value: 'italy',    label: 'Italia'        },
+  { value: 'portugal', label: 'Portugal'      },
+  { value: 'brasil',   label: 'Brasil'        },
+  { value: 'mexico',   label: 'México'        },
 ]
 
 export default function CalendarPage() {

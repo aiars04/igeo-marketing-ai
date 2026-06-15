@@ -19,9 +19,11 @@ const CHANNEL_LABELS: Record<Channel, string> = {
 
 const ALL_MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
 
+// Labels limpios sin emojis de bandera — en Windows no se renderizan y aparecen
+// los códigos ISO ("ES", "BR", "MX"…) pegados al nombre. Mantenemos solo texto.
 const MARKET_LABELS: Record<Market, string> = {
-  spain: '🇪🇸 España', latam: 'LATAM', uk: '🌐 Internacional', france: '🇫🇷 Francia',
-  italy: '🇮🇹 Italia', portugal: '🇵🇹 Portugal', brasil: '🇧🇷 Brasil', mexico: '🇲🇽 México',
+  spain: 'España', latam: 'LATAM', uk: 'Internacional', france: 'Francia',
+  italy: 'Italia', portugal: 'Portugal', brasil: 'Brasil', mexico: 'México',
 }
 
 // ─── StatPill ─────────────────────────────────────────────────────────────────
@@ -386,88 +388,146 @@ export default function PipelinePage() {
         refreshKey={packageBarRefresh}
       />
 
-      {/* Filter bar */}
+      {/* Filter bar — dos filas con padding generoso y pills más cómodos */}
       {filterOpen && (
         <div
-          className="flex items-center gap-2 px-5 py-3 flex-wrap shrink-0 animate-fade-up"
-          style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}
+          className="flex flex-col shrink-0 animate-fade-up"
+          style={{
+            padding: '18px 28px 20px',
+            gap: 16,
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--surface)',
+          }}
         >
-          <span className="section-label mr-2">Canal</span>
-          {ALL_CHANNELS.map(ch => (
-            <button
-              key={ch}
-              onClick={() => toggleFilterChannel(ch)}
-              className={cn(
-                'px-2.5 rounded-md text-[11px] font-semibold transition-all',
-                filterChannels.includes(ch) ? 'text-white' : 'text-[var(--ink-2)] hover:text-[var(--ink)]'
-              )}
+          {/* ── Fila Canal ── */}
+          <div className="flex items-center flex-wrap" style={{ gap: 10 }}>
+            <span
+              className="uppercase shrink-0"
               style={{
-                height: 28,
-                ...(filterChannels.includes(ch)
-                  ? { background: 'var(--accent)', border: '1px solid var(--accent)' }
-                  : { background: 'var(--surface-2)', border: '1px solid var(--border)' }
-                ),
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                color: 'var(--ink-3)',
+                minWidth: 72,
               }}
             >
-              {CHANNEL_LABELS[ch]}
-            </button>
-          ))}
-          {filterChannels.length > 0 && (
-            <button
-              onClick={() => setFilterChannels([])}
-              className="flex items-center gap-1 px-2.5 rounded-md text-[11px] font-medium transition-colors"
-              style={{
-                height: 28,
-                background: 'var(--red-soft)',
-                border: '1px solid rgba(239,68,68,0.25)',
-                color: 'var(--red-2)',
-              }}
-            >
-              <X size={11} />
-              Limpiar
-            </button>
-          )}
+              Canal
+            </span>
+            {ALL_CHANNELS.map(ch => {
+              const active = filterChannels.includes(ch)
+              return (
+                <button
+                  key={ch}
+                  onClick={() => toggleFilterChannel(ch)}
+                  className={cn(
+                    'transition-all whitespace-nowrap',
+                    active ? 'text-white' : 'text-[var(--ink-2)] hover:text-[var(--ink)]',
+                  )}
+                  style={{
+                    height: 32,
+                    padding: '0 14px',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    lineHeight: 1,
+                    ...(active
+                      ? { background: 'var(--accent)', border: '1px solid var(--accent)' }
+                      : { background: 'var(--surface-2)', border: '1px solid var(--border)' }
+                    ),
+                  }}
+                >
+                  {CHANNEL_LABELS[ch]}
+                </button>
+              )
+            })}
+            {filterChannels.length > 0 && (
+              <button
+                onClick={() => setFilterChannels([])}
+                className="inline-flex items-center transition-colors whitespace-nowrap"
+                style={{
+                  height: 32,
+                  padding: '0 12px',
+                  gap: 6,
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'var(--red-soft)',
+                  border: '1px solid rgba(239,68,68,0.25)',
+                  color: 'var(--red-2)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  lineHeight: 1,
+                  marginLeft: 'auto',
+                }}
+              >
+                <X size={12} aria-hidden="true" />
+                Limpiar
+              </button>
+            )}
+          </div>
 
-          <span
-            aria-hidden="true"
-            style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 6px' }}
-          />
-
-          <span className="section-label mr-2">Mercado</span>
-          {ALL_MARKETS.map(m => (
-            <button
-              key={m}
-              onClick={() => toggleFilterMarket(m)}
-              className={cn(
-                'px-2.5 rounded-md text-[11px] font-semibold transition-all',
-                filterMarkets.includes(m) ? 'text-white' : 'text-[var(--ink-2)] hover:text-[var(--ink)]'
-              )}
+          {/* ── Fila Mercado ── */}
+          <div className="flex items-center flex-wrap" style={{ gap: 10 }}>
+            <span
+              className="uppercase shrink-0"
               style={{
-                height: 28,
-                ...(filterMarkets.includes(m)
-                  ? { background: 'var(--accent)', border: '1px solid var(--accent)' }
-                  : { background: 'var(--surface-2)', border: '1px solid var(--border)' }
-                ),
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                color: 'var(--ink-3)',
+                minWidth: 72,
               }}
             >
-              {MARKET_LABELS[m]}
-            </button>
-          ))}
-          {filterMarkets.length > 0 && (
-            <button
-              onClick={() => setFilterMarkets([])}
-              className="flex items-center gap-1 px-2.5 rounded-md text-[11px] font-medium transition-colors"
-              style={{
-                height: 28,
-                background: 'var(--red-soft)',
-                border: '1px solid rgba(239,68,68,0.25)',
-                color: 'var(--red-2)',
-              }}
-            >
-              <X size={11} />
-              Limpiar
-            </button>
-          )}
+              Mercado
+            </span>
+            {ALL_MARKETS.map(m => {
+              const active = filterMarkets.includes(m)
+              return (
+                <button
+                  key={m}
+                  onClick={() => toggleFilterMarket(m)}
+                  className={cn(
+                    'transition-all whitespace-nowrap',
+                    active ? 'text-white' : 'text-[var(--ink-2)] hover:text-[var(--ink)]',
+                  )}
+                  style={{
+                    height: 32,
+                    padding: '0 14px',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    lineHeight: 1,
+                    ...(active
+                      ? { background: 'var(--accent)', border: '1px solid var(--accent)' }
+                      : { background: 'var(--surface-2)', border: '1px solid var(--border)' }
+                    ),
+                  }}
+                >
+                  {MARKET_LABELS[m]}
+                </button>
+              )
+            })}
+            {filterMarkets.length > 0 && (
+              <button
+                onClick={() => setFilterMarkets([])}
+                className="inline-flex items-center transition-colors whitespace-nowrap"
+                style={{
+                  height: 32,
+                  padding: '0 12px',
+                  gap: 6,
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'var(--red-soft)',
+                  border: '1px solid rgba(239,68,68,0.25)',
+                  color: 'var(--red-2)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  lineHeight: 1,
+                  marginLeft: 'auto',
+                }}
+              >
+                <X size={12} aria-hidden="true" />
+                Limpiar
+              </button>
+            )}
+          </div>
         </div>
       )}
 

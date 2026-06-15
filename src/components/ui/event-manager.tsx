@@ -72,12 +72,13 @@ const DIGITAL_CHANNEL_LABEL: Record<typeof DIGITAL_CHANNELS[number], string> = {
   x:          'X',
   facebook:   'Facebook',
 }
+// Labels limpios sin emojis de bandera (en Windows no se renderizan).
 const DIGITAL_MARKETS = [
-  { value: 'spain',    label: '🇪🇸 España' },
-  { value: 'uk',       label: '🇬🇧 UK' },
-  { value: 'latam',    label: '🌎 LATAM' },
-  { value: 'france',   label: '🇫🇷 Francia' },
-  { value: 'portugal', label: '🇵🇹 Portugal' },
+  { value: 'spain',    label: 'España'        },
+  { value: 'uk',       label: 'Internacional' },
+  { value: 'latam',    label: 'LATAM'         },
+  { value: 'france',   label: 'Francia'       },
+  { value: 'portugal', label: 'Portugal'      },
 ] as const
 const COLOR_KEYS = ['blue', 'green', 'purple', 'orange', 'pink', 'red'] as const
 
