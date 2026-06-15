@@ -393,8 +393,9 @@ export default function PipelinePage() {
         <div
           className="flex flex-col shrink-0 animate-fade-up"
           style={{
-            padding: '18px 28px 20px',
+            padding: '20px 28px 28px',
             gap: 16,
+            marginBottom: 16,
             borderBottom: '1px solid var(--border)',
             background: 'var(--surface)',
           }}
