@@ -30,7 +30,7 @@ export function UsersClient({
   const { items: toasts, show: showToast, remove: removeToast } = useToast()
   const [profiles, setProfiles] = useState(initialProfiles)
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [inviteResult, setInviteResult] = useState<{ email: string; resetLink: string | null } | null>(null)
+  const [inviteResult, setInviteResult] = useState<{ email: string; tempPassword: string } | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const counts = useMemo(() => ({
@@ -298,7 +298,7 @@ export function UsersClient({
         currentRole={currentRole}
         onCreated={(p) => {
           setProfiles(prev => [...prev, p.profile])
-          setInviteResult({ email: p.email, resetLink: p.resetLink })
+          setInviteResult({ email: p.email, tempPassword: p.tempPassword })
           showToast(`Usuario ${p.email} creado`, 'success')
           refresh()
         }}
@@ -318,15 +318,15 @@ function InviteModal({
   open: boolean
   onClose: () => void
   currentRole: UserRole
-  onCreated: (data: { email: string; resetLink: string | null; profile: Profile }) => void
-  result: { email: string; resetLink: string | null } | null
+  onCreated: (data: { email: string; tempPassword: string; profile: Profile }) => void
+  result: { email: string; tempPassword: string } | null
 }) {
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [role, setRole] = useState<UserRole>('user')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [copiedField, setCopiedField] = useState<'email' | 'password' | 'both' | null>(null)
 
   // Manager NO puede asignar admin ni manager
   const availableRoles: UserRole[] = currentRole === 'admin'
@@ -334,7 +334,12 @@ function InviteModal({
     : ['user']
 
   const reset = () => {
-    setEmail(''); setFullName(''); setRole('user'); setError(''); setLoading(false); setCopied(false)
+    setEmail(''); setFullName(''); setRole('user'); setError(''); setLoading(false); setCopiedField(null)
+  }
+
+  const flashCopy = (field: 'email' | 'password' | 'both') => {
+    setCopiedField(field)
+    setTimeout(() => setCopiedField(null), 1500)
   }
 
   const handleSubmit = async () => {
@@ -351,10 +356,10 @@ function InviteModal({
       setError(j.error ?? `Error ${res.status}`)
       return
     }
-    const data = await res.json() as { user_id: string; email: string; reset_link: string | null; full_name: string | null; role: UserRole }
+    const data = await res.json() as { user_id: string; email: string; temp_password: string; full_name: string | null; role: UserRole }
     onCreated({
       email: data.email,
-      resetLink: data.reset_link,
+      tempPassword: data.temp_password,
       profile: {
         id: data.user_id, email: data.email, full_name: data.full_name, role: data.role,
         active: true,
@@ -379,22 +384,32 @@ function InviteModal({
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--green-2)' }}>Usuario creado</span>
             </div>
             <p className="text-[12px] mb-3" style={{ color: 'var(--ink-2)' }}>
-              Envía este enlace al usuario para que fije su contraseña. El enlace es de un solo uso y expira en 1 hora.
+              Comparte estas credenciales con el usuario por un canal seguro. La contraseña se muestra
+              <strong> solo esta vez</strong> — copiala ahora. Puede cambiarla luego desde su perfil.
             </p>
             <div className="space-y-2">
-              <CredentialRow label="Email" value={result.email} />
-              {result.resetLink ? (
-                <CredentialRow
-                  label="Enlace" value={result.resetLink}
-                  onCopy={() => { navigator.clipboard.writeText(result.resetLink ?? ''); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
-                  copied={copied}
-                />
-              ) : (
-                <p style={{ fontSize: 11, color: 'var(--amber-2)' }}>
-                  No se pudo generar enlace. Pide al usuario que use &quot;Olvidé mi contraseña&quot; en el login.
-                </p>
-              )}
+              <CredentialRow
+                label="Email" value={result.email}
+                onCopy={() => { navigator.clipboard.writeText(result.email); flashCopy('email') }}
+                copied={copiedField === 'email'}
+              />
+              <CredentialRow
+                label="Contraseña" value={result.tempPassword}
+                onCopy={() => { navigator.clipboard.writeText(result.tempPassword); flashCopy('password') }}
+                copied={copiedField === 'password'}
+              />
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(`Email: ${result.email}\nContraseña: ${result.tempPassword}`)
+                flashCopy('both')
+              }}
+              className="btn-pill-secondary"
+              style={{ marginTop: 12, height: 28, fontSize: 11 }}
+            >
+              {copiedField === 'both' ? '✓ Copiado' : 'Copiar email y contraseña juntos'}
+            </button>
           </div>
           <button className="btn-cta" onClick={() => { reset(); onClose() }}>Cerrar</button>
         </div>

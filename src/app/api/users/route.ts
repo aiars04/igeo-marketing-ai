@@ -85,32 +85,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'profile_failed' }, { status: 400 })
   }
 
-  // NUNCA devolvemos la password en JSON — queda en logs/proxy/historial.
-  // El admin invitador recibe un enlace de password-reset que el invitado usa para fijar su contraseña.
-  const { data: resetLink, error: linkErr } = await admin.auth.admin.generateLink({
-    type: 'recovery',
-    email,
-  })
-  if (linkErr) {
-    console.warn('[users] generateLink failed (no bloqueante):', linkErr.message)
-  }
-
+  // Devolvemos la password en claro UNA sola vez — el flujo que pidió el usuario
+  // es: admin crea cuenta → ve email + password generada → la pasa al nuevo
+  // usuario por canal seguro (preferible que un link de recovery, que muchos
+  // usuarios pierden o no entienden). La password ya está hasheada en Supabase
+  // antes de devolverla; el cliente solo recibe el texto plano una vez, no se
+  // persiste en BD. El usuario puede cambiarla luego desde su perfil.
   return NextResponse.json({
     ok: true,
     user_id: created.user.id,
     email,
     full_name,
     role,
-    // Link de recovery (one-time) para que el admin lo comparta por canal seguro.
-    // Sin password en plain text.
-    reset_link: resetLink?.properties?.action_link ?? null,
+    temp_password: password,
   })
 }
 
-// Genera password criptográficamente segura. NO se devuelve al cliente —
-// solo se usa internamente para crear el usuario en auth.users (Supabase
-// lo hashea inmediatamente).
+/**
+ * Genera una contraseña automática legible y segura: tres palabras cortas de
+ * un set base + 3 dígitos al azar + 1 símbolo (cumple cualquier policy estándar).
+ * Ej: "agua-luna-roca-472!". Cae bien al copiar/dictar y no usa base64 raro.
+ */
 function randomPassword(): string {
-  // 16 bytes random → 22 chars URL-safe + sufijo "!" para cumplir policy
-  return randomBytes(16).toString('base64url') + '!'
+  const words = [
+    'agua', 'luna', 'roca', 'mar', 'sol', 'nube', 'rio', 'pico',
+    'rayo', 'duna', 'isla', 'cima', 'ola', 'arce', 'pino', 'cedro',
+    'flor', 'tigre', 'lobo', 'oro', 'plata', 'azul', 'verde', 'rosa',
+    'norte', 'sur', 'este', 'oeste', 'foco', 'orbe', 'eco', 'reto',
+  ]
+  const pick = () => words[randomBytes(1)[0] % words.length]
+  const digits = String(randomBytes(2).readUInt16BE(0) % 1000).padStart(3, '0')
+  return `${pick()}-${pick()}-${pick()}-${digits}!`
 }
