@@ -82,11 +82,14 @@ export function PackageBar({
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        padding: '10px 20px',
-        borderBottom: '1px solid var(--border)',
+        padding: '12px 20px',
+        margin: '0 20px 20px',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-md)',
         background: 'var(--surface)',
         overflowX: 'auto',
         scrollbarWidth: 'thin',
+        flexShrink: 0,
       }}
     >
       <span
