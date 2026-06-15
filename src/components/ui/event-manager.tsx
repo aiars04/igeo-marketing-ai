@@ -103,6 +103,18 @@ function detectEventType(ev: Event | null): 'presential' | 'digital' | null {
   return null
 }
 
+/**
+ * Número de semana ISO 8601: la semana 1 es la que contiene el primer jueves
+ * del año. Semana de lunes a domingo. Es la convención europea estándar.
+ */
+function getIsoWeek(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  // Mover al jueves de la semana actual (lunes=1, domingo=0 se trata como 7).
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+}
+
 // Estilo común para labels de campos del modal
 const fieldLabelStyle: React.CSSProperties = {
   fontSize: 12,
@@ -2024,14 +2036,29 @@ function MonthView({
         borderRadius: "var(--radius-lg)",
       }}
     >
-      {/* Header de días de la semana */}
+      {/* Header de días de la semana: 1 col estrecha "Sem" + 7 cols de día */}
       <div
-        className="grid grid-cols-7"
+        className="grid"
         style={{
+          gridTemplateColumns: 'minmax(40px, 44px) repeat(7, minmax(0, 1fr))',
           background: "var(--surface-2)",
           borderBottom: "1px solid var(--border)",
         }}
       >
+        <div
+          className="text-center"
+          style={{
+            padding: "10px 0",
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            color: "var(--ink-3)",
+            borderRight: "1px solid var(--border)",
+          }}
+        >
+          Sem
+        </div>
         {dayNames.map((day) => (
           <div
             key={day}
@@ -2051,9 +2078,18 @@ function MonthView({
         ))}
       </div>
 
-      {/* Grid de días */}
-      <div className="grid grid-cols-7">
+      {/* Grid de días: misma grilla — celda "S{n}" antes de cada fila de 7 */}
+      <div
+        className="grid"
+        style={{ gridTemplateColumns: 'minmax(40px, 44px) repeat(7, minmax(0, 1fr))' }}
+      >
         {days.map((day, index) => {
+          // Antes del primer día de cada fila, insertamos la celda con la
+          // semana ISO. El número se calcula sobre el lunes (primer día visible
+          // de la fila), que es siempre `day` cuando index%7===0.
+          const isFirstOfRow = index % 7 === 0
+          const rowIndex = Math.floor(index / 7)
+          const isLastVisibleRow = rowIndex === Math.floor(days.length / 7) - 1
           const dayEvents = getEventsForDay(day)
           const isCurrentMonth = day.getMonth() === currentDate.getMonth()
           const isToday = day.toDateString() === new Date().toDateString()
@@ -2067,8 +2103,27 @@ function MonthView({
             : "rgba(0,0,0,0.02)"
 
           return (
+            <Fragment key={index}>
+              {isFirstOfRow && (
+                <div
+                  aria-hidden="true"
+                  className="flex items-start justify-center"
+                  style={{
+                    padding: "8px 0",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--ink-3)",
+                    background: "var(--surface-2)",
+                    borderRight: "1px solid var(--border)",
+                    borderBottom: isLastVisibleRow ? "none" : "1px solid var(--border)",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                  title={`Semana ${getIsoWeek(day)} del año`}
+                >
+                  S{getIsoWeek(day)}
+                </div>
+              )}
             <div
-              key={index}
               role="button"
               tabIndex={0}
               aria-label={`Crear evento el ${day.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`}
@@ -2146,6 +2201,7 @@ function MonthView({
                 )}
               </div>
             </div>
+            </Fragment>
           )
         })}
       </div>
@@ -2214,16 +2270,39 @@ function WeekView({
         <div
           className="text-center"
           style={{
-            padding: "8px 0",
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            color: "var(--ink-3)",
+            padding: "6px 0",
             borderRight: "1px solid var(--border)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 2,
           }}
+          title={`Semana ${getIsoWeek(weekDays[0])} del año`}
         >
-          Hora
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: "var(--ink-2)",
+              lineHeight: 1,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            S{getIsoWeek(weekDays[0])}
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: "var(--ink-3)",
+              lineHeight: 1,
+            }}
+          >
+            Hora
+          </span>
         </div>
         {weekDays.map((day, idx) => (
           <div
