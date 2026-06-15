@@ -1987,7 +1987,9 @@ function MonthView({
 }) {
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
   const startDate = new Date(firstDayOfMonth)
-  startDate.setDate(startDate.getDate() - startDate.getDay())
+  // Semana europea: lunes como primer día. getDay() devuelve 0 para domingo,
+  // así que (getDay()+6)%7 da 0=lunes, 1=martes, … 6=domingo.
+  startDate.setDate(startDate.getDate() - ((startDate.getDay() + 6) % 7))
 
   const allDays: Date[] = []
   const currentDay = new Date(startDate)
@@ -2011,7 +2013,7 @@ function MonthView({
       return event.startTime <= dayEnd && event.endTime >= dayStart
     })
 
-  const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+  const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 
   return (
     <div
@@ -2171,7 +2173,8 @@ function WeekView({
   getColorClasses: (color: string) => { bg: string; text: string }
 }) {
   const startOfWeek = new Date(currentDate)
-  startOfWeek.setDate(currentDate.getDate() - currentDate.getDay())
+  // Semana europea: empieza en lunes. (getDay()+6)%7 mapea Dom=6 al final.
+  startOfWeek.setDate(currentDate.getDate() - ((currentDate.getDay() + 6) % 7))
 
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const day = new Date(startOfWeek)
