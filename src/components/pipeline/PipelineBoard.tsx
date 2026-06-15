@@ -6,7 +6,7 @@ import {
   Plus, Sparkles, MoreHorizontal, Calendar,
   Lightbulb, PenLine, Layers, Zap, BarChart2,
   CheckCircle2, CheckCheck, ChevronRight, ArrowRight, Trash2,
-  ImageIcon, RefreshCw, Loader2, AlertCircle,
+  ImageIcon, RefreshCw, Loader2, AlertCircle, X,
 } from 'lucide-react'
 import { STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
@@ -1353,7 +1353,10 @@ function Card({
         )}
       </div>
 
-      {/* ── Acciones por stage ── */}
+      {/* ── Acciones por stage ──
+         Botones COMPACTOS porque las columnas del pipeline son estrechas. Ambos
+         con flex:1 + minWidth:0 para repartir el ancho equitativamente y no
+         desbordar (antes Rechazar tenía flex:0 0 auto y se salía de la caja). */}
       {!isRejected && needsApproval && (
         <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
           <button
@@ -1363,19 +1366,30 @@ function Card({
               onApprove(item.id, item.stage as Stage)
             }}
             className="btn-pill-ghost"
-            style={{ flex: 1, opacity: missingDateForApproval ? 0.6 : 1 }}
+            style={{
+              flex: 1, minWidth: 0,
+              height: 26, padding: '0 8px', fontSize: 11, gap: 4,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              opacity: missingDateForApproval ? 0.6 : 1,
+            }}
             title={missingDateForApproval ? 'Define la fecha de publicación primero' : 'Aprobar y enviar a Programación'}
           >
-            <CheckCircle2 size={13} aria-hidden="true" />
+            <CheckCircle2 size={12} aria-hidden="true" />
             {missingDateForApproval ? 'Falta fecha' : 'Aprobar'}
           </button>
           <button
             onClick={e => { e.stopPropagation(); onReject(item.id) }}
             className="btn-pill-ghost"
-            style={{ flex: '0 0 auto', color: 'var(--red, #ef4444)', borderColor: 'rgba(239,68,68,0.30)' }}
+            style={{
+              flex: 1, minWidth: 0,
+              height: 26, padding: '0 8px', fontSize: 11, gap: 4,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              color: 'var(--red, #ef4444)', borderColor: 'rgba(239,68,68,0.30)',
+            }}
             title="Rechazar"
             aria-label="Rechazar"
           >
+            <X size={12} aria-hidden="true" />
             Rechazar
           </button>
         </div>
@@ -1384,11 +1398,15 @@ function Card({
         <button
           onClick={e => { e.stopPropagation(); onMove(item.id, nextStage!) }}
           className="btn-pill-ghost"
-          style={{ marginTop: 8 }}
+          style={{
+            marginTop: 8,
+            height: 26, padding: '0 8px', fontSize: 11, gap: 4,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}
           title={`Mover a ${nextCfg.label} sin marcar aprobación`}
         >
           Avanzar a {nextCfg.label}
-          <ArrowRight size={13} aria-hidden="true" />
+          <ArrowRight size={12} aria-hidden="true" />
         </button>
       )}
 
