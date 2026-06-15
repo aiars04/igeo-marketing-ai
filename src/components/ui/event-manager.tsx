@@ -206,24 +206,38 @@ export interface EventManagerProps {
   ) => Promise<{ ok: boolean; error?: string }>
 }
 
-// Paleta Apple apagada para las píldoras de evento
+// Paleta Apple system colors apagada para las píldoras de evento.
+// Orden por gama del espectro para que el dropdown se navegue intuitivamente.
 const defaultColors = [
-  { name: "Azul",    value: "blue",   bg: "bg-[#0071e3]", text: "text-[#0055b3]" },
-  { name: "Verde",   value: "green",  bg: "bg-[#34c759]", text: "text-[#1a7a36]" },
-  { name: "Morado",  value: "purple", bg: "bg-[#af52de]", text: "text-[#7b2fa8]" },
-  { name: "Naranja", value: "orange", bg: "bg-[#ff9f0a]", text: "text-[#b25000]" },
-  { name: "Rosa",    value: "pink",   bg: "bg-[#e8388c]", text: "text-[#c0245a]" },
-  { name: "Rojo",    value: "red",    bg: "bg-[#ff3b30]", text: "text-[#c0392b]" },
+  { name: "Rojo",     value: "red",    bg: "bg-[#ff3b30]", text: "text-[#c0392b]" },
+  { name: "Naranja",  value: "orange", bg: "bg-[#ff9f0a]", text: "text-[#b25000]" },
+  { name: "Amarillo", value: "yellow", bg: "bg-[#ffcc00]", text: "text-[#8a6d00]" },
+  { name: "Verde",    value: "green",  bg: "bg-[#34c759]", text: "text-[#1a7a36]" },
+  { name: "Menta",    value: "mint",   bg: "bg-[#00c7be]", text: "text-[#008a83]" },
+  { name: "Verde-azulado", value: "teal", bg: "bg-[#30b0c7]", text: "text-[#1f7a8c]" },
+  { name: "Cian",     value: "cyan",   bg: "bg-[#32ade6]", text: "text-[#1e7da8]" },
+  { name: "Azul",     value: "blue",   bg: "bg-[#0071e3]", text: "text-[#0055b3]" },
+  { name: "Índigo",   value: "indigo", bg: "bg-[#5856d6]", text: "text-[#3b3a99]" },
+  { name: "Morado",   value: "purple", bg: "bg-[#af52de]", text: "text-[#7b2fa8]" },
+  { name: "Rosa",     value: "pink",   bg: "bg-[#e8388c]", text: "text-[#c0245a]" },
+  { name: "Marrón",   value: "brown",  bg: "bg-[#a2845e]", text: "text-[#6e5b40]" },
 ]
 
-// Estilos apagados (background+text) usados en EventCard
+// Estilos apagados (background+text) usados en EventCard — un par por cada
+// color de la paleta. Soft background (alpha 0.10-0.12) + texto oscuro.
 const EVENT_STYLES: Record<string, { bg: string; text: string }> = {
-  blue:   { bg: "var(--accent-soft)",       text: "var(--accent)" },
-  green:  { bg: "var(--green-soft)",        text: "var(--green-2)" },
-  purple: { bg: "rgba(175, 82, 222, 0.10)", text: "#7b2fa8" },
+  red:    { bg: "var(--red-soft)",          text: "var(--red-2)"   },
   orange: { bg: "var(--amber-soft)",        text: "var(--amber-2)" },
+  yellow: { bg: "rgba(255, 204, 0, 0.14)",  text: "#8a6d00" },
+  green:  { bg: "var(--green-soft)",        text: "var(--green-2)" },
+  mint:   { bg: "rgba(0, 199, 190, 0.12)",  text: "#008a83" },
+  teal:   { bg: "rgba(48, 176, 199, 0.12)", text: "#1f7a8c" },
+  cyan:   { bg: "rgba(50, 173, 230, 0.12)", text: "#1e7da8" },
+  blue:   { bg: "var(--accent-soft)",       text: "var(--accent)"  },
+  indigo: { bg: "rgba(88, 86, 214, 0.12)",  text: "#3b3a99" },
+  purple: { bg: "rgba(175, 82, 222, 0.10)", text: "#7b2fa8" },
   pink:   { bg: "rgba(232, 56, 140, 0.10)", text: "#c0245a" },
-  red:    { bg: "var(--red-soft)",          text: "var(--red-2)" },
+  brown:  { bg: "rgba(162, 132, 94, 0.14)", text: "#6e5b40" },
 }
 
 export function EventManager({

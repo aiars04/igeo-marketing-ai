@@ -24,13 +24,21 @@ const ICON_MAP: Record<string, typeof FolderClosed> = {
   Mail, FileText, AtSign, Hash,
 }
 
+// Paleta Apple system colors completa — orden por gama del espectro.
 const COLOR_SWATCHES = [
-  { value: '#0071e3', name: 'Azul' },
-  { value: '#e8388c', name: 'Rosa' },
-  { value: '#34c759', name: 'Verde' },
-  { value: '#ff9f0a', name: 'Naranja' },
-  { value: '#af52de', name: 'Morado' },
-  { value: '#6e6e73', name: 'Gris' },
+  { value: '#ff3b30', name: 'Rojo'     },
+  { value: '#ff9f0a', name: 'Naranja'  },
+  { value: '#ffcc00', name: 'Amarillo' },
+  { value: '#34c759', name: 'Verde'    },
+  { value: '#00c7be', name: 'Menta'    },
+  { value: '#30b0c7', name: 'Verde-azulado' },
+  { value: '#32ade6', name: 'Cian'     },
+  { value: '#0071e3', name: 'Azul'     },
+  { value: '#5856d6', name: 'Índigo'   },
+  { value: '#af52de', name: 'Morado'   },
+  { value: '#e8388c', name: 'Rosa'     },
+  { value: '#a2845e', name: 'Marrón'   },
+  { value: '#6e6e73', name: 'Gris'     },
 ]
 
 const CHANNEL_OPTIONS: { value: Channel; label: string }[] = [
