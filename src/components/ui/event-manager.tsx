@@ -749,15 +749,13 @@ export function EventManager({
 
           <button
             onClick={() => {
-              setIsCreating(true)
-              setEventType(null)
-              setNewEvent({
-                title: "",
-                description: "",
-                color: colors[0].value,
-                tags: [],
-              })
-              setIsDialogOpen(true)
+              // Pre-cargar con la fecha que el usuario está viendo (currentDate),
+              // no con `new Date()`. Así si navega a otro mes y pulsa "+ Nuevo
+              // evento", el modal arranca en ese mes y la usuaria puede ajustar
+              // el día concreto desde el datepicker. Antes se dejaba undefined y
+              // el calendario nativo del navegador mostraba "hoy" por defecto,
+              // lo que generaba la falsa impresión de "me coge el día actual".
+              openCreateAt(currentDate)
             }}
             className="btn-cta w-full sm:w-auto"
           >
