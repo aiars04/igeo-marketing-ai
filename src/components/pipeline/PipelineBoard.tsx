@@ -946,7 +946,7 @@ function ContentDetailModal({
                   Generar contenido con IA
                 </button>
                 <p style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                  Usará el content_type activo del canal <strong>{item.channel}</strong> con Gemini (8-30s).
+                  Usará el tipo de canal activo para <strong>{item.channel}</strong> con Gemini (8-30s).
                 </p>
                 {genError && (
                   <p style={{ fontSize: 11, color: 'var(--red-2)' }}>

@@ -508,7 +508,7 @@ function ContentTypeCard({
           <button
             onClick={() => onEdit(ct)}
             className="admin-card-action"
-            aria-label="Editar tipo de contenido"
+            aria-label="Editar tipo de canal"
             title="Editar"
           >
             <Pencil size={14} aria-hidden="true" />
@@ -516,7 +516,7 @@ function ContentTypeCard({
           <button
             onClick={() => onDelete(ct.id)}
             className="admin-card-action admin-card-action-delete"
-            aria-label="Eliminar tipo de contenido"
+            aria-label="Eliminar tipo de canal"
             title="Eliminar"
           >
             <Trash2 size={14} aria-hidden="true" />
@@ -746,7 +746,7 @@ function ContentTypeModal({
             </div>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
-                {isEdit ? 'Editar tipo de contenido' : 'Nuevo tipo de contenido'}
+                {isEdit ? 'Editar tipo de canal' : 'Nuevo tipo de canal'}
               </h2>
               <p className="text-[12px] mt-1" style={{ color: 'var(--ink-2)' }}>La IA usará estas instrucciones para generar contenido</p>
             </div>
@@ -791,7 +791,7 @@ function ContentTypeModal({
           </div>
           <div>
             <label className="section-label block mb-1.5">Descripción</label>
-            <p className="text-[11px] mb-1.5" style={{ color: 'var(--ink-2)' }}>Qué produce este tipo de contenido y para qué sirve.</p>
+            <p className="text-[11px] mb-1.5" style={{ color: 'var(--ink-2)' }}>Qué produce este tipo de canal y para qué sirve.</p>
             <textarea
               rows={2}
               className="input"
@@ -1031,7 +1031,7 @@ export default function AdminPage() {
         }}
       >
         {([
-          { value: 'types',         label: 'Tipos de contenido', icon: BookOpen           },
+          { value: 'types',         label: 'Tipos de canal', icon: BookOpen           },
           { value: 'playbooks',     label: 'Playbooks',          icon: Layers             },
           { value: 'markets',       label: 'Reglas por mercado', icon: Globe              },
           { value: 'mentions',      label: 'Menciones',          icon: AtSign             },
@@ -1124,7 +1124,7 @@ export default function AdminPage() {
               <BookOpen size={22} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />
             </div>
             <div>
-              <p className="text-[14px] font-semibold" style={{ color: 'var(--ink)' }}>Sin tipos de contenido</p>
+              <p className="text-[14px] font-semibold" style={{ color: 'var(--ink)' }}>Sin tipos de canal</p>
               <p className="text-[12px] mt-1" style={{ color: 'var(--ink-2)' }}>Crea el primero para empezar a planificar contenido con IA</p>
             </div>
             <button className="btn-cta" onClick={openCreate}>
