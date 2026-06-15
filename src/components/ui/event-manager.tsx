@@ -185,7 +185,6 @@ export interface EventManagerProps {
   onEventCreate?: (event: Event) => void
   onEventUpdate?: (id: string, event: Partial<Event>) => void
   onEventDelete?: (id: string) => void
-  categories?: string[]
   colors?: { name: string; value: string; bg: string; text: string }[]
   defaultView?: "month" | "week" | "day" | "list"
   className?: string
@@ -245,7 +244,6 @@ export function EventManager({
   onEventCreate,
   onEventUpdate,
   onEventDelete,
-  categories = ["Reunión", "Tarea", "Recordatorio", "Personal"],
   colors = defaultColors,
   defaultView = "month",
   onImportCSV,
@@ -288,7 +286,6 @@ export function EventManager({
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedColors, setSelectedColors] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
@@ -306,19 +303,16 @@ export function EventManager({
         const hasMatchingTag = event.tags?.some((tag) => selectedTags.includes(tag))
         if (!hasMatchingTag) return false
       }
-      if (selectedCategories.length > 0 && event.category && !selectedCategories.includes(event.category))
-        return false
       return true
     })
-  }, [events, searchQuery, selectedColors, selectedTags, selectedCategories])
+  }, [events, searchQuery, selectedColors, selectedTags])
 
   const hasActiveFilters =
-    selectedColors.length > 0 || selectedTags.length > 0 || selectedCategories.length > 0
+    selectedColors.length > 0 || selectedTags.length > 0
 
   const clearFilters = () => {
     setSelectedColors([])
     setSelectedTags([])
-    setSelectedCategories([])
     setSearchQuery("")
   }
 
@@ -918,52 +912,6 @@ export function EventManager({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="btn-pill-secondary"
-                style={{ height: 30, padding: "0 12px", fontSize: 12 }}
-              >
-                <Filter className="h-3.5 w-3.5" aria-hidden="true" />
-                Categorías
-                {selectedCategories.length > 0 && (
-                  <span
-                    style={{
-                      marginLeft: 4,
-                      padding: "0 6px",
-                      height: 18,
-                      lineHeight: "18px",
-                      borderRadius: "var(--radius-pill)",
-                      background: "var(--accent-soft)",
-                      color: "var(--accent)",
-                      fontSize: 10,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {selectedCategories.length}
-                  </span>
-                )}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Filtrar por categoría</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {categories.map((category) => (
-                <DropdownMenuCheckboxItem
-                  key={category}
-                  checked={selectedCategories.includes(category)}
-                  onCheckedChange={(checked) => {
-                    setSelectedCategories((prev) =>
-                      checked ? [...prev, category] : prev.filter((c) => c !== category),
-                    )
-                  }}
-                >
-                  {category}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
@@ -1035,33 +983,6 @@ export function EventManager({
                 className="inline-flex items-center"
                 style={{ marginLeft: 2, color: "var(--ink-3)", background: "transparent", border: "none", padding: 2, cursor: "pointer" }}
                 aria-label={`Quitar filtro etiqueta ${tag}`}
-              >
-                <X className="h-3 w-3" aria-hidden="true" />
-              </button>
-            </span>
-          ))}
-          {selectedCategories.map((category) => (
-            <span
-              key={category}
-              className="inline-flex items-center"
-              style={{
-                gap: 5,
-                height: 22,
-                padding: "0 6px 0 10px",
-                borderRadius: "var(--radius-pill)",
-                background: "var(--surface-2)",
-                border: "1px solid var(--border)",
-                fontSize: 11,
-                fontWeight: 500,
-                color: "var(--ink)",
-              }}
-            >
-              {category}
-              <button
-                onClick={() => setSelectedCategories((prev) => prev.filter((c) => c !== category))}
-                className="inline-flex items-center"
-                style={{ marginLeft: 2, color: "var(--ink-3)", background: "transparent", border: "none", padding: 2, cursor: "pointer" }}
-                aria-label={`Quitar filtro categoría ${category}`}
               >
                 <X className="h-3 w-3" aria-hidden="true" />
               </button>

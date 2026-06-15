@@ -802,7 +802,6 @@ export default function CalendarPage() {
               setEvents(p => [...p, prev])
             }
           }}
-          categories={['Contenido', 'Acontecimiento', 'Reunión', 'Tarea', 'Personal']}
           availableTags={['Importante', 'Urgente', 'Trabajo', 'Cliente', 'Equipo', 'Personal']}
           defaultView="month"
           onImportCSV={handleCSVImport}
