@@ -1194,11 +1194,13 @@ textarea.input {
   outline: none;
 }
 
-/* Indicador de canal — borde izquierdo sutil (light) */
-.pcard[data-channel="linkedin"]   { border-left: 2px solid rgba(0, 113, 227, 0.40); }
-.pcard[data-channel="instagram"]  { border-left: 2px solid rgba(232, 56, 140, 0.40); }
-.pcard[data-channel="facebook"]   { border-left: 2px solid rgba(0, 113, 227, 0.40); }
-.pcard[data-channel="x"]          { border-left: 2px solid rgba(110, 110, 115, 0.40); }
-.pcard[data-channel="blog"]       { border-left: 2px solid rgba(255, 159, 10, 0.40); }
-.pcard[data-channel="email"]      { border-left: 2px solid rgba(255, 159, 10, 0.40); }
-.pcard[data-channel="newsletter"] { border-left: 2px solid rgba(52, 199, 89, 0.40); }
+/* Indicador de canal — franja izquierda. Usa CSS vars que ChannelColorsCssVars
+   inyecta según las preferencias del usuario (Admin → Colores). El fallback
+   tras la coma es por si el provider aún no se ha montado en el primer paint. */
+.pcard[data-channel="linkedin"]   { border-left: 2px solid var(--ch-linkedin-text,   #0055b3); }
+.pcard[data-channel="instagram"]  { border-left: 2px solid var(--ch-instagram-text,  #c0245a); }
+.pcard[data-channel="facebook"]   { border-left: 2px solid var(--ch-facebook-text,   #0055b3); }
+.pcard[data-channel="x"]          { border-left: 2px solid var(--ch-x-text,          #3c3c43); }
+.pcard[data-channel="blog"]       { border-left: 2px solid var(--ch-blog-text,       #b25000); }
+.pcard[data-channel="email"]      { border-left: 2px solid var(--ch-email-text,      #b25000); }
+.pcard[data-channel="newsletter"] { border-left: 2px solid var(--ch-newsletter-text, #1a7a36); }

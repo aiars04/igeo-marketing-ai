@@ -99,6 +99,27 @@ export function getResolvedSlug(channel: Channel, overrides: Overrides): string 
   return overrides[channel] ?? DEFAULT_CHANNEL_SLUG[channel] ?? 'gray'
 }
 
+/** Lista de todos los canales (mantener en sync con type Channel). */
+export const ALL_CHANNELS_ARRAY: Channel[] = [
+  'linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter',
+]
+
+/**
+ * Escribe las CSS custom properties --ch-{channel}-{text|bg|border} en el
+ * elemento dado (típicamente document.documentElement) según los overrides
+ * actuales. Permite que CSS estático (globals.css) y componentes inline
+ * compartan la misma fuente de verdad y se repinten al instante cuando el
+ * usuario cambia un color desde Admin → Colores.
+ */
+export function applyChannelCssVars(root: HTMLElement, overrides: Overrides): void {
+  for (const ch of ALL_CHANNELS_ARRAY) {
+    const entry = paletteEntry(getResolvedSlug(ch, overrides))
+    root.style.setProperty(`--ch-${ch}-text`,   entry.text)
+    root.style.setProperty(`--ch-${ch}-bg`,     entry.bg)
+    root.style.setProperty(`--ch-${ch}-border`, entry.border)
+  }
+}
+
 /**
  * Hook reactivo. Carga overrides desde localStorage al montar, escucha cambios
  * de otras pestañas (storage event) y del mismo tab (evento custom), y expone

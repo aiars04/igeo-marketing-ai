@@ -29,6 +29,8 @@ import {
   Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useChannelColors, getResolvedSlug } from "@/lib/channel-colors"
+import type { Channel } from "@/types/database"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1818,6 +1820,8 @@ function EventCard({
   const [isHovered, setIsHovered] = useState(false)
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
+  // Override de colores de canal del usuario — repinta automáticamente al cambiar.
+  const { overrides: channelOverrides } = useChannelColors()
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const colorClasses = getColorClasses(event.color)
 
@@ -1842,8 +1846,15 @@ function EventCard({
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
   }
 
-  // Paleta apagada Apple
-  const eventStyle = EVENT_STYLES[event.color] ?? EVENT_STYLES.blue
+  // Paleta apagada Apple. Para eventos digitales con `channel`, IGNORAMOS el
+  // event.color guardado y derivamos el color del canal actual del usuario
+  // (Admin → Colores). Así cambiar el color de Instagram repinta TODOS los
+  // eventos de Instagram, no solo los nuevos.
+  const channelSlugForColor = event.channel
+    ? getResolvedSlug(event.channel as Channel, channelOverrides)
+    : null
+  const effectiveColorSlug = channelSlugForColor ?? event.color
+  const eventStyle = EVENT_STYLES[effectiveColorSlug] ?? EVENT_STYLES.blue
 
   if (variant === "compact") {
     return (
@@ -2516,6 +2527,7 @@ function ListView({
   onEventClick: (event: Event) => void
   getColorClasses: (color: string) => { bg: string; text: string }
 }) {
+  const { overrides: channelOverrides } = useChannelColors()
   const sortedEvents = [...events].sort(
     (a, b) => a.startTime.getTime() - b.startTime.getTime(),
   )
@@ -2563,7 +2575,10 @@ function ListView({
           {/* Eventos del día */}
           <div>
             {dateEvents.map((event, idx) => {
-              const eventStyle = EVENT_STYLES[event.color] ?? EVENT_STYLES.blue
+              const effectiveColorSlug = event.channel
+                ? getResolvedSlug(event.channel as Channel, channelOverrides)
+                : event.color
+              const eventStyle = EVENT_STYLES[effectiveColorSlug] ?? EVENT_STYLES.blue
               return (
                 <div
                   key={event.id}

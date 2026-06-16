@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { SuggestImprovementDrawer } from '@/components/SuggestImprovementDrawer'
+import { ChannelColorsCssVars } from '@/components/ChannelColorsCssVars'
 
 type Profile = {
   user_id: string
@@ -81,6 +82,9 @@ export function AppShell({
 
   return (
     <div className="app-shell">
+      {/* Inyecta CSS vars --ch-{channel}-* en :root según overrides del usuario.
+          Permite que franja del pipeline (data-channel) y demás se repinten. */}
+      <ChannelColorsCssVars />
       <aside className="sidebar" aria-label="Navegación principal">
         {/* ── Brand ── */}
         <div className="brand">
