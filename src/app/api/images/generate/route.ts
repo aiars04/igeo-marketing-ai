@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Buffer } from 'node:buffer'
 import { genai, ENHANCER_MODEL, IMAGEN_DIMENSIONS, type AspectRatio } from '@/lib/gemini'
 import { generateWithNanoBanana, type NanoBananaReference } from '@/lib/nano-banana'
-import type { Channel, ContentItem, CreativeTemplate } from '@/types/database'
+import { matchTemplatesForItem } from '@/lib/creative-templates-match'
+import type { CreativeTemplate } from '@/types/database'
 
 // Cascada: Nano Banana 2 → Imagen 4 Ultra → Imagen 4 Base
 // Nano Banana 2 es ~5x más rápido y tiene cuota mucho mayor.
@@ -104,94 +105,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 /**
- * Busca plantillas maestras que apliquen a este content_item:
- *   - channel = item.channel (o fallback al `channel` recibido en el body si
- *     el item no se encuentra)
- *   - market = item.market O market IS NULL (las "para todos los mercados")
- *   - active = true
- *   - si el item tiene content_type activo del canal, prioriza plantillas
- *     vinculadas a ese content_type via pivote; si NO hay ninguna vinculada,
- *     incluye las que no tienen filas pivote (= "aplican a todos los tipos")
- *
- * Devuelve max MAX_TEMPLATE_REFS ordenadas por created_at desc + notas para el prompt.
- */
-async function loadMatchingTemplates(
-  admin: ReturnType<typeof createAdminClient>,
-  contentItemId: string,
-  bodyChannel: string,
-): Promise<{ templates: CreativeTemplate[]; notes: string[] }> {
-  // Cargar item para conocer channel + market + (opcional) content_type
-  const { data: item } = await admin
-    .from('content_items')
-    .select('id, channel, market')
-    .eq('id', contentItemId)
-    .single<Pick<ContentItem, 'id' | 'channel' | 'market'>>()
-
-  const channel = (item?.channel ?? bodyChannel) as Channel
-  if (!channel) return { templates: [], notes: [] }
-  const market = item?.market ?? null
-
-  // Buscar content_type activo del canal (1)
-  let activeContentTypeId: string | null = null
-  if (item) {
-    const { data: ctRows } = await admin
-      .from('content_types')
-      .select('id')
-      .eq('channel', channel).eq('active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-    if (ctRows && ctRows.length > 0) activeContentTypeId = (ctRows[0] as { id: string }).id
-  }
-
-  // Query base: canal + activo + (mercado del item O global)
-  let q = admin
-    .from('creative_templates')
-    .select('*')
-    .eq('channel', channel)
-    .eq('active', true)
-    .order('created_at', { ascending: false })
-    .limit(50)
-  if (market) q = q.or(`market.eq.${market},market.is.null`)
-  else q = q.is('market', null)
-
-  const { data: candidates } = await q.returns<CreativeTemplate[]>()
-  if (!candidates || candidates.length === 0) return { templates: [], notes: [] }
-
-  // Filtrado por content_type via pivote
-  const ids = candidates.map(c => c.id)
-  const { data: pivotRows } = await admin
-    .from('creative_template_content_types')
-    .select('template_id, content_type_id')
-    .in('template_id', ids)
-    .returns<Array<{ template_id: string; content_type_id: string }>>()
-
-  const pivoteByTemplate = new Map<string, string[]>()
-  for (const p of pivotRows ?? []) {
-    const arr = pivoteByTemplate.get(p.template_id) ?? []
-    arr.push(p.content_type_id)
-    pivoteByTemplate.set(p.template_id, arr)
-  }
-
-  // Contrato: si una plantilla no tiene filas pivote, aplica a TODOS los
-  // content_types del canal. Si tiene, solo a los enlazados.
-  const filtered = candidates.filter(t => {
-    const linked = pivoteByTemplate.get(t.id)
-    if (!linked || linked.length === 0) return true
-    if (!activeContentTypeId) return false  // tiene pivote pero no sabemos el ct → fuera
-    return linked.includes(activeContentTypeId)
-  })
-
-  const picked = filtered.slice(0, MAX_TEMPLATE_REFS)
-  const notes = picked
-    .map(t => {
-      const role = t.asset_role ? `${t.asset_role}` : 'plantilla'
-      const noteTxt = t.notes ? `: ${t.notes}` : ''
-      return `[${role} — ${t.name}]${noteTxt}`
-    })
-  return { templates: picked, notes }
-}
-
-/**
  * Descarga las plantillas del bucket como base64 y las prepara para
  * pasarlas al modelo. Si alguna falla, la descarta silenciosamente (mejor
  * generar con 3 refs que abortar todo por una rota).
@@ -261,12 +174,14 @@ export async function POST(req: NextRequest) {
 
   if (contentItemId) {
     try {
-      const { templates, notes } = await loadMatchingTemplates(admin, contentItemId, (body.channel ?? '').toLowerCase())
+      const { templates, promptNotes } = await matchTemplatesForItem(
+        admin, contentItemId, (body.channel ?? '').toLowerCase() || null, { cap: MAX_TEMPLATE_REFS },
+      )
       if (templates.length > 0) {
         const refs = await downloadTemplatesAsRefs(admin, templates)
         templateRefs = refs.refs
         usedTemplateIds = refs.usedIds
-        templatesPromptNotes = notes
+        templatesPromptNotes = promptNotes
       }
     } catch (e) {
       console.warn('[images/generate] template loading failed (no bloqueante):', e instanceof Error ? e.message : e)

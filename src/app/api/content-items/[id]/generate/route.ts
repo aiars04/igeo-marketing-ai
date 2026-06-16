@@ -3,6 +3,7 @@ import { genai } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { buildMarketRulesPrompt, detectForbiddenTerms } from '@/lib/market-rules'
 import { buildFormatSpecPromptBlock } from '@/lib/content-type-format-spec'
+import { matchTemplatesForItem } from '@/lib/creative-templates-match'
 import type { ContentItem, ContentType, BrandContext, Profile, Channel, Market } from '@/types/database'
 
 const MARKET_LANG: Record<Market, string> = {
@@ -124,14 +125,34 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // 4d) Bloque de estructura del formato (assets esperados, tamaños sugeridos)
   const formatSpecSection = ct ? buildFormatSpecPromptBlock(ct.format_spec) : ''
 
+  // 4e) Plantillas visuales que acompañarán a este copy. NO descargamos
+  // archivos — solo los metadatos llegan al prompt de Gemini para que adapte
+  // tono, longitud y CTA al saber qué pieza visual irá al lado. Cualquier
+  // fallo aquí degrada silenciosamente (sigue sin contexto visual).
+  let creativeTemplatesSection = ''
+  try {
+    const { promptNotes } = await matchTemplatesForItem(admin, item.id, item.channel, { cap: 5 })
+    if (promptNotes.length > 0) {
+      creativeTemplatesSection = `\n\n════ PLANTILLAS VISUALES QUE ACOMPAÑARÁN A ESTE COPY ════
+La pieza visual que se generará para este contenido seguirá el estilo de las siguientes plantillas maestras de marca. Ajusta el copy en consecuencia:
+- Si las plantillas YA llevan título o headline visible, NO repitas ese título en el copy.
+- Tono coherente con el lenguaje visual descrito (editorial/cálido vs corporativo/limpio).
+- Si las notas mencionan logo o paleta concretos, evita describirlos en el copy (ya están en la imagen).
+
+${promptNotes.map(n => `  · ${n}`).join('\n')}`
+    }
+  } catch (e) {
+    console.warn('[content-items/generate] template match failed (no bloqueante):', e instanceof Error ? e.message : e)
+  }
+
   // 5) Construir prompts
   const systemPrompt = ct
-    ? `${SYSTEM_BASE}${brandSection}${marketRulesSection}${formatSpecSection}
+    ? `${SYSTEM_BASE}${brandSection}${marketRulesSection}${formatSpecSection}${creativeTemplatesSection}
 
 ════ INSTRUCCIONES ESPECÍFICAS PARA ESTE CONTENIDO (${ct.name}) ════
 PROCESO: ${ct.process}
 ESTILO: ${ct.style}`
-    : `${SYSTEM_BASE}${brandSection}${marketRulesSection}
+    : `${SYSTEM_BASE}${brandSection}${marketRulesSection}${creativeTemplatesSection}
 
 (No hay content_type configurado para canal ${item.channel}. Usa criterio general de marketing B2B.)`
 
