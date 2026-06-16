@@ -80,7 +80,12 @@ const DIGITAL_MARKETS = [
   { value: 'france',   label: 'Francia'       },
   { value: 'portugal', label: 'Portugal'      },
 ] as const
-const COLOR_KEYS = ['blue', 'green', 'purple', 'orange', 'pink', 'red'] as const
+// Mantener sincronizado con defaultColors / EVENT_STYLES. Es lo que el modal
+// de edición ofrece como swatches asignables al crear/editar un evento.
+const COLOR_KEYS = [
+  'red', 'orange', 'yellow', 'green', 'mint', 'teal',
+  'cyan', 'blue', 'indigo', 'purple', 'pink', 'brown',
+] as const
 
 // Color automático según canal digital
 const CHANNEL_TO_COLOR: Record<string, string> = {
