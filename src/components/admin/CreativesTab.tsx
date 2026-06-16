@@ -13,7 +13,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   Plus, Pencil, Trash2, Upload, Image as ImageIcon, X, Loader2,
-  ToggleLeft, ToggleRight, Filter, ImagePlus,
+  ToggleLeft, ToggleRight, Filter, ImagePlus, ZoomIn, Download, ExternalLink,
 } from 'lucide-react'
 import type { Channel, Market, ContentType, CreativeTemplateWithRefs } from '@/types/database'
 
@@ -57,6 +57,7 @@ export function CreativesTab({ toast }: Props) {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<CreativeTemplateWithRefs | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<CreativeTemplateWithRefs | null>(null)
+  const [previewing, setPreviewing] = useState<CreativeTemplateWithRefs | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -212,6 +213,7 @@ export function CreativesTab({ toast }: Props) {
                     key={t.id}
                     template={t}
                     contentTypes={contentTypes.filter(ct => ct.channel === t.channel)}
+                    onPreview={() => setPreviewing(t)}
                     onEdit={() => { setEditing(t); setModalOpen(true) }}
                     onToggle={() => handleToggleActive(t)}
                     onDelete={() => setDeleteConfirm(t)}
@@ -238,6 +240,16 @@ export function CreativesTab({ toast }: Props) {
           toast(editing ? 'Plantilla actualizada' : 'Plantilla creada', 'success')
         }}
       />
+
+      {/* Lightbox preview */}
+      {previewing && (
+        <TemplateLightbox
+          template={previewing}
+          contentTypes={contentTypes.filter(ct => ct.channel === previewing.channel)}
+          onClose={() => setPreviewing(null)}
+          onEdit={() => { setEditing(previewing); setPreviewing(null); setModalOpen(true) }}
+        />
+      )}
 
       {/* Confirm delete */}
       {deleteConfirm && (
@@ -279,13 +291,14 @@ export function CreativesTab({ toast }: Props) {
 // ─── Card ────────────────────────────────────────────────────────────────
 
 function TemplateCard({
-  template, contentTypes, onEdit, onToggle, onDelete,
+  template, contentTypes, onPreview, onEdit, onToggle, onDelete,
 }: {
   template: CreativeTemplateWithRefs
   contentTypes: ContentType[]
-  onEdit:   () => void
-  onToggle: () => void
-  onDelete: () => void
+  onPreview: () => void
+  onEdit:    () => void
+  onToggle:  () => void
+  onDelete:  () => void
 }) {
   const ctNames = contentTypes
     .filter(ct => template.content_type_ids.includes(ct.id))
@@ -302,13 +315,29 @@ function TemplateCard({
         display: 'flex', flexDirection: 'column',
       }}
     >
-      {/* Preview */}
-      <div
+      {/* Preview clicable — abre lightbox a tamaño completo */}
+      <button
+        type="button"
+        onClick={onPreview}
+        aria-label={`Ver ${template.name} en detalle`}
         style={{
           background: 'var(--surface-2)',
           aspectRatio: '16/9',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           overflow: 'hidden',
+          border: 'none',
+          padding: 0,
+          cursor: 'pointer',
+          position: 'relative',
+          width: '100%',
+        }}
+        onMouseEnter={e => {
+          const ov = e.currentTarget.querySelector<HTMLElement>('[data-preview-overlay]')
+          if (ov) ov.style.opacity = '1'
+        }}
+        onMouseLeave={e => {
+          const ov = e.currentTarget.querySelector<HTMLElement>('[data-preview-overlay]')
+          if (ov) ov.style.opacity = '0'
         }}
       >
         {template.signed_url ? (
@@ -321,7 +350,25 @@ function TemplateCard({
         ) : (
           <ImageIcon size={28} aria-hidden="true" style={{ color: 'var(--ink-3)' }} />
         )}
-      </div>
+        {/* Overlay hover con icono lupa */}
+        <span
+          data-preview-overlay
+          aria-hidden="true"
+          style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(0,0,0,0.30)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            opacity: 0,
+            transition: 'opacity 0.15s ease',
+            color: '#fff',
+            fontSize: 12, fontWeight: 600,
+            gap: 6,
+          }}
+        >
+          <ZoomIn size={16} aria-hidden="true" />
+          Ver en detalle
+        </span>
+      </button>
 
       {/* Info */}
       <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
@@ -805,6 +852,277 @@ function TemplateModal({
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Lightbox: vista en detalle de la plantilla ──────────────────────────
+
+function TemplateLightbox({
+  template, contentTypes, onClose, onEdit,
+}: {
+  template: CreativeTemplateWithRefs
+  contentTypes: ContentType[]
+  onClose: () => void
+  onEdit:  () => void
+}) {
+  // Cierre con tecla ESC
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const ctNames = contentTypes
+    .filter(ct => template.content_type_ids.includes(ct.id))
+    .map(ct => ct.name)
+  const marketLabel = template.market
+    ? MARKETS.find(m => m.value === template.market)?.label ?? template.market
+    : 'Todos los mercados'
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ padding: 24 }}
+    >
+      {/* Backdrop oscuro */}
+      <div
+        className="absolute inset-0"
+        style={{ background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(6px)' }}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Contenedor */}
+      <div
+        className="relative flex flex-col"
+        style={{
+          width: 'min(1200px, 95vw)',
+          height: 'min(880px, 92vh)',
+          background: 'var(--surface)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: '0 16px 48px rgba(0,0,0,0.32)',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between shrink-0"
+          style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', gap: 12 }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <p
+              style={{
+                fontSize: 15, fontWeight: 700, color: 'var(--ink)',
+                margin: 0, lineHeight: 1.3, letterSpacing: '-0.01em',
+              }}
+              className="truncate"
+            >
+              {template.name}
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--ink-3)', margin: '2px 0 0', lineHeight: 1.3 }}>
+              {CHANNEL_LABEL[template.channel]} · {template.asset_role}
+              {template.width && template.height
+                ? ` · ${template.width}×${template.height} px`
+                : (template.aspect_ratio ? ` · ${template.aspect_ratio}` : '')}
+              {' · '}{humanSize(template.file_size)}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {template.signed_url && (
+              <a
+                href={template.signed_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-pill-secondary"
+                style={{ height: 30, padding: '0 12px', fontSize: 11 }}
+                title="Abrir el archivo original en una pestaña nueva"
+              >
+                <ExternalLink size={12} aria-hidden="true" />
+                Abrir original
+              </a>
+            )}
+            {template.signed_url && (
+              <a
+                href={template.signed_url}
+                download={template.name}
+                className="btn-pill-secondary"
+                style={{ height: 30, padding: '0 12px', fontSize: 11 }}
+                title="Descargar archivo"
+              >
+                <Download size={12} aria-hidden="true" />
+                Descargar
+              </a>
+            )}
+            <button
+              onClick={onEdit}
+              className="btn-pill-secondary"
+              style={{ height: 30, padding: '0 12px', fontSize: 11 }}
+              title="Editar metadatos"
+            >
+              <Pencil size={12} aria-hidden="true" />
+              Editar
+            </button>
+            <button
+              onClick={onClose}
+              className="image-menu-trigger"
+              aria-label="Cerrar (Esc)"
+              title="Cerrar (Esc)"
+            >
+              <X size={14} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        {/* Imagen a tamaño completo + sidebar de metadatos */}
+        <div className="flex flex-1" style={{ minHeight: 0 }}>
+          {/* Imagen */}
+          <div
+            style={{
+              flex: 1,
+              background:
+                'repeating-conic-gradient(rgba(0,0,0,0.05) 0% 25%, transparent 0% 50%) 50% / 24px 24px, var(--surface-2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 24, overflow: 'auto',
+            }}
+          >
+            {template.signed_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={template.signed_url}
+                alt={template.name}
+                style={{
+                  maxWidth: '100%', maxHeight: '100%',
+                  objectFit: 'contain',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+                  borderRadius: 4,
+                  display: 'block',
+                }}
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-2" style={{ color: 'var(--ink-3)' }}>
+                <ImageIcon size={36} aria-hidden="true" />
+                <p style={{ fontSize: 12, margin: 0 }}>Vista previa no disponible</p>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar metadatos */}
+          <aside
+            style={{
+              width: 320,
+              borderLeft: '1px solid var(--border)',
+              padding: '18px 20px',
+              overflow: 'auto',
+              background: 'var(--surface)',
+              display: 'flex', flexDirection: 'column', gap: 16,
+            }}
+          >
+            {template.description && (
+              <Field label="Descripción">
+                <p style={{ fontSize: 13, color: 'var(--ink)', margin: 0, lineHeight: 1.5 }}>
+                  {template.description}
+                </p>
+              </Field>
+            )}
+
+            <Field label="Mercado">
+              <p style={{
+                fontSize: 13, color: template.market ? 'var(--ink)' : 'var(--ink-3)',
+                fontStyle: template.market ? 'normal' : 'italic',
+                margin: 0,
+              }}>
+                {marketLabel}
+              </p>
+            </Field>
+
+            <Field label="Aplica a tipos de canal">
+              {ctNames.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--ink-3)', fontStyle: 'italic', margin: 0 }}>
+                  Todos los tipos del canal
+                </p>
+              ) : (
+                <div className="flex flex-wrap" style={{ gap: 4 }}>
+                  {ctNames.map(name => (
+                    <span
+                      key={name}
+                      style={{
+                        fontSize: 11, fontWeight: 600,
+                        padding: '3px 8px', borderRadius: 'var(--radius-sm)',
+                        background: 'var(--accent-soft)',
+                        border: '1px solid var(--accent-border)',
+                        color: 'var(--accent-2)',
+                      }}
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Field>
+
+            {template.notes && (
+              <Field label="Notas / instrucciones para la IA">
+                <div
+                  style={{
+                    fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.5,
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: 10,
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {template.notes}
+                </div>
+              </Field>
+            )}
+
+            <Field label="Detalles del archivo">
+              <dl style={{ fontSize: 12, margin: 0, color: 'var(--ink-2)', display: 'grid', gridTemplateColumns: '90px 1fr', rowGap: 4 }}>
+                <dt style={{ color: 'var(--ink-3)' }}>MIME</dt>
+                <dd style={{ margin: 0 }}>{template.mime_type}</dd>
+                <dt style={{ color: 'var(--ink-3)' }}>Tamaño</dt>
+                <dd style={{ margin: 0 }}>{humanSize(template.file_size)}</dd>
+                {template.width && template.height && (
+                  <>
+                    <dt style={{ color: 'var(--ink-3)' }}>Dimensiones</dt>
+                    <dd style={{ margin: 0 }}>{template.width} × {template.height} px</dd>
+                  </>
+                )}
+                {template.aspect_ratio && (
+                  <>
+                    <dt style={{ color: 'var(--ink-3)' }}>Proporción</dt>
+                    <dd style={{ margin: 0 }}>{template.aspect_ratio}</dd>
+                  </>
+                )}
+                <dt style={{ color: 'var(--ink-3)' }}>Estado</dt>
+                <dd style={{ margin: 0, color: template.active ? 'var(--green-2)' : 'var(--ink-3)' }}>
+                  {template.active ? 'Activa' : 'Inactiva'}
+                </dd>
+              </dl>
+            </Field>
+          </aside>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Helper sencillo para las filas del sidebar — mantengo el style consistente con el resto del admin.
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p
+        className="uppercase"
+        style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
+          color: 'var(--ink-3)', margin: '0 0 6px',
+        }}
+      >
+        {label}
+      </p>
+      {children}
     </div>
   )
 }
