@@ -21,6 +21,23 @@ async function requireActor() {
   return { profile, admin }
 }
 
+// GET: devuelve metadatos de un asset (incluye template_ids para el pill
+// "generada con plantilla X" del ImageDrivePanel). Cualquier usuario activo.
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const auth = await requireActor()
+  if ('response' in auth) return auth.response
+  const { admin } = auth
+  const { id } = await ctx.params
+
+  const { data, error } = await admin
+    .from('content_assets')
+    .select('id, content_item_id, storage_path, prompt, approved, created_at, channel, folder_id, aspect_ratio, width, height, mime_type, asset_type, template_ids')
+    .eq('id', id)
+    .single()
+  if (error || !data) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  return NextResponse.json(data)
+}
+
 // PATCH: toggle approved (o set explícito)
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const auth = await requireActor()

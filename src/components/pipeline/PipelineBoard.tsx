@@ -1629,7 +1629,8 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
     const genRes = await fetch('/api/images/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: title, aspectRatio: '1:1', channel }),
+      // content_item_id activa la inyección de plantillas maestras (Fase 2 creatives).
+      body: JSON.stringify({ prompt: title, aspectRatio: '1:1', channel, content_item_id: itemId }),
     })
     if (!genRes.ok) {
       const j = await genRes.json().catch(() => ({})) as { error?: string }

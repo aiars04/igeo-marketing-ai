@@ -339,6 +339,9 @@ export interface ContentAsset {
   width: number | null
   height: number | null
   mime_type: string | null
+  // Migración 024 (Fase 2 creatives): IDs de plantillas maestras usadas
+  // como referencia visual durante la generación. Default '{}' en BD.
+  template_ids: string[]
 }
 
 export interface ImageFolder {

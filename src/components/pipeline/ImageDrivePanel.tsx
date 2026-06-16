@@ -73,6 +73,39 @@ export function ImageDrivePanel({
   // Bank picker: elegir imagen del banco existente o subir una nueva propia
   const [bankPickerOpen, setBankPickerOpen] = useState(false)
 
+  // Plantillas usadas al generar el asset asignado (pill "Generada con X").
+  // Se hidrata via dos fetch ligeros: asset → template_ids → nombres.
+  const [usedTemplates, setUsedTemplates] = useState<Array<{ id: string; name: string; asset_role: string }>>([])
+  const [usedTemplatesMissing, setUsedTemplatesMissing] = useState(0)
+  useEffect(() => {
+    if (!assignedImageId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setUsedTemplates([])
+      setUsedTemplatesMissing(0)
+      return
+    }
+    let cancelled = false
+    fetch(`/api/images/${assignedImageId}`)
+      .then(r => r.ok ? r.json() as Promise<{ template_ids?: string[] }> : Promise.resolve({ template_ids: [] as string[] }))
+      .then((asset: { template_ids?: string[] }) => {
+        if (cancelled) return
+        const ids = Array.isArray(asset.template_ids) ? asset.template_ids : []
+        if (ids.length === 0) {
+          setUsedTemplates([]); setUsedTemplatesMissing(0); return
+        }
+        fetch(`/api/creative-templates?ids=${ids.join(',')}`)
+          .then(r => r.ok ? r.json() as Promise<Array<{ id: string; name: string; asset_role: string }>> : Promise.resolve([]))
+          .then(found => {
+            if (cancelled) return
+            setUsedTemplates(found)
+            setUsedTemplatesMissing(Math.max(0, ids.length - found.length))
+          })
+          .catch(() => {})
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [assignedImageId])
+
   // Format spec del content_type del canal — muestra el checklist informativo
   // de qué imágenes espera este formato (sin tocar la lógica de generación).
   const [formatSpec, setFormatSpec] = useState<ContentType['format_spec'] | null>(null)
@@ -217,7 +250,9 @@ export function ImageDrivePanel({
           const res = await fetch('/api/images/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: promptFinal, aspectRatio, channel }),
+            // content_item_id activa la inyección de plantillas maestras como
+            // referencia visual (Fase 2 de Creativos digitales).
+            body: JSON.stringify({ prompt: promptFinal, aspectRatio, channel, content_item_id: itemId }),
           })
           if (res.ok) {
             const data = await res.json() as { id: string; url: string }
@@ -303,7 +338,7 @@ export function ImageDrivePanel({
       setGenerating(false)
       setGenProgress('')
     }
-  }, [genMode, genPrompt, genPrompts, genCount, aspectRatio, channel, itemTitle, assignAsset])
+  }, [genMode, genPrompt, genPrompts, genCount, aspectRatio, channel, itemTitle, itemId, assignAsset])
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER — Estado: imagen ya asignada
@@ -411,6 +446,59 @@ export function ImageDrivePanel({
             </div>
           </div>
         </button>
+
+        {/* Pill de trazabilidad: plantillas maestras usadas al generar el asset.
+            Se hidrata vía useEffect cuando cambia assignedImageId. */}
+        {(usedTemplates.length > 0 || usedTemplatesMissing > 0) && (
+          <div
+            className="flex items-center flex-wrap"
+            style={{ gap: 6, marginTop: -4 }}
+            title={usedTemplates.map(t => `${t.asset_role}: ${t.name}`).join('\n')}
+          >
+            <span
+              className="inline-flex items-center"
+              style={{
+                gap: 5,
+                height: 22,
+                padding: '0 9px',
+                fontSize: 11,
+                fontWeight: 600,
+                borderRadius: 'var(--radius-pill)',
+                background: 'var(--accent-soft)',
+                border: '1px solid var(--accent-border)',
+                color: 'var(--accent-2)',
+                lineHeight: 1,
+              }}
+            >
+              <Sparkles size={11} aria-hidden="true" />
+              Generada con {usedTemplates.length === 1
+                ? usedTemplates[0].name
+                : `${usedTemplates.length} plantilla${usedTemplates.length === 1 ? '' : 's'}`}
+              {usedTemplatesMissing > 0 && (
+                <span style={{ opacity: 0.7, fontWeight: 500 }}>
+                  {' '}({usedTemplatesMissing} eliminada{usedTemplatesMissing === 1 ? '' : 's'})
+                </span>
+              )}
+            </span>
+            {usedTemplates.length > 1 && usedTemplates.slice(1, 4).map(t => (
+              <span
+                key={t.id}
+                style={{
+                  fontSize: 10, fontWeight: 600,
+                  padding: '2px 7px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--ink-2)',
+                  lineHeight: 1.4,
+                }}
+                title={`${t.asset_role}: ${t.name}`}
+              >
+                {t.name}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Lightbox a tamaño completo */}
         {lightboxOpen && (

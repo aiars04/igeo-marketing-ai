@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Buffer } from 'node:buffer'
 import { genai, ENHANCER_MODEL, IMAGEN_DIMENSIONS, type AspectRatio } from '@/lib/gemini'
-import { generateWithNanoBanana } from '@/lib/nano-banana'
+import { generateWithNanoBanana, type NanoBananaReference } from '@/lib/nano-banana'
+import type { Channel, ContentItem, CreativeTemplate } from '@/types/database'
 
 // Cascada: Nano Banana 2 → Imagen 4 Ultra → Imagen 4 Base
 // Nano Banana 2 es ~5x más rápido y tiene cuota mucho mayor.
@@ -97,9 +98,130 @@ import type { Profile } from '@/types/database'
 
 const BUCKET = 'content-assets'
 const ALLOWED_RATIOS = Object.keys(IMAGEN_DIMENSIONS) as AspectRatio[]
+const MAX_TEMPLATE_REFS = 5
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
+
+/**
+ * Busca plantillas maestras que apliquen a este content_item:
+ *   - channel = item.channel (o fallback al `channel` recibido en el body si
+ *     el item no se encuentra)
+ *   - market = item.market O market IS NULL (las "para todos los mercados")
+ *   - active = true
+ *   - si el item tiene content_type activo del canal, prioriza plantillas
+ *     vinculadas a ese content_type via pivote; si NO hay ninguna vinculada,
+ *     incluye las que no tienen filas pivote (= "aplican a todos los tipos")
+ *
+ * Devuelve max MAX_TEMPLATE_REFS ordenadas por created_at desc + notas para el prompt.
+ */
+async function loadMatchingTemplates(
+  admin: ReturnType<typeof createAdminClient>,
+  contentItemId: string,
+  bodyChannel: string,
+): Promise<{ templates: CreativeTemplate[]; notes: string[] }> {
+  // Cargar item para conocer channel + market + (opcional) content_type
+  const { data: item } = await admin
+    .from('content_items')
+    .select('id, channel, market')
+    .eq('id', contentItemId)
+    .single<Pick<ContentItem, 'id' | 'channel' | 'market'>>()
+
+  const channel = (item?.channel ?? bodyChannel) as Channel
+  if (!channel) return { templates: [], notes: [] }
+  const market = item?.market ?? null
+
+  // Buscar content_type activo del canal (1)
+  let activeContentTypeId: string | null = null
+  if (item) {
+    const { data: ctRows } = await admin
+      .from('content_types')
+      .select('id')
+      .eq('channel', channel).eq('active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    if (ctRows && ctRows.length > 0) activeContentTypeId = (ctRows[0] as { id: string }).id
+  }
+
+  // Query base: canal + activo + (mercado del item O global)
+  let q = admin
+    .from('creative_templates')
+    .select('*')
+    .eq('channel', channel)
+    .eq('active', true)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (market) q = q.or(`market.eq.${market},market.is.null`)
+  else q = q.is('market', null)
+
+  const { data: candidates } = await q.returns<CreativeTemplate[]>()
+  if (!candidates || candidates.length === 0) return { templates: [], notes: [] }
+
+  // Filtrado por content_type via pivote
+  const ids = candidates.map(c => c.id)
+  const { data: pivotRows } = await admin
+    .from('creative_template_content_types')
+    .select('template_id, content_type_id')
+    .in('template_id', ids)
+    .returns<Array<{ template_id: string; content_type_id: string }>>()
+
+  const pivoteByTemplate = new Map<string, string[]>()
+  for (const p of pivotRows ?? []) {
+    const arr = pivoteByTemplate.get(p.template_id) ?? []
+    arr.push(p.content_type_id)
+    pivoteByTemplate.set(p.template_id, arr)
+  }
+
+  // Contrato: si una plantilla no tiene filas pivote, aplica a TODOS los
+  // content_types del canal. Si tiene, solo a los enlazados.
+  const filtered = candidates.filter(t => {
+    const linked = pivoteByTemplate.get(t.id)
+    if (!linked || linked.length === 0) return true
+    if (!activeContentTypeId) return false  // tiene pivote pero no sabemos el ct → fuera
+    return linked.includes(activeContentTypeId)
+  })
+
+  const picked = filtered.slice(0, MAX_TEMPLATE_REFS)
+  const notes = picked
+    .map(t => {
+      const role = t.asset_role ? `${t.asset_role}` : 'plantilla'
+      const noteTxt = t.notes ? `: ${t.notes}` : ''
+      return `[${role} — ${t.name}]${noteTxt}`
+    })
+  return { templates: picked, notes }
+}
+
+/**
+ * Descarga las plantillas del bucket como base64 y las prepara para
+ * pasarlas al modelo. Si alguna falla, la descarta silenciosamente (mejor
+ * generar con 3 refs que abortar todo por una rota).
+ */
+async function downloadTemplatesAsRefs(
+  admin: ReturnType<typeof createAdminClient>,
+  templates: CreativeTemplate[],
+): Promise<{ refs: NanoBananaReference[]; usedIds: string[] }> {
+  const results = await Promise.all(
+    templates.map(async t => {
+      try {
+        const { data, error } = await admin.storage.from(BUCKET).download(t.storage_path)
+        if (error || !data) return null
+        const arrBuf = await data.arrayBuffer()
+        const base64 = Buffer.from(arrBuf).toString('base64')
+        return {
+          ref: { imageBase64: base64, mimeType: t.mime_type } as NanoBananaReference,
+          id:  t.id,
+        }
+      } catch {
+        return null
+      }
+    }),
+  )
+  const ok = results.filter((r): r is NonNullable<typeof r> => r !== null)
+  return {
+    refs:    ok.map(r => r.ref),
+    usedIds: ok.map(r => r.id),
+  }
+}
 
 export async function POST(req: NextRequest) {
   // 1) Auth
@@ -118,7 +240,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 2) Validar body
-  let body: { prompt?: string; aspectRatio?: string; channel?: string }
+  let body: { prompt?: string; aspectRatio?: string; channel?: string; content_item_id?: string }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
 
   const prompt = body.prompt?.trim()
@@ -128,13 +250,44 @@ export async function POST(req: NextRequest) {
     (ALLOWED_RATIOS.includes(body.aspectRatio as AspectRatio) ? body.aspectRatio : '1:1') as AspectRatio
   const size = IMAGEN_DIMENSIONS[aspectRatio]
 
+  // 2b) Si llega content_item_id, buscamos plantillas matching para usar como
+  // referencias visuales con Nano Banana. La lógica es resiliente: cualquier
+  // fallo aquí degrada en generación SIN refs (no rompe el flujo).
+  let templateRefs: NanoBananaReference[] = []
+  let usedTemplateIds: string[] = []
+  let templatesPromptNotes: string[] = []
+  const contentItemId = typeof body.content_item_id === 'string' && body.content_item_id.length > 0
+    ? body.content_item_id : null
+
+  if (contentItemId) {
+    try {
+      const { templates, notes } = await loadMatchingTemplates(admin, contentItemId, (body.channel ?? '').toLowerCase())
+      if (templates.length > 0) {
+        const refs = await downloadTemplatesAsRefs(admin, templates)
+        templateRefs = refs.refs
+        usedTemplateIds = refs.usedIds
+        templatesPromptNotes = notes
+      }
+    } catch (e) {
+      console.warn('[images/generate] template loading failed (no bloqueante):', e instanceof Error ? e.message : e)
+    }
+  }
+
   try {
     // 3a) Enriquecer el prompt con Gemini Flash (degradación silenciosa si falla)
-    const enhancedPrompt = await enhancePromptForChannel(prompt, aspectRatio)
+    const enhancedPromptBase = await enhancePromptForChannel(prompt, aspectRatio)
+    // Si hay plantillas, añadimos sus notas como guía de estilo final.
+    const enhancedPrompt = templatesPromptNotes.length > 0
+      ? `${enhancedPromptBase}\n\nBrand & template guidance:\n${templatesPromptNotes.map(n => `- ${n}`).join('\n')}`
+      : enhancedPromptBase
 
-    // 3b) Llamar Imagen 4 con cascada Ultra → Base
-    const { imageBytes: imageBase64, modelUsed } = await generateWithFallback(enhancedPrompt, aspectRatio)
-    console.log(`Image generated with model: ${modelUsed}`)
+    // 3b) Si hay refs visuales, vamos DIRECTO a Nano Banana (Imagen 4 no soporta
+    // multi-image input). Si falla → error directo (no fallback ciego sin refs,
+    // perdería el sentido del feature). Si no hay refs, cascada completa.
+    const { imageBytes: imageBase64, modelUsed } = templateRefs.length > 0
+      ? await generateWithNanoBanana(enhancedPrompt, aspectRatio, templateRefs)
+      : await generateWithFallback(enhancedPrompt, aspectRatio)
+    console.log(`Image generated with model: ${modelUsed} (refs=${templateRefs.length})`)
 
     // 4) Subir a Supabase Storage
     const filename = `${user.id}/${Date.now()}-${aspectRatio.replace(':', 'x')}.png`
@@ -163,7 +316,8 @@ export async function POST(req: NextRequest) {
       folderId = folder?.id ?? null
     }
 
-    // 5) Insertar en content_assets
+    // 5) Insertar en content_assets — incluye template_ids[] para trazabilidad
+    //    y content_item_id si vino (lo vincula directo al item del pipeline).
     const insertRow = {
       storage_path: filename,
       prompt,
@@ -176,6 +330,8 @@ export async function POST(req: NextRequest) {
       asset_type: 'image',
       channel: channelForRow,
       folder_id: folderId,
+      template_ids: usedTemplateIds,
+      content_item_id: contentItemId,
     }
     const { data: asset, error: dbError } = await admin
       .from('content_assets')
@@ -198,6 +354,8 @@ export async function POST(req: NextRequest) {
       created_at: (asset as { created_at: string }).created_at,
       width: size.width,
       height: size.height,
+      template_ids: usedTemplateIds,
+      content_item_id: contentItemId,
     })
   } catch (err: unknown) {
     console.error('[images/generate] error:', err instanceof Error ? err.message : err)

@@ -104,6 +104,12 @@ export async function GET(req: NextRequest) {
   const marketParam  = url.searchParams.get('market')  as Market  | null
   const contentTypeIdParam = url.searchParams.get('content_type_id')
   const activeOnly = url.searchParams.get('activeOnly') === 'true'
+  // ?ids=a,b,c — usado por el ImageDrivePanel para hidratar nombres de las
+  // plantillas que se usaron al generar un asset (pill de trazabilidad).
+  const idsParam = url.searchParams.get('ids')
+  const idsFilter = idsParam
+    ? idsParam.split(',').map(s => s.trim()).filter(Boolean).slice(0, 50)
+    : null
 
   let query = admin
     .from('creative_templates')
@@ -111,6 +117,7 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false })
     .limit(500)
 
+  if (idsFilter && idsFilter.length > 0) query = query.in('id', idsFilter)
   if (channelParam && CHANNELS.includes(channelParam)) query = query.eq('channel', channelParam)
   if (marketParam  && MARKETS.includes(marketParam))   query = query.eq('market', marketParam)
   if (activeOnly) query = query.eq('active', true)

@@ -22,27 +22,59 @@ const ASPECT_HINTS: Record<string, string> = {
 }
 
 /**
+ * Imagen de referencia para guiar la generación visual.
+ * Nano Banana 2 acepta múltiples (multi-image input) y las usa como contexto
+ * de estilo, identidad de marca, paleta, composición, etc.
+ */
+export interface NanoBananaReference {
+  imageBase64: string  // sin el prefijo "data:image/...;base64,"
+  mimeType:    string  // 'image/png' | 'image/jpeg' | 'image/webp' …
+}
+
+/** Tope conservador — pasar más confunde al modelo y degrada la calidad. */
+const MAX_REFERENCES = 5
+
+/**
  * Genera UNA imagen con Nano Banana 2.
+ * Opcionalmente acepta imágenes de referencia (plantillas maestras, brand kit,
+ * ejemplos…) que se inyectan como input multi-imagen. El modelo las usa para
+ * imitar estilo, paleta, composición y mantener identidad visual.
+ *
  * Lanza error si el modelo no devuelve imagen.
  */
 export async function generateWithNanoBanana(
   prompt: string,
   aspectRatio: string,
+  references: NanoBananaReference[] = [],
 ): Promise<{ imageBytes: string; modelUsed: string }> {
   const hint = ASPECT_HINTS[aspectRatio] ?? ''
-  const finalPrompt = `${prompt}\n\n${hint}`.trim()
+  const refsUsed = references.slice(0, MAX_REFERENCES)
+
+  // Pista textual de uso de referencias — refuerza que el modelo las consulte.
+  const refHint = refsUsed.length > 0
+    ? `\n\nUse the ${refsUsed.length} attached reference image${refsUsed.length === 1 ? '' : 's'} as visual guide for brand identity, color palette, composition style and layout. Match the visual language closely but adapt the content to the new prompt.`
+    : ''
+  const finalPrompt = `${prompt}\n\n${hint}${refHint}`.trim()
+
+  // El modelo acepta interleave de partes: imágenes primero (refs), luego texto.
+  // Las imágenes inlineData van en partes con mimeType.
+  const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = []
+  for (const ref of refsUsed) {
+    parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.imageBase64 } })
+  }
+  parts.push({ text: finalPrompt })
 
   const response = await genai.models.generateContent({
     model: NANO_BANANA_MODEL,
-    contents: [{ role: 'user', parts: [{ text: finalPrompt }] }],
+    contents: [{ role: 'user', parts }],
     config: {
       responseModalities: ['Image'],
     },
   })
 
   // La imagen viene en parts[].inlineData.data como base64
-  const parts = response.candidates?.[0]?.content?.parts ?? []
-  for (const part of parts) {
+  const respParts = response.candidates?.[0]?.content?.parts ?? []
+  for (const part of respParts) {
     const data = part.inlineData?.data
     if (data) {
       return { imageBytes: data, modelUsed: NANO_BANANA_MODEL }
