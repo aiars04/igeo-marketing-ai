@@ -1646,14 +1646,10 @@ export function EventManager({
 }
 
 // ── Tooltip enriquecido compartido (compact + default) ──
-const TOOLTIP_CHANNEL_COLORS: Record<string, { text: string; border: string; bg: string }> = {
-  linkedin:   { text: '#0071e3', border: 'rgba(0,113,227,0.2)',   bg: 'rgba(0,113,227,0.07)'   },
-  instagram:  { text: '#e8388c', border: 'rgba(232,62,140,0.2)',  bg: 'rgba(232,62,140,0.07)'  },
-  newsletter: { text: '#248a3d', border: 'rgba(52,199,89,0.25)',  bg: 'rgba(52,199,89,0.08)'   },
-  blog:       { text: '#b25000', border: 'rgba(255,159,10,0.25)', bg: 'rgba(255,159,10,0.08)'  },
-  x:          { text: '#6e6e73', border: 'rgba(0,0,0,0.15)',      bg: 'rgba(0,0,0,0.04)'       },
-  facebook:   { text: '#0071e3', border: 'rgba(0,113,227,0.2)',   bg: 'rgba(0,113,227,0.07)'   },
-}
+// Antes había un TOOLTIP_CHANNEL_COLORS hardcoded — ahora el badge del canal
+// dentro del tooltip se renderiza con paletteEntry(getResolvedSlug(...)) leyendo
+// los overrides del usuario, igual que ChannelBadge. Así si cambias Facebook a
+// verde, tanto el fondo del evento como el badge del tooltip salen verdes.
 
 const TOOLTIP_W = 288
 const TOOLTIP_EST_H = 180   // alto estimado para decidir si abre arriba o abajo
@@ -1737,17 +1733,18 @@ function EventTooltip({
           }
         </div>
 
-        {/* Canal + Mercado (digital) */}
+        {/* Canal + Mercado (digital) — color del badge sincronizado con
+            Admin → Colores vía CSS vars que escribe ChannelColorsCssVars. */}
         {event.eventType === 'digital' && event.channel && (() => {
           const ch = event.channel.toLowerCase()
-          const c = TOOLTIP_CHANNEL_COLORS[ch] ?? { text: 'var(--ink-2)', border: 'var(--border)', bg: 'var(--surface-2)' }
           return (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{
                 fontSize: 10, fontWeight: 700, padding: '1px 7px',
                 borderRadius: 'var(--radius-sm)',
-                border: `1px solid ${c.border}`,
-                color: c.text, background: c.bg,
+                border:     `1px solid var(--ch-${ch}-border, var(--border))`,
+                color:      `var(--ch-${ch}-text, var(--ink-2))`,
+                background: `var(--ch-${ch}-bg, var(--surface-2))`,
               }}>
                 {DIGITAL_CHANNEL_LABEL[ch as keyof typeof DIGITAL_CHANNEL_LABEL] ?? event.channel}
               </span>
