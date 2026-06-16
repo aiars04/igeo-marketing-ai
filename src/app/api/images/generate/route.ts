@@ -163,14 +163,30 @@ export async function POST(req: NextRequest) {
     (ALLOWED_RATIOS.includes(body.aspectRatio as AspectRatio) ? body.aspectRatio : '1:1') as AspectRatio
   const size = IMAGEN_DIMENSIONS[aspectRatio]
 
-  // 2b) Si llega content_item_id, buscamos plantillas matching para usar como
-  // referencias visuales con Nano Banana. La lógica es resiliente: cualquier
-  // fallo aquí degrada en generación SIN refs (no rompe el flujo).
+  // 2b) Si llega content_item_id, validamos que el usuario tenga permiso sobre
+  // ese item ANTES de vincular el asset y de buscar plantillas. Mismo gate que
+  // PATCH /api/images/[id]: el actor debe ser owner del item O admin/manager.
+  // Si no pasa el gate, NO vinculamos pero seguimos generando sin refs.
   let templateRefs: NanoBananaReference[] = []
   let usedTemplateIds: string[] = []
   let templatesPromptNotes: string[] = []
-  const contentItemId = typeof body.content_item_id === 'string' && body.content_item_id.length > 0
+  let contentItemId: string | null = typeof body.content_item_id === 'string' && body.content_item_id.length > 0
     ? body.content_item_id : null
+
+  if (contentItemId) {
+    const { data: ci } = await admin
+      .from('content_items')
+      .select('id, created_by')
+      .eq('id', contentItemId)
+      .maybeSingle<{ id: string; created_by: string | null }>()
+    const ciOwner = !!ci && ci.created_by === profile.id
+    const ciPriv  = profile.role === 'admin' || profile.role === 'manager'
+    if (!ci || (!ciOwner && !ciPriv)) {
+      // Sin permiso → degradar: el asset se crea sin vinculación ni refs.
+      console.warn('[images/generate] content_item_id sin permiso, generando sin vínculo')
+      contentItemId = null
+    }
+  }
 
   if (contentItemId) {
     try {
