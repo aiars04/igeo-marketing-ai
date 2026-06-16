@@ -427,3 +427,43 @@ export interface ContentType {
   created_at:   string
   updated_at:   string
 }
+
+// ─── Creativos digitales (Fase 1: catálogo de plantillas maestras) ───────
+
+/**
+ * Plantilla maestra de identidad visual asociada a un canal y, opcionalmente,
+ * a uno o varios content_types (vía tabla pivote creative_template_content_types).
+ * Las plantillas sirven de referencia visual a la hora de generar contenido —
+ * Fase 2 las pasará como input a Nano Banana 2 para que la imagen generada
+ * herede la identidad de marca.
+ */
+export interface CreativeTemplate {
+  id:           string
+  name:         string
+  description:  string | null
+  channel:      Channel
+  market:       Market | null            // NULL = aplica a todos los mercados
+  asset_role:   string                   // texto libre: "banner", "thumbnail"…
+  storage_path: string                   // ruta en bucket 'content-assets'
+  mime_type:    string
+  width:        number | null
+  height:       number | null
+  aspect_ratio: string | null            // "1:1", "16:9", "free"…
+  file_size:    number | null            // bytes
+  notes:        string | null            // guía para la IA y para humanos
+  active:       boolean
+  created_by:   string | null
+  created_at:   string
+  updated_at:   string
+}
+
+/**
+ * Vista "enriquecida" que devuelven los endpoints: incluye la lista de IDs de
+ * content_types asociados + una URL firmada de lectura para el preview.
+ * Si content_type_ids está vacío, la plantilla aplica a TODOS los content_types
+ * del canal.
+ */
+export interface CreativeTemplateWithRefs extends CreativeTemplate {
+  content_type_ids: string[]
+  signed_url:       string | null
+}
