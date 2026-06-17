@@ -2,6 +2,7 @@ import { Globe, Key } from 'lucide-react'
 import { cn, MARKET_CONFIG } from '@/lib/utils'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { PostizNotificationsPanel } from '@/components/settings/PostizNotificationsPanel'
+import { PostizAdminPanel } from '@/components/settings/PostizAdminPanel'
 import type { Profile } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -102,7 +103,12 @@ export default async function SettingsPage() {
               </div>
 
               {/* Histórico de Postiz — solo si la integración está configurada */}
-              {!!process.env.POSTIZ_API_KEY && <PostizNotificationsPanel />}
+              {!!process.env.POSTIZ_API_KEY && (
+                <>
+                  <PostizNotificationsPanel />
+                  <PostizAdminPanel />
+                </>
+              )}
             </div>
           )}
 

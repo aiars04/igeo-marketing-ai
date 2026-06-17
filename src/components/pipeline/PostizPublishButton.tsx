@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Send, Loader2, AlertCircle, CheckCircle2, ImageOff } from 'lucide-react'
+import { Send, Loader2, AlertCircle, CheckCircle2, ImageOff, ChevronDown, ChevronRight } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { usePostizChannels, usePostizPublish } from '@/hooks/use-postiz'
 import { utcISOToMarketLocal, marketLocalToUtcISO } from '@/lib/market-timezones'
+import { getSocialLimit } from '@/lib/social-limits'
 import type { ContentItem } from '@/types/database'
 
 /**
@@ -36,7 +37,10 @@ export interface PostizPublishUpdate {
 
 interface Props {
   item: ContentItem
+  /** URL principal (legacy). Si se proporciona y `imageUrls` no incluye otras, se usa esta. */
   imageUrl: string | null
+  /** Lista completa de URLs si el item tiene varias imágenes (carrusel). */
+  imageUrls?: string[]
   onPublished?: (update: PostizPublishUpdate) => void
 }
 
@@ -46,7 +50,7 @@ type PublishType = 'draft' | 'schedule' | 'now'
  * Botón "Publicar en Postiz" que aparece en el footer del modal de detalle.
  * Solo visible si el item NO está ya publicado / programado en Postiz.
  */
-export function PostizPublishButton({ item, imageUrl, onPublished }: Props) {
+export function PostizPublishButton({ item, imageUrl, imageUrls, onPublished }: Props) {
   const [open, setOpen] = useState(false)
   const alreadySent = !!item.published_at || !!item.postiz_id
   if (alreadySent) return null
@@ -79,6 +83,7 @@ export function PostizPublishButton({ item, imageUrl, onPublished }: Props) {
         open={open}
         item={item}
         imageUrl={imageUrl}
+        imageUrls={imageUrls}
         onClose={() => setOpen(false)}
         onPublished={onPublished}
       />
@@ -90,11 +95,12 @@ interface ModalProps {
   open: boolean
   item: ContentItem
   imageUrl: string | null
+  imageUrls?: string[]
   onClose: () => void
   onPublished?: (update: PostizPublishUpdate) => void
 }
 
-function PublishModal({ open, item, imageUrl, onClose, onPublished }: ModalProps) {
+function PublishModal({ open, item, imageUrl, imageUrls, onClose, onPublished }: ModalProps) {
   const { channels, loading: chLoading, error: chError } = usePostizChannels()
   const { publish, publishing, result } = usePostizPublish()
 
@@ -110,6 +116,17 @@ function PublishModal({ open, item, imageUrl, onClose, onPublished }: ModalProps
   const [scheduledLocal, setScheduledLocal] = useState(initialLocal)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  // Personalizar contenido por canal — toggle + diccionario id → texto
+  const [customizeByChannel, setCustomizeByChannel] = useState(false)
+  const [channelContents, setChannelContents] = useState<Record<string, string>>({})
+
+  // Lista completa de URLs (legacy + nuevo)
+  const allImageUrls = useMemo(() => {
+    const list = [...(imageUrls ?? []), ...(imageUrl ? [imageUrl] : [])]
+    // dedupe preservando orden
+    return Array.from(new Set(list)).slice(0, 10)
+  }, [imageUrl, imageUrls])
+
   // Reset al (re)abrir el modal: evita arrastrar selección/fecha de aperturas previas.
   useEffect(() => {
     if (!open) return
@@ -118,6 +135,8 @@ function PublishModal({ open, item, imageUrl, onClose, onPublished }: ModalProps
     setSelected(new Set())
     setScheduledLocal(initialLocal)
     setSubmitError(null)
+    setCustomizeByChannel(false)
+    setChannelContents({})
   }, [open, item.id, item.scheduled_at, initialLocal])
 
   // Si la lista de canales cambia y un seleccionado desaparece, lo quitamos.
@@ -157,10 +176,18 @@ function PublishModal({ open, item, imageUrl, onClose, onPublished }: ModalProps
       }
       scheduledIso = utc
     }
+    const cleanChannelContents = customizeByChannel
+      ? Object.fromEntries(
+          Array.from(selected)
+            .map(id => [id, channelContents[id]?.trim() ?? ''] as const)
+            .filter(([, v]) => v.length > 0)
+        )
+      : undefined
     const res = await publish({
       channelIds: Array.from(selected),
       content: item.content ?? '',
-      imageUrl: imageUrl ?? undefined,
+      imageUrls: allImageUrls.length > 0 ? allImageUrls : undefined,
+      channelContents: cleanChannelContents,
       contentItemId: item.id,
       type,
       scheduledAt: scheduledIso,
@@ -213,9 +240,11 @@ function PublishModal({ open, item, imageUrl, onClose, onPublished }: ModalProps
         >
           {item.content?.trim() || <span style={{ color: 'var(--ink-3)' }}>— sin contenido —</span>}
         </div>
-        {imageUrl && (
+        {allImageUrls.length > 0 && (
           <p style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6 }}>
-            Se adjuntará la imagen asignada a este item.
+            Se adjuntará{allImageUrls.length === 1
+              ? 'á 1 imagen'
+              : `n ${allImageUrls.length} imágenes (carrusel)`}.
           </p>
         )}
       </Section>
@@ -272,6 +301,20 @@ function PublishModal({ open, item, imageUrl, onClose, onPublished }: ModalProps
           </div>
         )}
       </Section>
+
+      {/* Contadores por red + personalizar contenido por canal */}
+      {selected.size > 0 && (
+        <Section title="Contenido por red">
+          <ChannelContentPanel
+            selectedChannels={enabledChannels.filter(c => selected.has(c.id))}
+            commonContent={item.content ?? ''}
+            customize={customizeByChannel}
+            onToggleCustomize={() => setCustomizeByChannel(v => !v)}
+            channelContents={channelContents}
+            onChangeChannelContent={(id, v) => setChannelContents(prev => ({ ...prev, [id]: v }))}
+          />
+        </Section>
+      )}
 
       {/* Tipo */}
       <Section title="Tipo de publicación">
@@ -421,6 +464,106 @@ function Inline({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ink-2)', fontSize: 13 }}>
       {children}
+    </div>
+  )
+}
+
+// ─── Panel de contenido por canal con contadores ─────────────────────────────
+
+interface ChannelLike {
+  id: string
+  name: string
+  identifier: string
+}
+
+function ChannelContentPanel({
+  selectedChannels,
+  commonContent,
+  customize,
+  onToggleCustomize,
+  channelContents,
+  onChangeChannelContent,
+}: {
+  selectedChannels: ChannelLike[]
+  commonContent: string
+  customize: boolean
+  onToggleCustomize: () => void
+  channelContents: Record<string, string>
+  onChangeChannelContent: (id: string, value: string) => void
+}) {
+  // Contadores: para cada canal, calcular largo del contenido efectivo.
+  // Si está activo el toggle y el canal tiene custom, se usa eso; si no,
+  // se usa commonContent.
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggleCustomize}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: 'transparent', border: 'none', padding: 0,
+          fontSize: 12, color: 'var(--ink-2)', cursor: 'pointer',
+          marginBottom: 8,
+        }}
+        aria-expanded={customize}
+      >
+        {customize ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
+        <span style={{ fontWeight: 600 }}>Personalizar contenido por canal</span>
+        {!customize && <span style={{ color: 'var(--ink-3)' }}>(usar el mismo contenido en todos)</span>}
+      </button>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {selectedChannels.map(c => {
+          const lim = getSocialLimit(c.identifier)
+          const effectiveContent = customize
+            ? (channelContents[c.id] ?? '').length > 0
+              ? (channelContents[c.id] ?? '')
+              : commonContent
+            : commonContent
+          const len = effectiveContent.length
+          const over = len > lim.max
+          const counterColor = over ? '#b91c1c' : len > lim.max * 0.9 ? 'var(--amber-2)' : 'var(--ink-3)'
+
+          return (
+            <div
+              key={c.id}
+              style={{
+                padding: '10px 12px',
+                background: 'var(--surface-2)',
+                border: `1px solid ${over ? 'rgba(239,68,68,0.30)' : 'var(--border)'}`,
+                borderRadius: 'var(--radius-md)',
+              }}
+            >
+              <div className="flex items-center justify-between" style={{ marginBottom: customize ? 6 : 0, gap: 8 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>{c.name}</span>
+                <span style={{ fontSize: 11, color: counterColor, fontVariantNumeric: 'tabular-nums' }}>
+                  {len} / {lim.max}{over ? ' · excede límite' : ''}
+                </span>
+              </div>
+              {customize && (
+                <textarea
+                  value={channelContents[c.id] ?? ''}
+                  placeholder={`Contenido para ${c.name} (vacío → usa el común)`}
+                  onChange={e => onChangeChannelContent(c.id, e.target.value)}
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    fontSize: 13,
+                    fontFamily: 'inherit',
+                    color: 'var(--ink)',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '8px 10px',
+                    resize: 'vertical',
+                    minHeight: 60,
+                  }}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

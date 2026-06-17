@@ -316,6 +316,10 @@ export interface ContentItem {
   playbook_step_id: string | null
   // ──────────
   postiz_id: string | null
+  // Migración 025 — estado real sincronizado por cron desde Postiz.
+  publish_state:     'queued' | 'published' | 'failed' | null
+  publish_error:     string | null
+  publish_synced_at: string | null
   created_by: string | null
   created_at: string
   updated_at: string

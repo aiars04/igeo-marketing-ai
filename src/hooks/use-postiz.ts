@@ -14,7 +14,9 @@ export interface PostizChannel {
 export interface PublishOptions {
   channelIds: string[]
   content: string
-  imageUrl?: string
+  imageUrl?: string                          // legacy: 1 imagen
+  imageUrls?: string[]                       // hasta 10 imágenes (carrusel)
+  channelContents?: Record<string, string>   // contenido distinto por canal id
   scheduledAt?: string       // ISO — si no se pasa, publica ahora
   type?: 'schedule' | 'draft' | 'now'
   contentItemId?: string     // si viene, el server vincula postiz_id al item
@@ -27,8 +29,10 @@ export interface PublishResult {
   linkedItemId?: string | null
   postizId?: string | null
   publishedAt?: string | null
-  imageUploaded?: boolean       // true si la imagen llegó a Postiz; false si falló o no había
-  imageUploadError?: string | null
+  imagesRequested?:   number
+  imagesUploaded?:    number
+  imageUploaded?:     boolean
+  imageUploadError?:  string | null
   result?: unknown
   error?: string
 }
@@ -94,6 +98,35 @@ export function usePostizPublish() {
   }, [])
 
   return { publish, publishing, result }
+}
+
+// ─── Hook: cancelar publicación en Postiz ─────────────────────────────────────
+
+export interface CancelResult {
+  ok: boolean
+  unlinkedItemId?: string | null
+  error?: string
+}
+
+export function usePostizCancel() {
+  const [cancelling, setCancelling] = useState(false)
+
+  const cancel = useCallback(async (postizId: string): Promise<CancelResult> => {
+    setCancelling(true)
+    try {
+      const res = await fetch(`/api/postiz/posts/${encodeURIComponent(postizId)}`, {
+        method: 'DELETE',
+      })
+      const data: CancelResult = await res.json().catch(() => ({ ok: false, error: 'bad_response' }))
+      return { ...data, ok: res.ok && data.ok !== false }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'Error de red' }
+    } finally {
+      setCancelling(false)
+    }
+  }, [])
+
+  return { cancel, cancelling }
 }
 
 // ─── Hook: estado de conexión ─────────────────────────────────────────────────

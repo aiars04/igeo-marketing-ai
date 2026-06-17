@@ -6,7 +6,7 @@ import {
   Plus, Sparkles, MoreHorizontal, Calendar,
   Lightbulb, PenLine, Layers, Zap, BarChart2,
   CheckCircle2, CheckCheck, ChevronRight, ArrowRight, Trash2,
-  ImageIcon, RefreshCw, Loader2, AlertCircle, X,
+  ImageIcon, RefreshCw, Loader2, X,
 } from 'lucide-react'
 import { STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
@@ -15,6 +15,7 @@ import { ImageDrivePanel } from '@/components/pipeline/ImageDrivePanel'
 import { ExportContentMenu } from '@/components/pipeline/ExportContentMenu'
 import { MentionPicker } from '@/components/pipeline/MentionPicker'
 import { PostizPublishButton } from '@/components/pipeline/PostizPublishButton'
+import { PostizStateBanner } from '@/components/pipeline/PostizStateBanner'
 import {
   getMarketTimezone, MARKET_TZ_LABEL, marketLocalToUtcISO, utcISOToMarketLocal, formatInTimezone,
 } from '@/lib/market-timezones'
@@ -625,41 +626,21 @@ function ContentDetailModal({
         )}
       </div>
 
-      {/* ── Banner informativo para publicaciones ya programadas / enviadas ──
-         La sugerencia del usuario era poder modificar una publicación ya hecha.
-         La edición de título / content / fecha ya escribe contra la BD, pero
-         si el post salió a Postiz (postiz_id) o ya está publicado, hay que
-         decirle al usuario que la red social no se actualiza sola. */}
+      {/* ── Banner informativo para publicaciones ya programadas / enviadas ── */}
       {(item.stage === 'scheduled' || item.stage === 'analyzed' || item.published_at) && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 10,
-            padding: '12px 14px',
-            background: 'var(--amber-soft)',
-            border: '1px solid var(--amber-border)',
-            borderRadius: 'var(--radius-md)',
-            marginBottom: 20,
+        <PostizStateBanner
+          item={item}
+          onCancelled={(unlinkedItemId) => {
+            if (!unlinkedItemId) return
+            onItemUpdated?.({
+              ...item,
+              postiz_id: null,
+              published_at: null,
+              publish_state: null,
+              publish_error: null,
+            } as ContentItem)
           }}
-        >
-          <AlertCircle size={16} style={{ color: 'var(--amber-2)', flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--amber-2)', margin: 0, lineHeight: 1.3 }}>
-              {item.published_at
-                ? 'Publicación ya enviada a la red social'
-                : item.postiz_id
-                  ? 'Publicación programada en Postiz'
-                  : 'Item ya en fase de programación'}
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--ink-2)', margin: '4px 0 0', lineHeight: 1.5 }}>
-              Puedes editar título, contenido y fecha aquí y se guardarán en iGEO.
-              {item.postiz_id || item.published_at
-                ? ' Para reflejar los cambios en el post real, cancélalo y reprograma desde Postiz.'
-                : ''}
-            </p>
-          </div>
-        </div>
+        />
       )}
 
       {/* ── Thumbnail imagen asignada (solo en stages sin ImageDrivePanel) ── */}

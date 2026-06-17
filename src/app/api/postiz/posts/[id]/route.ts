@@ -1,0 +1,78 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { postizDeletePost } from '@/lib/postiz'
+import type { Profile } from '@/types/database'
+
+/**
+ * DELETE /api/postiz/posts/:id
+ *
+ * Cancela un post en Postiz (programados/borradores) y desvincula el
+ * content_item asociado: limpia postiz_id, scheduled_at, published_at y
+ * publish_state para que el item vuelva a poder publicarse desde 0.
+ *
+ * Requiere rol admin/manager. Si el manager no creó el item, devuelve 403.
+ */
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: postizId } = await params
+
+  if (!postizId || typeof postizId !== 'string' || postizId.length > 200) {
+    return NextResponse.json({ error: 'invalid_id' }, { status: 400 })
+  }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  const admin = createAdminClient()
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('id, role, active')
+    .eq('id', user.id)
+    .single<Pick<Profile, 'id' | 'role' | 'active'>>()
+  if (!profile || !profile.active) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  if (profile.role !== 'admin' && profile.role !== 'manager') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+
+  // Validar propiedad del item antes de cancelar (manager solo sus propios items).
+  const { data: targetItem } = await admin
+    .from('content_items')
+    .select('id, created_by')
+    .eq('postiz_id', postizId)
+    .maybeSingle<{ id: string; created_by: string | null }>()
+
+  if (targetItem && profile.role !== 'admin'
+      && targetItem.created_by && targetItem.created_by !== user.id) {
+    return NextResponse.json({ error: 'forbidden_not_owner' }, { status: 403 })
+  }
+
+  // 1) Cancelar en Postiz (idempotente — 404 también se considera éxito).
+  try {
+    await postizDeletePost(postizId)
+  } catch (err) {
+    console.error('[postiz/posts/delete] upstream error:', err instanceof Error ? err.message : err)
+    return NextResponse.json({ error: 'postiz_upstream_failed' }, { status: 502 })
+  }
+
+  // 2) Limpiar el item asociado (si existía en nuestra BD).
+  if (targetItem) {
+    const { error: updErr } = await admin
+      .from('content_items')
+      .update({
+        postiz_id:        null,
+        published_at:     null,
+        publish_state:    null,
+        publish_error:    null,
+        publish_synced_at: null,
+        // scheduled_at lo dejamos — puede que el user quiera reusar la fecha al republicar.
+      } as never)
+      .eq('id', targetItem.id)
+    if (updErr) {
+      console.warn('[postiz/posts/delete] no se pudo limpiar content_item:', updErr.message)
+    }
+  }
+
+  return NextResponse.json({ ok: true, unlinkedItemId: targetItem?.id ?? null })
+}

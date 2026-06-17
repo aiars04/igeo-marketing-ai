@@ -84,28 +84,64 @@ export interface PostizNotificationsPage {
 
 // ─── Helper interno ───────────────────────────────────────────────────────────
 
+/** Espera asíncrona simple — usada por el backoff. */
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
+
+/**
+ * Política de reintentos:
+ *   - Reintentamos en errores de red y respuestas 5xx (también 429).
+ *   - 2 reintentos con backoff exponencial 500ms → 1500ms.
+ *   - NO reintentamos 4xx ≠ 429 (es petición mal hecha, no se va a curar).
+ *   - GET es siempre idempotente. POST/PUT/DELETE de Postiz también lo son en
+ *     la práctica (la API responde con error si ya existe), pero para
+ *     reducir riesgo de duplicados solo reintentamos POST/PUT/DELETE si el
+ *     fallo fue ANTES de respuesta (network error) o 5xx puro.
+ */
 async function postizFetch<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: AUTH_HEADER,
-    },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-  })
+  const MAX_ATTEMPTS = 3
+  const BACKOFF_MS   = [500, 1500] // entre intentos 1→2 y 2→3
+  let lastErr: unknown
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText)
-    throw new Error(`Postiz API ${method} ${path} → ${res.status}: ${text}`)
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(`${BASE_URL}${path}`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: AUTH_HEADER,
+        },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      })
+
+      // OK rápido
+      if (res.ok) {
+        if (res.status === 204) return undefined as T
+        return await res.json() as T
+      }
+
+      // 4xx ≠ 429 → no reintentamos
+      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+        const text = await res.text().catch(() => res.statusText)
+        throw new Error(`Postiz API ${method} ${path} → ${res.status}: ${text}`)
+      }
+
+      // 5xx o 429 → marcamos error reintenable
+      const text = await res.text().catch(() => res.statusText)
+      lastErr = new Error(`Postiz API ${method} ${path} → ${res.status}: ${text}`)
+    } catch (err) {
+      // Errores de red, DNS, timeout, etc. — reintenables
+      lastErr = err
+    }
+    // Backoff antes de siguiente intento (excepto en el último)
+    if (attempt < MAX_ATTEMPTS) {
+      await sleep(BACKOFF_MS[attempt - 1])
+    }
   }
-
-  // DELETE 204 no content
-  if (res.status === 204) return undefined as T
-  return res.json() as Promise<T>
+  throw lastErr instanceof Error ? lastErr : new Error('Postiz API: error desconocido')
 }
 
 // ─── API pública ─────────────────────────────────────────────────────────────
@@ -125,9 +161,52 @@ export async function postizCreatePost(body: PostizCreatePostBody) {
   return postizFetch<unknown>('POST', '/posts', body)
 }
 
+/**
+ * Cancela un post en Postiz. Si el post ya está publicado, Postiz
+ * normalmente devuelve 400 o 404 (no se puede eliminar lo que ya está
+ * en la red social). Para los borradores y programados, lo elimina.
+ *
+ * DELETE devuelve 204 en éxito; 404 = ya borrado (también éxito).
+ */
+export async function postizDeletePost(id: string): Promise<{ ok: boolean; alreadyGone: boolean }> {
+  try {
+    await postizFetch<void>('DELETE', `/posts/${encodeURIComponent(id)}`)
+    return { ok: true, alreadyGone: false }
+  } catch (err) {
+    // 404 → ya estaba borrado, lo tratamos como éxito idempotente
+    const msg = err instanceof Error ? err.message : String(err)
+    if (/→\s*404/.test(msg)) return { ok: true, alreadyGone: true }
+    throw err
+  }
+}
+
 /** Sube una imagen desde una URL pública y la registra en la librería de Postiz. */
 export async function postizUploadFromUrl(url: string): Promise<PostizMediaItem> {
   return postizFetch<PostizMediaItem>('POST', '/upload-from-url', { url })
+}
+
+// ─── Analytics ───────────────────────────────────────────────────────────────
+
+export interface PostizAnalyticsSeries {
+  label:             string
+  data:              Array<{ total: string; date: string }>
+  percentageChange?: number
+}
+
+/**
+ * Devuelve series temporales de métricas (followers, impresiones, etc.)
+ * para una integración concreta y un rango de N días hacia atrás.
+ *
+ * Postiz devuelve un array — cada elemento es una serie con label + puntos.
+ * El shape de `total` es string (no number) según la doc oficial.
+ */
+export async function postizGetAnalytics(integrationId: string, days = 30): Promise<PostizAnalyticsSeries[]> {
+  const safeDays = Math.min(Math.max(1, Math.floor(Number(days) || 30)), 365)
+  const qs = new URLSearchParams({ date: String(safeDays) }).toString()
+  return postizFetch<PostizAnalyticsSeries[]>(
+    'GET',
+    `/analytics/${encodeURIComponent(integrationId)}?${qs}`,
+  )
 }
 
 /**

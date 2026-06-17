@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { postizCreatePost, postizUploadFromUrl, type PostizCreatePostBody } from '@/lib/postiz'
+import { checkRateLimit, maybeCleanupRateLimits } from '@/lib/rate-limit'
 import type { Profile } from '@/types/database'
 
 /**
@@ -95,10 +96,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
+  // Rate-limit: 10 publish por usuario / 60s. Evita ráfagas accidentales
+  // (clics frenéticos, scripts mal hechos) y dispara ANTES de tocar Postiz.
+  maybeCleanupRateLimits()
+  const rl = checkRateLimit(`publish:${user.id}`, 10, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', retryInMs: rl.resetInMs },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.resetInMs / 1000)) } },
+    )
+  }
+
   let body: {
     channelIds: string[]
     content: string
-    imageUrl?: string
+    imageUrl?: string                 // legacy: una sola imagen
+    imageUrls?: string[]              // nuevo: hasta 10 imágenes (carrusel)
+    channelContents?: Record<string, string>  // contenido distinto por canal
     scheduledAt?: string
     type?: 'schedule' | 'draft' | 'now'
     contentItemId?: string
@@ -110,7 +124,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'bad_json' }, { status: 400 })
   }
 
-  const { channelIds, content, imageUrl, scheduledAt, contentItemId } = body
+  const { channelIds, content, imageUrl, imageUrls, channelContents, scheduledAt, contentItemId } = body
 
   if (!channelIds?.length) {
     return NextResponse.json({ error: 'channelIds_required' }, { status: 400 })
@@ -118,9 +132,29 @@ export async function POST(req: NextRequest) {
   if (!content?.trim()) {
     return NextResponse.json({ error: 'content_required' }, { status: 400 })
   }
-  // SSRF guard: si viene imagen, debe ser de NUESTRO Supabase Storage.
-  if (imageUrl && !isAllowedImageUrl(imageUrl)) {
-    return NextResponse.json({ error: 'invalid_image_url' }, { status: 400 })
+
+  // Lista normalizada de imágenes (URLs) — soporta legacy `imageUrl` y nuevo `imageUrls[]`.
+  // Límite: 10 imágenes max (Postiz acepta más pero las redes sociales rara vez).
+  const allImageUrls = [
+    ...(imageUrls ?? []),
+    ...(imageUrl ? [imageUrl] : []),
+  ].filter(Boolean).slice(0, 10)
+
+  // SSRF guard sobre todas las imágenes.
+  for (const u of allImageUrls) {
+    if (!isAllowedImageUrl(u)) {
+      return NextResponse.json({ error: 'invalid_image_url' }, { status: 400 })
+    }
+  }
+
+  // Si vienen contenidos personalizados, validar que las claves son channelIds válidos
+  // y que ninguno está vacío.
+  if (channelContents) {
+    for (const cid of Object.keys(channelContents)) {
+      if (!channelIds.includes(cid)) {
+        return NextResponse.json({ error: 'channel_content_unknown_channel' }, { status: 400 })
+      }
+    }
   }
 
   // Determinar tipo de publicación
@@ -130,43 +164,52 @@ export async function POST(req: NextRequest) {
   }
 
   // Si el caller pasa contentItemId, validar que el item existe y que el
-  // usuario tiene permiso para tocarlo. Defense in depth: aunque solo
-  // admins/managers llegan hasta aquí, no queremos que un manager pueda
-  // pisar el postiz_id de un item que no es suyo si en el futuro hay
-  // separación por organización/owner.
+  // usuario tiene permiso para tocarlo.
+  //
+  // Regla de propiedad:
+  //   - admin → puede publicar/vincular cualquier item.
+  //   - manager → solo items que él creó (content_items.created_by = user.id).
+  //
+  // Esto deja la puerta abierta a multi-tenant sin tocar nada más.
   if (contentItemId) {
     const { data: targetItem, error: itemErr } = await admin
       .from('content_items')
-      .select('id')
+      .select('id, created_by')
       .eq('id', contentItemId)
-      .maybeSingle<{ id: string }>()
+      .maybeSingle<{ id: string; created_by: string | null }>()
     if (itemErr || !targetItem) {
       return NextResponse.json({ error: 'content_item_not_found' }, { status: 404 })
     }
+    if (profile.role !== 'admin' && targetItem.created_by && targetItem.created_by !== user.id) {
+      return NextResponse.json({ error: 'forbidden_not_owner' }, { status: 403 })
+    }
   }
 
-  // Tracking del resultado del upload de imagen — el caller necesita saber
-  // si el post salió con o sin imagen para no confundir al usuario.
-  let imageUploaded = false
-  let imageUploadError: string | null = null
+  // Tracking del resultado del upload de imágenes.
+  let imagesUploaded   = 0
+  const imageUploadErrors: string[] = []
 
   try {
-    // 1. Si hay imagen, subirla a Postiz para obtener la ruta interna
-    let postizImagePath: string | undefined
-    if (imageUrl) {
+    // 1. Subir todas las imágenes a Postiz (en serie para no saturar).
+    //    Cada fallo se loggea pero no bloquea — al final reportamos a la UI
+    //    cuántas se subieron vs cuántas se pidieron.
+    const postizImagePaths: string[] = []
+    for (const url of allImageUrls) {
       try {
-        const media = await postizUploadFromUrl(imageUrl)
-        postizImagePath = media.path
-        imageUploaded = true
+        const media = await postizUploadFromUrl(url)
+        postizImagePaths.push(media.path)
+        imagesUploaded++
       } catch (imgErr) {
-        // No bloqueamos la publicación si falla la imagen, pero sí avisamos
-        // explícitamente en la respuesta para que la UI lo refleje.
-        imageUploadError = 'upload_failed'
-        console.warn('[postiz/publish] No se pudo subir la imagen:', imgErr instanceof Error ? imgErr.message : String(imgErr))
+        const msg = imgErr instanceof Error ? imgErr.message : String(imgErr)
+        imageUploadErrors.push(msg.slice(0, 200))
+        console.warn('[postiz/publish] upload-from-url falló:', msg)
       }
     }
+    const imagesBlock = postizImagePaths.length > 0
+      ? { image: postizImagePaths.map(p => ({ path: p })) }
+      : {}
 
-    // 2. Construir el body para Postiz
+    // 2. Construir el body para Postiz — contenido por canal si viene custom.
     const postizBody: PostizCreatePostBody = {
       type,
       ...(type === 'schedule' && scheduledAt ? { date: scheduledAt } : {}),
@@ -174,10 +217,8 @@ export async function POST(req: NextRequest) {
         integration: { id },
         value: [
           {
-            content,
-            ...(postizImagePath
-              ? { image: [{ path: postizImagePath }] }
-              : {}),
+            content: channelContents?.[id]?.trim() || content,
+            ...imagesBlock,
           },
         ],
       })),
@@ -230,8 +271,11 @@ export async function POST(req: NextRequest) {
       linkedItemId,
       postizId,
       publishedAt,
-      imageUploaded,
-      imageUploadError,
+      // Reportar conteo real de imágenes para que la UI lo refleje.
+      imagesRequested: allImageUrls.length,
+      imagesUploaded,
+      imageUploaded: imagesUploaded > 0,
+      imageUploadError: imageUploadErrors.length > 0 ? 'upload_failed' : null,
       result,
     })
   } catch (err) {
