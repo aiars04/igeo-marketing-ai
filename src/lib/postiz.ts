@@ -166,10 +166,24 @@ export async function postizCheckConnection(): Promise<PostizConnectionDiagnosti
     if (body?.connected === true) return { connected: true, status: res.status }
     return { connected: false, status: res.status, reason: 'unexpected_body' }
   } catch (err) {
-    // Error de red, timeout, DNS, etc. No hay status code.
-    const msg = err instanceof Error ? err.message : 'network_error'
-    // Sanitizamos por si el mensaje arrastra hostnames internos.
-    const reason = msg.toLowerCase().includes('fetch') ? 'network_error' : 'unknown_error'
+    // Error de red, timeout, DNS, URL inválida, TLS, etc. No hay status code.
+    const name = err instanceof Error ? err.name : 'Error'
+    const msg  = err instanceof Error ? err.message : String(err)
+    const cause = err instanceof Error && err.cause instanceof Error ? err.cause.message : null
+    // Log server-side para que aparezca en Vercel — el mensaje de fetch no
+    // contiene la API key (solo URL y código de causa).
+    console.error('[postiz] check connection failed', { name, msg, cause, baseUrl: BASE_URL })
+    // Clasificamos por tipo de error sin filtrar contenido sensible.
+    const lower = `${name} ${msg} ${cause ?? ''}`.toLowerCase()
+    const reason =
+      lower.includes('invalid url') || lower.includes('failed to parse url') ? 'invalid_api_url'
+      : lower.includes('enotfound') || lower.includes('dns')                  ? 'dns_not_resolved'
+      : lower.includes('econnrefused')                                         ? 'connection_refused'
+      : lower.includes('certificate') || lower.includes('self-signed') || lower.includes('tls')
+                                                                              ? 'tls_error'
+      : lower.includes('timeout') || lower.includes('etimedout')               ? 'timeout'
+      : lower.includes('fetch failed') || lower.includes('fetch')              ? 'network_error'
+      : `error_${name.toLowerCase()}`
     return { connected: false, reason }
   }
 }
