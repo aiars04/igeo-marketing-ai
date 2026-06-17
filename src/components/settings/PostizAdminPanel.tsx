@@ -37,7 +37,7 @@ export function PostizAdminPanel() {
 
 function ImportSection() {
   const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<{ imported: number; skipped: number; error?: string } | null>(null)
+  const [result, setResult] = useState<{ imported: number; skipped: number; unsupported: number; error?: string } | null>(null)
 
   const run = async () => {
     if (busy) return
@@ -46,14 +46,15 @@ function ImportSection() {
     setResult(null)
     try {
       const res = await fetch('/api/postiz/import', { method: 'POST' })
-      const data = await res.json() as { ok?: boolean; imported?: number; skipped?: number; error?: string }
+      const data = await res.json() as { ok?: boolean; imported?: number; skipped?: number; unsupported?: number; error?: string }
       setResult({
-        imported: data.imported ?? 0,
-        skipped:  data.skipped ?? 0,
-        error:    res.ok ? undefined : (data.error ?? `HTTP ${res.status}`),
+        imported:    data.imported ?? 0,
+        skipped:     data.skipped ?? 0,
+        unsupported: data.unsupported ?? 0,
+        error:       res.ok ? undefined : (data.error ?? `HTTP ${res.status}`),
       })
     } catch (e) {
-      setResult({ imported: 0, skipped: 0, error: e instanceof Error ? e.message : 'Error de red' })
+      setResult({ imported: 0, skipped: 0, unsupported: 0, error: e instanceof Error ? e.message : 'Error de red' })
     } finally {
       setBusy(false)
     }
@@ -106,7 +107,7 @@ function ImportSection() {
         >
           {result.error
             ? <><AlertCircle size={13} aria-hidden="true" /> Error: {result.error}</>
-            : <><CheckCircle2 size={13} aria-hidden="true" /> {result.imported} importados, {result.skipped} ya existían.</>}
+            : <><CheckCircle2 size={13} aria-hidden="true" /> {result.imported} importados, {result.skipped} ya existían{result.unsupported > 0 ? `, ${result.unsupported} de redes no soportadas (omitidos)` : ''}.</>}
         </div>
       )}
     </div>

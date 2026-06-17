@@ -1,7 +1,25 @@
 import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { postizGetPosts, type PostizPost } from '@/lib/postiz'
-import type { Profile } from '@/types/database'
+import type { Profile, Channel } from '@/types/database'
+
+/**
+ * Mapea el providerIdentifier de Postiz a nuestro enum Channel.
+ * content_items.channel SOLO permite: linkedin, instagram, facebook, x,
+ * blog, email, newsletter. Cualquier red que Postiz soporte pero nosotros
+ * no (mastodon, bluesky, threads, tiktok, youtube, pinterest, reddit…)
+ * devuelve null → ese post se SALTA en la importación (no se mete basura
+ * que viole el check constraint ni que el pipeline no sepa pintar).
+ */
+function mapProviderToChannel(provider: string | undefined | null): Channel | null {
+  if (!provider) return null
+  const p = provider.toLowerCase()
+  if (p.startsWith('linkedin'))  return 'linkedin'
+  if (p.startsWith('instagram')) return 'instagram'
+  if (p.startsWith('facebook'))  return 'facebook'
+  if (p === 'x' || p === 'twitter') return 'x'
+  return null
+}
 
 /**
  * POST /api/postiz/import
@@ -45,7 +63,7 @@ export async function POST() {
   }
 
   if (postizPosts.length === 0) {
-    return NextResponse.json({ ok: true, imported: 0, skipped: 0 })
+    return NextResponse.json({ ok: true, imported: 0, skipped: 0, unsupported: 0 })
   }
 
   // 1) Buscar postiz_ids ya conocidos en BD para evitar duplicar.
@@ -57,26 +75,31 @@ export async function POST() {
     .returns<Array<{ postiz_id: string }>>()
   const knownIds = new Set((existing ?? []).map(e => e.postiz_id))
 
-  const toImport = postizPosts.filter(p => p.id && !knownIds.has(p.id))
-  if (toImport.length === 0) {
-    return NextResponse.json({ ok: true, imported: 0, skipped: postizPosts.length })
+  const candidates = postizPosts.filter(p => p.id && !knownIds.has(p.id))
+  if (candidates.length === 0) {
+    return NextResponse.json({ ok: true, imported: 0, skipped: postizPosts.length, unsupported: 0 })
   }
 
   // 2) Insertar como content_items con la info que Postiz nos da.
-  //    No tenemos market/channel exacto desde Postiz; usamos defaults:
-  //    - channel = el providerIdentifier si lo trae; fallback 'linkedin'.
-  //    - market  = primer mercado activo (heurística — el admin puede reasignar).
-  //    - stage   = analyzed si published, scheduled si futuro.
+  //    - channel: mapeado de providerIdentifier → nuestro enum. Los posts de
+  //      redes que no soportamos (mastodon, bluesky, tiktok…) se SALTAN.
+  //    - market: Postiz no nos dice el mercado → default 'spain' (valor válido
+  //      del enum Market). El admin puede reasignarlo desde el pipeline.
+  //    - stage: analyzed si published, scheduled si futuro.
+  const DEFAULT_MARKET = 'spain'  // válido en el enum Market
   const nowIso = new Date().toISOString()
-  const rows = toImport.map(p => {
-    const provider = p.integration?.providerIdentifier ?? 'linkedin'
+
+  let unsupported = 0
+  const rows = candidates.flatMap(p => {
+    const channel = mapProviderToChannel(p.integration?.providerIdentifier)
+    if (!channel) { unsupported++; return [] }  // red no soportada → skip
     const isPublished = (p.state ?? '').toUpperCase() === 'PUBLISHED'
-    return {
+    return [{
       title: (p.content ?? '').slice(0, 200) || 'Post importado desde Postiz',
       content: p.content ?? null,
       description: null,
-      channel: provider,
-      market: 'ES',
+      channel,
+      market: DEFAULT_MARKET,
       stage: isPublished ? 'analyzed' : 'scheduled',
       status: 'approved',
       campaign: null,
@@ -92,8 +115,13 @@ export async function POST() {
       publish_state: isPublished ? 'published' : 'queued',
       publish_synced_at: nowIso,
       created_by: user.id,
-    }
+    }]
   })
+
+  if (rows.length === 0) {
+    // Todos los candidatos eran de redes no soportadas.
+    return NextResponse.json({ ok: true, imported: 0, skipped: postizPosts.length - candidates.length, unsupported })
+  }
 
   const { data: inserted, error: insErr } = await admin
     .from('content_items')
@@ -104,9 +132,11 @@ export async function POST() {
     return NextResponse.json({ error: 'db_insert_failed', detail: insErr.message }, { status: 500 })
   }
 
+  const importedCount = inserted?.length ?? 0
   return NextResponse.json({
     ok: true,
-    imported: inserted?.length ?? 0,
-    skipped: postizPosts.length - (inserted?.length ?? 0),
+    imported: importedCount,
+    skipped: knownIds.size,          // ya existían en iGEO
+    unsupported,                     // redes que no soportamos (mastodon, etc.)
   })
 }
