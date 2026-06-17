@@ -41,8 +41,11 @@ export async function GET(req: NextRequest) {
     const { posts } = await postizGetPosts()
     postizPosts = Array.isArray(posts) ? posts : []
   } catch (err) {
-    console.error('[cron/postiz-sync] error obteniendo posts Postiz:', err instanceof Error ? err.message : err)
-    return NextResponse.json({ error: 'postiz_upstream_failed' }, { status: 502 })
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[cron/postiz-sync] error obteniendo posts Postiz:', msg)
+    // El endpoint está protegido con CRON_SECRET, podemos devolver el
+    // detalle al caller para diagnóstico.
+    return NextResponse.json({ error: 'postiz_upstream_failed', detail: msg }, { status: 502 })
   }
 
   if (postizPosts.length === 0) {
