@@ -25,17 +25,24 @@ function isAllowedImageUrl(url: string): boolean {
 }
 
 /**
- * Extrae el primer id de post devuelto por Postiz. La API pública devuelve
- * distintos shapes según versión / contexto, así que probamos varios.
- * Devuelve null si no encontramos id — en ese caso simplemente no
- * vinculamos el content_item con Postiz (no es bloqueante).
+ * Extrae el primer id de post devuelto por Postiz.
+ *
+ * Shape oficial documentado de POST /public/v1/posts:
+ *   [ { postId: string, integration: string } ]
+ *
+ * Toleramos también `id` por si en algún plan/versión devuelven otro campo,
+ * y los wrappers `{ posts: [...] }` por compatibilidad con respuestas
+ * intermedias del cliente.
  */
 function extractPostizId(result: unknown): string | null {
   if (!result) return null
   const pickId = (x: unknown): string | null => {
-    if (x && typeof x === 'object' && 'id' in x) {
-      const id = (x as { id: unknown }).id
-      return typeof id === 'string' ? id : null
+    if (!x || typeof x !== 'object') return null
+    const obj = x as Record<string, unknown>
+    // Orden de preferencia: postId (oficial), id (fallback).
+    for (const key of ['postId', 'id'] as const) {
+      const v = obj[key]
+      if (typeof v === 'string' && v.length > 0) return v
     }
     return null
   }
@@ -45,11 +52,9 @@ function extractPostizId(result: unknown): string | null {
   }
   if (typeof result === 'object') {
     const obj = result as Record<string, unknown>
-    // formato { posts: [...] }
     if (Array.isArray(obj.posts)) {
       for (const r of obj.posts) { const id = pickId(r); if (id) return id }
     }
-    // formato { id: ... } directo
     const direct = pickId(obj)
     if (direct) return direct
   }

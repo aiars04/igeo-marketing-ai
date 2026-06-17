@@ -67,6 +67,21 @@ export interface PostizMediaItem {
   path: string
 }
 
+export interface PostizNotification {
+  id:        string
+  content:   string
+  link:      string | null
+  createdAt: string
+}
+
+export interface PostizNotificationsPage {
+  notifications: PostizNotification[]
+  total:         number
+  page:          number
+  limit:         number
+  hasMore:       boolean
+}
+
 // ─── Helper interno ───────────────────────────────────────────────────────────
 
 async function postizFetch<T>(
@@ -113,6 +128,15 @@ export async function postizCreatePost(body: PostizCreatePostBody) {
 /** Sube una imagen desde una URL pública y la registra en la librería de Postiz. */
 export async function postizUploadFromUrl(url: string): Promise<PostizMediaItem> {
   return postizFetch<PostizMediaItem>('POST', '/upload-from-url', { url })
+}
+
+/**
+ * Devuelve la página de notificaciones de la organización en Postiz.
+ * Ej.: "Your post to X was published successfully" / "Failed to publish to LinkedIn".
+ * Ordenadas por fecha descendente. page es 0-indexed.
+ */
+export async function postizGetNotifications(page = 0): Promise<PostizNotificationsPage> {
+  return postizFetch<PostizNotificationsPage>('GET', `/notifications?page=${page}`)
 }
 
 /** Comprueba si la API key tiene acceso (health-check ligero). */
