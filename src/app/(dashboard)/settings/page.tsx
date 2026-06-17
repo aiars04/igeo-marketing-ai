@@ -22,7 +22,7 @@ export default async function SettingsPage() {
   const integrations = [
     { label: 'Gemini API Key',          desc: 'Generación de contenido e imágenes',     configured: !!process.env.GEMINI_API_KEY },
     { label: 'Nano Banana 2 (Gemini)',  desc: 'Generación de imágenes (Gemini 3.1 Flash Image)', configured: !!process.env.GEMINI_API_KEY },
-    { label: 'Postiz API',              desc: 'Publicación automática multi-red social', configured: !!process.env.POSTIZ_API_KEY },
+    { label: 'Postiz (publicación)',    desc: 'Publicación automática multi-red social (Postiz Web)', configured: !!process.env.POSTIZ_API_KEY },
   ]
 
   return (
