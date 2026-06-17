@@ -151,9 +151,19 @@ export async function postizGetChannels(): Promise<PostizChannel[]> {
   return postizFetch<PostizChannel[]>('GET', '/integrations')
 }
 
-/** Devuelve los posts programados/publicados. */
-export async function postizGetPosts(): Promise<{ posts: PostizPost[] }> {
-  return postizFetch<{ posts: PostizPost[] }>('GET', '/posts')
+/**
+ * Devuelve los posts en un rango de fechas. `startDate` y `endDate` son
+ * OBLIGATORIOS en Postiz Web (en formato ISO UTC). Si no se pasan, usamos
+ * un rango por defecto: últimos 90 días hasta dentro de 90 días en el
+ * futuro (cubre lo recién publicado y lo programado).
+ */
+export async function postizGetPosts(opts?: { startDate?: string; endDate?: string }): Promise<{ posts: PostizPost[] }> {
+  const now = Date.now()
+  const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000
+  const startDate = opts?.startDate ?? new Date(now - NINETY_DAYS_MS).toISOString()
+  const endDate   = opts?.endDate   ?? new Date(now + NINETY_DAYS_MS).toISOString()
+  const qs = new URLSearchParams({ startDate, endDate }).toString()
+  return postizFetch<{ posts: PostizPost[] }>('GET', `/posts?${qs}`)
 }
 
 /** Crea o programa un post en Postiz. */
