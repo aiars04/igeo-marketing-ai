@@ -9,8 +9,9 @@ import type { Profile } from '@/types/database'
  * Útil para mostrar histórico de publicaciones reales y fallos sin
  * tener que abrir el dashboard de Postiz.
  *
- * Auth: usuario con perfil activo. No exigimos rol admin/manager porque
- * es solo lectura — pero podríamos endurecerlo si fuese sensible.
+ * Auth: admin/manager. Las notificaciones revelan canales activos y
+ * fallos de publicación de redes corporativas → solo roles con permiso
+ * sobre marketing.
  */
 export async function GET(req: NextRequest) {
   const supabase = await createClient()
@@ -26,9 +27,14 @@ export async function GET(req: NextRequest) {
   if (!profile || !profile.active) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
+  if (profile.role !== 'admin' && profile.role !== 'manager') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
 
   const pageParam = req.nextUrl.searchParams.get('page')
-  const page = Number.isFinite(Number(pageParam)) ? Math.max(0, parseInt(pageParam ?? '0', 10)) : 0
+  // Limitar rango razonable para evitar consultas absurdas al upstream.
+  const parsed = Number.isFinite(Number(pageParam)) ? parseInt(pageParam ?? '0', 10) : 0
+  const page = Math.min(Math.max(0, parsed), 1000)
 
   try {
     const data = await postizGetNotifications(page)

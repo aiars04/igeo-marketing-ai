@@ -1,11 +1,32 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Send, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Send, Loader2, AlertCircle, CheckCircle2, ImageOff } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { usePostizChannels, usePostizPublish } from '@/hooks/use-postiz'
 import { utcISOToMarketLocal, marketLocalToUtcISO } from '@/lib/market-timezones'
 import type { ContentItem } from '@/types/database'
+
+/**
+ * Mapea códigos de error técnicos del backend a mensajes legibles.
+ * Si llega un código no mapeado se devuelve tal cual — siempre mejor
+ * mostrar algo que esconder el error.
+ */
+const ERROR_MESSAGES: Record<string, string> = {
+  channelIds_required:              'Selecciona al menos un canal antes de publicar.',
+  content_required:                 'Añade contenido al post antes de publicar.',
+  invalid_image_url:                'La imagen adjunta no es válida (debe estar en Supabase Storage).',
+  scheduledAt_required_for_schedule:'Para programar necesitas indicar fecha y hora.',
+  content_item_not_found:           'El item ha sido eliminado o ya no existe.',
+  postiz_upstream_failed:           'Postiz no respondió. Revisa /settings o reintenta en unos minutos.',
+  unauthorized:                     'Tu sesión ha expirado. Refresca la página.',
+  forbidden:                        'No tienes permiso para publicar (rol admin/manager requerido).',
+  bad_json:                         'Petición mal formada. Recarga la página y vuelve a intentarlo.',
+}
+function humanizeError(code: string | undefined): string {
+  if (!code) return 'Error desconocido al publicar.'
+  return ERROR_MESSAGES[code] ?? `Error: ${code}`
+}
 
 export interface PostizPublishUpdate {
   postiz_id?: string | null
@@ -87,6 +108,28 @@ function PublishModal({ open, item, imageUrl, onClose, onPublished }: ModalProps
     [item.scheduled_at, item.market],
   )
   const [scheduledLocal, setScheduledLocal] = useState(initialLocal)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  // Reset al (re)abrir el modal: evita arrastrar selección/fecha de aperturas previas.
+  useEffect(() => {
+    if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setType(item.scheduled_at ? 'schedule' : 'now')
+    setSelected(new Set())
+    setScheduledLocal(initialLocal)
+    setSubmitError(null)
+  }, [open, item.id, item.scheduled_at, initialLocal])
+
+  // Si la lista de canales cambia y un seleccionado desaparece, lo quitamos.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelected(prev => {
+      if (prev.size === 0) return prev
+      const ids = new Set(channels.map(c => c.id))
+      const filtered = new Set([...prev].filter(id => ids.has(id)))
+      return filtered.size === prev.size ? prev : filtered
+    })
+  }, [channels])
 
   const toggle = (id: string) => {
     setSelected(prev => {
@@ -104,10 +147,14 @@ function PublishModal({ open, item, imageUrl, onClose, onPublished }: ModalProps
 
   const submit = async () => {
     if (!canSubmit) return
+    setSubmitError(null)
     let scheduledIso: string | undefined
     if (type === 'schedule' && scheduledLocal) {
       const utc = marketLocalToUtcISO(scheduledLocal, item.market)
-      if (!utc) return  // fecha mal formada — no enviar
+      if (!utc) {
+        setSubmitError('La fecha introducida no es válida. Revísala y reintenta.')
+        return
+      }
       scheduledIso = utc
     }
     const res = await publish({
@@ -119,11 +166,14 @@ function PublishModal({ open, item, imageUrl, onClose, onPublished }: ModalProps
       scheduledAt: scheduledIso,
     })
     if (res.ok) {
-      onPublished?.({
-        postiz_id:    res.postizId ?? null,
-        published_at: res.publishedAt ?? null,
-        scheduled_at: scheduledIso ?? null,
-      })
+      // Update parcial: solo incluimos los campos que realmente cambiaron.
+      // Antes pisábamos scheduled_at a null cuando type='now', destruyendo
+      // la fecha original del item.
+      const update: { postiz_id?: string | null; published_at?: string | null; scheduled_at?: string | null } = {}
+      if (res.postizId != null)    update.postiz_id    = res.postizId
+      if (res.publishedAt != null) update.published_at = res.publishedAt
+      if (type === 'schedule' && scheduledIso) update.scheduled_at = scheduledIso
+      onPublished?.(update)
       // Cierre con un pequeño delay para que el usuario vea el OK
       setTimeout(onClose, 900)
     }
@@ -277,11 +327,22 @@ function PublishModal({ open, item, imageUrl, onClose, onPublished }: ModalProps
       </Section>
 
       {/* Resultado */}
+      {submitError && (
+        <Banner kind="error">{submitError}</Banner>
+      )}
       {result?.error && (
-        <Banner kind="error">Error al publicar: {result.error}</Banner>
+        <Banner kind="error">{humanizeError(result.error)}</Banner>
       )}
       {result?.ok && (
-        <Banner kind="success">Enviado a Postiz correctamente.</Banner>
+        <Banner kind="success">
+          Enviado a Postiz correctamente.
+          {imageUrl && result.imageUploaded === false && (
+            <span style={{ display: 'block', marginTop: 4, fontSize: 12 }}>
+              <ImageOff size={11} aria-hidden="true" style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 4 }} />
+              Atención: la imagen no se pudo adjuntar al post.
+            </span>
+          )}
+        </Banner>
       )}
 
       {/* Footer */}

@@ -27,6 +27,8 @@ export interface PublishResult {
   linkedItemId?: string | null
   postizId?: string | null
   publishedAt?: string | null
+  imageUploaded?: boolean       // true si la imagen llegó a Postiz; false si falló o no había
+  imageUploadError?: string | null
   result?: unknown
   error?: string
 }

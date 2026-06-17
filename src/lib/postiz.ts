@@ -136,7 +136,9 @@ export async function postizUploadFromUrl(url: string): Promise<PostizMediaItem>
  * Ordenadas por fecha descendente. page es 0-indexed.
  */
 export async function postizGetNotifications(page = 0): Promise<PostizNotificationsPage> {
-  return postizFetch<PostizNotificationsPage>('GET', `/notifications?page=${page}`)
+  const safePage = Math.max(0, Math.floor(Number(page) || 0))
+  const qs = new URLSearchParams({ page: String(safePage) }).toString()
+  return postizFetch<PostizNotificationsPage>('GET', `/notifications?${qs}`)
 }
 
 /** Comprueba si la API key tiene acceso (health-check ligero). */

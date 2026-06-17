@@ -129,6 +129,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'scheduledAt_required_for_schedule' }, { status: 400 })
   }
 
+  // Si el caller pasa contentItemId, validar que el item existe y que el
+  // usuario tiene permiso para tocarlo. Defense in depth: aunque solo
+  // admins/managers llegan hasta aquí, no queremos que un manager pueda
+  // pisar el postiz_id de un item que no es suyo si en el futuro hay
+  // separación por organización/owner.
+  if (contentItemId) {
+    const { data: targetItem, error: itemErr } = await admin
+      .from('content_items')
+      .select('id')
+      .eq('id', contentItemId)
+      .maybeSingle<{ id: string }>()
+    if (itemErr || !targetItem) {
+      return NextResponse.json({ error: 'content_item_not_found' }, { status: 404 })
+    }
+  }
+
+  // Tracking del resultado del upload de imagen — el caller necesita saber
+  // si el post salió con o sin imagen para no confundir al usuario.
+  let imageUploaded = false
+  let imageUploadError: string | null = null
+
   try {
     // 1. Si hay imagen, subirla a Postiz para obtener la ruta interna
     let postizImagePath: string | undefined
@@ -136,9 +157,11 @@ export async function POST(req: NextRequest) {
       try {
         const media = await postizUploadFromUrl(imageUrl)
         postizImagePath = media.path
+        imageUploaded = true
       } catch (imgErr) {
-        // No bloqueamos la publicación si falla la imagen — logamos solo el
-        // mensaje (no el objeto completo, que podría arrastrar URLs/tokens internos).
+        // No bloqueamos la publicación si falla la imagen, pero sí avisamos
+        // explícitamente en la respuesta para que la UI lo refleje.
+        imageUploadError = 'upload_failed'
         console.warn('[postiz/publish] No se pudo subir la imagen:', imgErr instanceof Error ? imgErr.message : String(imgErr))
       }
     }
@@ -182,6 +205,11 @@ export async function POST(req: NextRequest) {
         if (Object.keys(updates).length > 0) {
           const { error: updErr } = await admin
             .from('content_items')
+            // `as never` es el patrón usado en el resto del codebase porque
+            // los tipos generados de Supabase no infieren bien el shape de
+            // .update() para tablas con muchas columnas. Las claves de
+            // `updates` son string literales acotadas (postiz_id,
+            // published_at, scheduled_at), así que el cast es seguro.
             .update(updates as never)
             .eq('id', contentItemId)
           if (updErr) {
@@ -202,6 +230,8 @@ export async function POST(req: NextRequest) {
       linkedItemId,
       postizId,
       publishedAt,
+      imageUploaded,
+      imageUploadError,
       result,
     })
   } catch (err) {

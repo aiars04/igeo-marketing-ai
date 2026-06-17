@@ -2,21 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { Bell, RefreshCw, CheckCircle2, AlertCircle, ExternalLink, Loader2 } from 'lucide-react'
+import type { PostizNotification, PostizNotificationsPage } from '@/lib/postiz'
 
-interface PostizNotification {
-  id:        string
-  content:   string
-  link:      string | null
-  createdAt: string
-}
-
-interface NotificationsPage {
-  notifications: PostizNotification[]
-  total:         number
-  page:          number
-  hasMore:       boolean
-  error?:        string
-}
+// Wrapper local — la respuesta del proxy puede traer `error` en caso de fallo.
+type NotificationsResponse = (PostizNotificationsPage & { error?: undefined }) | { error: string }
 
 /**
  * Panel de notificaciones de Postiz: muestra el histórico de publicaciones
@@ -29,36 +18,44 @@ export function PostizNotificationsPanel() {
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     setRefreshing(true)
     setError(null)
     try {
-      const res = await fetch('/api/postiz/notifications', { cache: 'no-store' })
-      const data = await res.json() as NotificationsPage
-      if (!res.ok || data.error) {
-        setError(data.error ?? `HTTP ${res.status}`)
+      const res = await fetch('/api/postiz/notifications', { cache: 'no-store', signal })
+      const data = await res.json() as NotificationsResponse
+      if (signal?.aborted) return
+      if (!res.ok || 'error' in data) {
+        setError(('error' in data && data.error) || `HTTP ${res.status}`)
       } else {
-        setItems(data.notifications ?? [])
+        // Defensive: si Postiz devuelve shape inesperado, degrada a lista vacía.
+        setItems(Array.isArray(data.notifications) ? data.notifications : [])
       }
     } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return
       setError(e instanceof Error ? e.message : 'Error de red')
     } finally {
-      setRefreshing(false)
-      setLoading(false)
+      if (!signal?.aborted) {
+        setRefreshing(false)
+        setLoading(false)
+      }
     }
   }, [])
 
   useEffect(() => {
+    const controller = new AbortController()
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load()
+    void load(controller.signal)
+    return () => controller.abort()
   }, [load])
 
-  // Heurística para clasificar (Postiz solo da texto libre):
-  // "published successfully" → éxito, "Failed" → error, resto → info.
+  // Heurística multilingüe: Postiz Web está en inglés hoy, pero dejamos
+  // términos en español por si añaden i18n. Cualquier match de "fail/error/
+  // fallo/falló" gana sobre "publicado con éxito".
   const classify = (content: string): 'success' | 'error' | 'info' => {
     const c = content.toLowerCase()
-    if (c.includes('fail') || c.includes('error')) return 'error'
-    if (c.includes('publish') && c.includes('success')) return 'success'
+    if (/(fail|error|fallo|fall[oó]|no se pudo)/.test(c)) return 'error'
+    if (/(publish|public)/.test(c) && /(success|exit|ok)/.test(c)) return 'success'
     return 'info'
   }
 
@@ -80,8 +77,9 @@ export function PostizNotificationsPanel() {
           </h3>
         </div>
         <button
-          onClick={load}
+          onClick={() => { void load() }}
           disabled={refreshing}
+          aria-label="Refrescar histórico de Postiz"
           className="inline-flex items-center transition-colors"
           style={{
             gap: 6,
