@@ -14,6 +14,7 @@ import { Modal } from '@/components/ui/Modal'
 import { ImageDrivePanel } from '@/components/pipeline/ImageDrivePanel'
 import { ExportContentMenu } from '@/components/pipeline/ExportContentMenu'
 import { MentionPicker } from '@/components/pipeline/MentionPicker'
+import { PostizPublishButton } from '@/components/pipeline/PostizPublishButton'
 import {
   getMarketTimezone, MARKET_TZ_LABEL, marketLocalToUtcISO, utcISOToMarketLocal, formatInTimezone,
 } from '@/lib/market-timezones'
@@ -1105,6 +1106,15 @@ function ContentDetailModal({
             </button>
 
             <div style={{ flex: 1 }} />
+
+            {/* Publicar en Postiz — solo visible si no se ha enviado ya y hay contenido */}
+            <PostizPublishButton
+              item={item}
+              imageUrl={imageUrl}
+              onPublished={(update) => {
+                onItemUpdated?.({ ...item, ...update } as ContentItem)
+              }}
+            />
 
             {/* Rechazar — gris-rojo cuando aplica */}
             {!isRejected && (needsApproval || canAdvanceWithoutApproval) && (

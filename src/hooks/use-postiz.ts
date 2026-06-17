@@ -17,12 +17,16 @@ export interface PublishOptions {
   imageUrl?: string
   scheduledAt?: string       // ISO — si no se pasa, publica ahora
   type?: 'schedule' | 'draft' | 'now'
+  contentItemId?: string     // si viene, el server vincula postiz_id al item
 }
 
 export interface PublishResult {
   ok: boolean
   type: string
   channelIds: string[]
+  linkedItemId?: string | null
+  postizId?: string | null
+  publishedAt?: string | null
   result?: unknown
   error?: string
 }

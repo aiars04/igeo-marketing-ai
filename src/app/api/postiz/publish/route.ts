@@ -25,6 +25,38 @@ function isAllowedImageUrl(url: string): boolean {
 }
 
 /**
+ * Extrae el primer id de post devuelto por Postiz. La API pública devuelve
+ * distintos shapes según versión / contexto, así que probamos varios.
+ * Devuelve null si no encontramos id — en ese caso simplemente no
+ * vinculamos el content_item con Postiz (no es bloqueante).
+ */
+function extractPostizId(result: unknown): string | null {
+  if (!result) return null
+  const pickId = (x: unknown): string | null => {
+    if (x && typeof x === 'object' && 'id' in x) {
+      const id = (x as { id: unknown }).id
+      return typeof id === 'string' ? id : null
+    }
+    return null
+  }
+  if (Array.isArray(result)) {
+    for (const r of result) { const id = pickId(r); if (id) return id }
+    return null
+  }
+  if (typeof result === 'object') {
+    const obj = result as Record<string, unknown>
+    // formato { posts: [...] }
+    if (Array.isArray(obj.posts)) {
+      for (const r of obj.posts) { const id = pickId(r); if (id) return id }
+    }
+    // formato { id: ... } directo
+    const direct = pickId(obj)
+    if (direct) return direct
+  }
+  return null
+}
+
+/**
  * POST /api/postiz/publish
  *
  * Body:
@@ -34,6 +66,7 @@ function isAllowedImageUrl(url: string): boolean {
  *   imageUrl?: string             — URL pública de imagen (Supabase Storage)
  *   scheduledAt?: string          — ISO date para programar; si falta → publicar ahora
  *   type?: 'schedule'|'draft'|'now'  — Por defecto 'schedule' si hay fecha, 'now' si no
+ *   contentItemId?: string        — Si viene, persistimos postiz_id + published_at en el item
  * }
  *
  * Requiere: usuario autenticado, perfil activo, rol admin/manager.
@@ -63,6 +96,7 @@ export async function POST(req: NextRequest) {
     imageUrl?: string
     scheduledAt?: string
     type?: 'schedule' | 'draft' | 'now'
+    contentItemId?: string
   }
 
   try {
@@ -71,7 +105,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'bad_json' }, { status: 400 })
   }
 
-  const { channelIds, content, imageUrl, scheduledAt } = body
+  const { channelIds, content, imageUrl, scheduledAt, contentItemId } = body
 
   if (!channelIds?.length) {
     return NextResponse.json({ error: 'channelIds_required' }, { status: 400 })
@@ -123,10 +157,46 @@ export async function POST(req: NextRequest) {
 
     const result = await postizCreatePost(postizBody)
 
+    // 3. Vincular content_item con Postiz (best-effort, silencioso si falla).
+    // Solo si el caller indicó contentItemId. No bloqueamos la respuesta si
+    // el UPDATE falla — el post ya está en Postiz.
+    const postizId = extractPostizId(result)
+    let linkedItemId: string | null = null
+    let publishedAt: string | null = null
+    if (contentItemId) {
+      try {
+        const updates: Record<string, unknown> = {}
+        if (postizId) updates.postiz_id = postizId
+        if (type === 'now') {
+          publishedAt = new Date().toISOString()
+          updates.published_at = publishedAt
+        } else if (type === 'schedule' && scheduledAt) {
+          updates.scheduled_at = scheduledAt
+        }
+
+        if (Object.keys(updates).length > 0) {
+          const { error: updErr } = await admin
+            .from('content_items')
+            .update(updates as never)
+            .eq('id', contentItemId)
+          if (updErr) {
+            console.warn('[postiz/publish] no se pudo actualizar content_item:', updErr.message)
+          } else {
+            linkedItemId = contentItemId
+          }
+        }
+      } catch (linkErr) {
+        console.warn('[postiz/publish] error vinculando item:', linkErr instanceof Error ? linkErr.message : String(linkErr))
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       type,
       channelIds,
+      linkedItemId,
+      postizId,
+      publishedAt,
       result,
     })
   } catch (err) {
