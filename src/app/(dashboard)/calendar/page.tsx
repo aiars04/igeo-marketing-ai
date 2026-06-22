@@ -711,24 +711,35 @@ export default function CalendarPage() {
               })
               if (!res.ok) {
                 const j = await res.json().catch(() => ({}))
-                showToast(`Error: ${j.error ?? res.statusText}`, 'error')
+                showToast(`Error guardando evento: ${j.error ?? res.statusText}`, 'error')
                 setEvents(prev => prev.filter(e => e.id !== tempId))
                 return
               }
               const row = await res.json() as CalendarEvent
               // Reemplazar el evento temporal con el real (con id de Supabase)
-              setEvents(prev => prev.map(e => e.id === tempId ? dbEventToUI(row) : e))
+              const dbEvent = dbEventToUI(row)
+              setEvents(prev => prev.map(e => e.id === tempId ? dbEvent : e))
 
-              // Si es evento digital → crear tarjeta en pipeline
+              // Si es evento digital → crear tarjeta en pipeline.
+              // IMPORTANTE: usamos `dbEvent` (con el id REAL de Supabase), no `ev`
+              // (que tenía tempId aleatorio). Antes esto guardaba
+              // content_items.calendar_item_id apuntando al tempId, que nunca
+              // casaba con el id real del calendar_event → quedaban huérfanos.
               if (ev.eventType === 'digital') {
-                const result = await addPipelineItemFromCalendar(ev)
+                const result = await addPipelineItemFromCalendar(dbEvent)
                 if (result.ok) {
                   showToast('Evento creado · Tarjeta añadida a Pipeline', 'success')
                   await loadPipelineEvents()
                 } else if (result.duplicate) {
                   showToast('Evento creado (ya existía la tarjeta en Pipeline)', 'info')
                 } else {
-                  showToast('Evento creado', 'success')
+                  // Antes este caso era una falla silenciosa: el evento se
+                  // creaba pero la tarjeta no, y el usuario creía que todo
+                  // había ido bien. Avisamos con el motivo concreto.
+                  showToast(
+                    `Evento creado pero NO se pudo añadir al Pipeline: ${result.error ?? 'desconocido'}`,
+                    'error',
+                  )
                 }
               } else {
                 showToast('Evento creado', 'success')
