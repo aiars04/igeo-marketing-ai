@@ -374,7 +374,14 @@ function PublishModal({ open, item, imageUrl, imageUrls, onClose, onPublished }:
         <Banner kind="error">{submitError}</Banner>
       )}
       {result?.error && (
-        <Banner kind="error">{humanizeError(result.error)}</Banner>
+        <Banner kind="error">
+          {humanizeError(result.error)}
+          {result.detail && (
+            <span style={{ display: 'block', marginTop: 6, fontSize: 11, opacity: 0.85, fontFamily: 'monospace', wordBreak: 'break-word' }}>
+              {result.detail}
+            </span>
+          )}
+        </Banner>
       )}
       {result?.ok && (
         <Banner kind="success">

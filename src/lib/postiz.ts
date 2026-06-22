@@ -35,21 +35,30 @@ export interface PostizChannel {
 
 export interface PostizPostValue {
   content: string
-  image?: Array<{ path: string; id?: string }>
+  // Postiz exige id + path en cada media (el id viene de upload-from-url).
+  image?: Array<{ id: string; path: string }>
 }
 
 export interface PostizPostInput {
   integration: { id: string }
   value: PostizPostValue[]
-  settings?: Record<string, unknown>
+  // settings es OBLIGATORIO y específico de cada red. Como mínimo __type.
+  settings: Record<string, unknown>
+  group?: string
+}
+
+export interface PostizTag {
+  value: string
+  label: string
 }
 
 export interface PostizCreatePostBody {
   type: 'schedule' | 'draft' | 'now'
-  date?: string          // ISO — requerido si type = 'schedule'
+  date: string           // ISO — Postiz lo exige SIEMPRE (no solo en schedule)
+  shortLink: boolean     // requerido por la API
+  tags: PostizTag[]      // requerido (puede ir vacío)
   posts: PostizPostInput[]
-  tags?: string[]
-  shortLinks?: boolean
+  order?: string
 }
 
 export interface PostizPost {

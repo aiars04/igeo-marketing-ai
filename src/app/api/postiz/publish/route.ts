@@ -1,8 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { postizCreatePost, postizUploadFromUrl, type PostizCreatePostBody } from '@/lib/postiz'
+import { postizCreatePost, postizUploadFromUrl, postizGetChannels, type PostizCreatePostBody } from '@/lib/postiz'
 import { checkRateLimit, maybeCleanupRateLimits } from '@/lib/rate-limit'
 import type { Profile } from '@/types/database'
+
+/**
+ * Construye el objeto `settings` que Postiz exige por cada post, según la
+ * red social. Como mínimo `__type` (el providerIdentifier del canal). Algunas
+ * redes exigen campos extra: Instagram `post_type`, X `who_can_reply_post`,
+ * TikTok un set de flags. El resto se contenta con solo `__type`.
+ */
+function buildPostizSettings(identifier: string): Record<string, unknown> {
+  const id = (identifier || '').toLowerCase()
+  const base: Record<string, unknown> = { __type: identifier }
+  if (id.startsWith('instagram')) return { ...base, post_type: 'post' }
+  if (id === 'x' || id === 'twitter') return { ...base, who_can_reply_post: 'everyone' }
+  if (id.startsWith('tiktok')) {
+    return {
+      ...base,
+      privacy_level: 'PUBLIC_TO_EVERYONE',
+      duet: false, stitch: false, comment: false,
+      autoAddMusic: false, brand_content_toggle: false,
+      brand_organic_toggle: false, content_posting_method: 'DIRECT_POST',
+    }
+  }
+  return base
+}
 
 /**
  * Valida que una URL de imagen pertenezca al storage de Supabase del proyecto.
@@ -191,13 +214,12 @@ export async function POST(req: NextRequest) {
 
   try {
     // 1. Subir todas las imágenes a Postiz (en serie para no saturar).
-    //    Cada fallo se loggea pero no bloquea — al final reportamos a la UI
-    //    cuántas se subieron vs cuántas se pidieron.
-    const postizImagePaths: string[] = []
+    //    Guardamos id + path: Postiz exige ambos en cada media.
+    const postizImages: Array<{ id: string; path: string }> = []
     for (const url of allImageUrls) {
       try {
         const media = await postizUploadFromUrl(url)
-        postizImagePaths.push(media.path)
+        postizImages.push({ id: media.id, path: media.path })
         imagesUploaded++
       } catch (imgErr) {
         const msg = imgErr instanceof Error ? imgErr.message : String(imgErr)
@@ -205,14 +227,26 @@ export async function POST(req: NextRequest) {
         console.warn('[postiz/publish] upload-from-url falló:', msg)
       }
     }
-    const imagesBlock = postizImagePaths.length > 0
-      ? { image: postizImagePaths.map(p => ({ path: p })) }
-      : {}
+    const imagesBlock = postizImages.length > 0 ? { image: postizImages } : {}
 
-    // 2. Construir el body para Postiz — contenido por canal si viene custom.
+    // 2. Mapear channelId → providerIdentifier para construir `settings` por red.
+    //    Postiz exige settings con __type (y campos extra en IG/X/TikTok).
+    let channelProviderById: Record<string, string> = {}
+    try {
+      const channels = await postizGetChannels()
+      channelProviderById = Object.fromEntries(channels.map(c => [c.id, c.identifier]))
+    } catch (chErr) {
+      console.warn('[postiz/publish] no se pudieron leer integraciones para settings:', chErr instanceof Error ? chErr.message : String(chErr))
+    }
+
+    // 3. Construir el body completo con TODOS los campos que Postiz exige:
+    //    date (siempre), shortLink, tags, y settings por post.
+    const publishDate = (type === 'schedule' && scheduledAt) ? scheduledAt : new Date().toISOString()
     const postizBody: PostizCreatePostBody = {
       type,
-      ...(type === 'schedule' && scheduledAt ? { date: scheduledAt } : {}),
+      date: publishDate,
+      shortLink: false,
+      tags: [],
       posts: channelIds.map((id) => ({
         integration: { id },
         value: [
@@ -221,6 +255,7 @@ export async function POST(req: NextRequest) {
             ...imagesBlock,
           },
         ],
+        settings: buildPostizSettings(channelProviderById[id] ?? ''),
       })),
     }
 
@@ -279,8 +314,15 @@ export async function POST(req: NextRequest) {
       result,
     })
   } catch (err) {
-    // No exponemos el mensaje crudo de Postiz al cliente — puede filtrar URLs internas/tokens
-    console.error('[postiz/publish] upstream error:', err instanceof Error ? err.message : err)
-    return NextResponse.json({ error: 'postiz_upstream_failed' }, { status: 502 })
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[postiz/publish] upstream error:', msg)
+    // Solo admin/manager llegan hasta aquí (gate de rol más arriba), así que
+    // podemos devolver el detalle del error de Postiz para diagnóstico. NO
+    // contiene la API key (postizFetch nunca la mete en el mensaje), solo
+    // método, path y el body de error de Postiz.
+    return NextResponse.json(
+      { error: 'postiz_upstream_failed', detail: msg.slice(0, 600) },
+      { status: 502 },
+    )
   }
 }

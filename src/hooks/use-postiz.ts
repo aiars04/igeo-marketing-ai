@@ -35,6 +35,7 @@ export interface PublishResult {
   imageUploadError?:  string | null
   result?: unknown
   error?: string
+  detail?: string        // detalle del error upstream (solo admin/manager)
 }
 
 // ─── Hook: canales disponibles en Postiz ─────────────────────────────────────
