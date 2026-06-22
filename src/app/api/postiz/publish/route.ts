@@ -14,7 +14,7 @@ function buildPostizSettings(identifier: string): Record<string, unknown> {
   const id = (identifier || '').toLowerCase()
   const base: Record<string, unknown> = { __type: identifier }
   if (id.startsWith('instagram')) return { ...base, post_type: 'post' }
-  if (id === 'x' || id === 'twitter') return { ...base, who_can_reply_post: 'everyone' }
+  if (id === 'x' || id === 'twitter') return { ...base, who_can_reply_post: 'everyone', community: '' }
   if (id.startsWith('tiktok')) {
     return {
       ...base,

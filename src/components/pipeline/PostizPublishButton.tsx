@@ -213,6 +213,13 @@ function PublishModal({ open, item, imageUrl, imageUrls, onClose, onPublished }:
 
   const enabledChannels = channels.filter(c => !c.disabled)
 
+  // Instagram (y TikTok) no admiten publicaciones solo-texto: exigen media.
+  // Si hay un canal de ese tipo seleccionado y no hay imagen, avisamos.
+  const mediaRequiredChannels = enabledChannels.filter(
+    c => selected.has(c.id) && /^(instagram|tiktok|youtube|pinterest)/i.test(c.identifier),
+  )
+  const missingMediaWarning = mediaRequiredChannels.length > 0 && allImageUrls.length === 0
+
   return (
     <Modal open={open} onClose={onClose} title="Publicar en Postiz" size="md">
       {/* Aviso si no hay contenido */}
@@ -368,6 +375,15 @@ function PublishModal({ open, item, imageUrl, imageUrls, onClose, onPublished }:
           </div>
         )}
       </Section>
+
+      {/* Aviso: redes que exigen imagen seleccionadas sin imagen */}
+      {missingMediaWarning && (
+        <Banner kind="info">
+          {mediaRequiredChannels.map(c => c.name).join(', ')} requiere{mediaRequiredChannels.length > 1 ? 'n' : ''} una
+          imagen — estas redes no permiten publicaciones de solo texto. Asigna una imagen al item o
+          el post fallará en esa red.
+        </Banner>
+      )}
 
       {/* Resultado */}
       {submitError && (
