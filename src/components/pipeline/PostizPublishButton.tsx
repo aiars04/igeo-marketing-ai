@@ -20,9 +20,13 @@ const ERROR_MESSAGES: Record<string, string> = {
   scheduledAt_required_for_schedule:'Para programar necesitas indicar fecha y hora.',
   content_item_not_found:           'El item ha sido eliminado o ya no existe.',
   postiz_upstream_failed:           'Postiz no respondió. Revisa /settings o reintenta en unos minutos.',
+  postiz_integrations_unavailable:  'No se pudieron leer las redes conectadas en Postiz. Reintenta en unos segundos.',
+  unknown_channel_ids:              'Algún canal seleccionado ya no está conectado en Postiz. Recarga la página y vuelve a elegir.',
   unauthorized:                     'Tu sesión ha expirado. Refresca la página.',
   forbidden:                        'No tienes permiso para publicar (rol admin/manager requerido).',
+  forbidden_not_owner:              'Solo el creador del item (o un admin) puede publicarlo.',
   bad_json:                         'Petición mal formada. Recarga la página y vuelve a intentarlo.',
+  rate_limited:                     'Has publicado demasiado rápido. Espera unos segundos y reintenta.',
 }
 function humanizeError(code: string | undefined): string {
   if (!code) return 'Error desconocido al publicar.'

@@ -12,7 +12,10 @@ import type { Profile } from '@/types/database'
  */
 function buildPostizSettings(identifier: string): Record<string, unknown> {
   const id = (identifier || '').toLowerCase()
-  const base: Record<string, unknown> = { __type: identifier }
+  // __type también va en lowercase — los providerIdentifier de Postiz son
+  // siempre minúsculas estables ('instagram-standalone', 'linkedin', etc.)
+  // pero normalizamos por si en algún plan/versión llegasen con mayúsculas.
+  const base: Record<string, unknown> = { __type: id }
   if (id.startsWith('instagram')) return { ...base, post_type: 'post' }
   if (id === 'x' || id === 'twitter') return { ...base, who_can_reply_post: 'everyone', community: '' }
   if (id.startsWith('tiktok')) {
@@ -230,13 +233,32 @@ export async function POST(req: NextRequest) {
     const imagesBlock = postizImages.length > 0 ? { image: postizImages } : {}
 
     // 2. Mapear channelId → providerIdentifier para construir `settings` por red.
-    //    Postiz exige settings con __type (y campos extra en IG/X/TikTok).
-    let channelProviderById: Record<string, string> = {}
+    //    Postiz exige settings con __type específico (Instagram/X/TikTok tienen
+    //    campos extra). Si no podemos saber qué red es cada canal, no podemos
+    //    construir un settings válido y Postiz rechazará TODOS los posts con
+    //    400. Hacemos hard fail aquí en vez de seguir y mostrar un error
+    //    confuso al usuario después.
+    let channelProviderById: Record<string, string>
     try {
       const channels = await postizGetChannels()
       channelProviderById = Object.fromEntries(channels.map(c => [c.id, c.identifier]))
     } catch (chErr) {
-      console.warn('[postiz/publish] no se pudieron leer integraciones para settings:', chErr instanceof Error ? chErr.message : String(chErr))
+      const msg = chErr instanceof Error ? chErr.message : String(chErr)
+      console.error('[postiz/publish] no se pudieron leer integraciones:', msg)
+      return NextResponse.json(
+        { error: 'postiz_integrations_unavailable', detail: msg.slice(0, 600) },
+        { status: 502 },
+      )
+    }
+    // Validar que todos los canales seleccionados existen en la lista de Postiz.
+    // Un id desconocido casi siempre significa que el canal se desconectó entre
+    // la carga del modal y el submit.
+    const unknownChannelIds = channelIds.filter(id => !channelProviderById[id])
+    if (unknownChannelIds.length > 0) {
+      return NextResponse.json(
+        { error: 'unknown_channel_ids', detail: `Canales no encontrados en Postiz: ${unknownChannelIds.join(', ')}` },
+        { status: 400 },
+      )
     }
 
     // 3. Construir el body completo con TODOS los campos que Postiz exige:
