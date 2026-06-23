@@ -22,6 +22,9 @@ interface Props {
   itemId:           string
   itemTitle:        string
   channel:          Channel
+  /** content_type_id del item (puede ser null para items históricos). Si viene,
+   *  se usa para cargar el format_spec exacto en vez del "primero del canal". */
+  contentTypeId?:   string | null
   assignedImageId:  string | null
   assignedImageUrl: string | null
   onAssigned:       (assetId: string, url: string) => void
@@ -46,7 +49,7 @@ const MODES: { value: GenMode; label: string; sub: string; icon: typeof Sparkles
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function ImageDrivePanel({
-  itemId, itemTitle, channel, assignedImageId, assignedImageUrl, onAssigned, onUnassigned,
+  itemId, itemTitle, channel, contentTypeId, assignedImageId, assignedImageUrl, onAssigned, onUnassigned,
 }: Props) {
   // Inline panel state
   const [unassigning, setUnassigning] = useState(false)
@@ -106,8 +109,12 @@ export function ImageDrivePanel({
     return () => { cancelled = true }
   }, [assignedImageId])
 
-  // Format spec del content_type del canal — muestra el checklist informativo
-  // de qué imágenes espera este formato (sin tocar la lógica de generación).
+  // Format spec del content_type del item — muestra el checklist informativo
+  // de qué imágenes espera este formato y permite autoseleccionar ratio/count
+  // en el modal de generación.
+  //
+  // Si el item tiene content_type_id explícito (migración 026) → ese.
+  // Si no → fallback "primero activo del canal" para items históricos.
   const [formatSpec, setFormatSpec] = useState<ContentType['format_spec'] | null>(null)
   useEffect(() => {
     let cancelled = false
@@ -115,24 +122,61 @@ export function ImageDrivePanel({
       .then(r => r.ok ? r.json() as Promise<ContentType[]> : Promise.resolve([]))
       .then(list => {
         if (cancelled) return
-        setFormatSpec(list[0]?.format_spec ?? null)
+        const exact = contentTypeId
+          ? (list.find(ct => ct.id === contentTypeId) ?? null)
+          : null
+        setFormatSpec((exact ?? list[0])?.format_spec ?? null)
       })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [channel])
+  }, [channel, contentTypeId])
+
+  // Aspect ratio estándar más cercano a unas dimensiones libres (w/h del
+  // format_spec.carousel). Si el content_type define p.ej. 1080×1350 (Instagram
+  // feed retrato), elegimos 4:5 automáticamente. Si no hay dimensiones, '1:1'.
+  const ratioFromDims = (w: number | null | undefined, h: number | null | undefined): AspectRatio => {
+    if (!w || !h) return '1:1'
+    const target = w / h
+    const candidates: { value: AspectRatio; ratio: number }[] = [
+      { value: '1:1',  ratio: 1     },
+      { value: '16:9', ratio: 16/9  },
+      { value: '9:16', ratio: 9/16  },
+      { value: '4:5',  ratio: 4/5   },
+    ]
+    return candidates.reduce((best, c) =>
+      Math.abs(c.ratio - target) < Math.abs(best.ratio - target) ? c : best,
+    candidates[0]).value
+  }
 
   // ── Reset modal cuando se abre ───────────────────────────────────────────
   const openGenerate = useCallback(() => {
-    setGenMode('individual')
-    setGenCount(4)
-    setGenPrompt(itemTitle)
-    setGenPrompts(['', '', '', ''])
-    setAspectRatio('1:1')
+    // Defaults inteligentes basados en format_spec del content_type:
+    //   - carousel definido → modo 'variants', count = carousel.min (clamp 2-4),
+    //     aspect ratio derivado de carousel.width/height.
+    //   - sin carousel        → modo 'individual', count 4, ratio '1:1'.
+    const car = formatSpec?.carousel
+    if (car) {
+      // Clamp a 2|3|4 (el tipo de setGenCount). Si carousel.min está fuera de
+      // rango usamos el extremo más cercano.
+      const raw = car.min ?? 2
+      const count: 2 | 3 | 4 = raw <= 2 ? 2 : raw >= 4 ? 4 : 3
+      setGenMode('variants')
+      setGenCount(count)
+      setGenPrompt(itemTitle)
+      setGenPrompts(['', '', '', ''])
+      setAspectRatio(ratioFromDims(car.width, car.height))
+    } else {
+      setGenMode('individual')
+      setGenCount(4)
+      setGenPrompt(itemTitle)
+      setGenPrompts(['', '', '', ''])
+      setAspectRatio('1:1')
+    }
     setGenError(null)
     setGenProgress('')
     setVariants(null)
     setGenModalOpen(true)
-  }, [itemTitle])
+  }, [itemTitle, formatSpec])
 
   const closeGenerate = useCallback(() => {
     if (generating) return
@@ -272,6 +316,7 @@ export function ImageDrivePanel({
         if (!promptFinal) { setGenError('Escribe un prompt o un título'); return }
 
         let lastError = ''
+        let lastDetail: string | null = null
         let assets: ImageAsset[] | null = null
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
           const wait = BACKOFF_SECONDS[attempt - 1] ?? 35
@@ -298,12 +343,14 @@ export function ImageDrivePanel({
             assets = data.assets
             break
           }
-          const j = await res.json().catch(() => ({})) as { error?: string }
+          const j = await res.json().catch(() => ({})) as { error?: string; detail?: string }
           lastError = j.error ?? `HTTP ${res.status}`
+          lastDetail = j.detail ?? null
           if (!isTransient(res.status, lastError)) break
         }
         if (!assets) {
-          setGenError(`Nano Banana 2 está saturado (${lastError}). Espera unos segundos o prueba modo Individual.`)
+          const suffix = lastDetail ? `\n${lastDetail}` : ''
+          setGenError(`No se pudo generar el carrusel (${lastError}). Espera unos segundos o prueba modo Individual.${suffix}`)
           return
         }
         setVariants(assets)
@@ -321,11 +368,12 @@ export function ImageDrivePanel({
           body: JSON.stringify({ mode: 'curated', prompts: valid, aspectRatio, channel }),
         })
         if (!res.ok) {
-          const j = await res.json().catch(() => ({})) as { error?: string }
+          const j = await res.json().catch(() => ({})) as { error?: string; detail?: string }
+          const suffix = j.detail ? `\n${j.detail}` : ''
           if (res.status === 504 || res.status === 408 || res.status === 502) {
-            setGenError('Timeout en modo curado (4 imágenes pueden tardar >60s en Vercel free). Prueba con 2 prompts o usa modo Individual.')
+            setGenError(`Timeout en modo curado (4 imágenes pueden tardar >60s en Vercel free). Prueba con 2 prompts o usa modo Individual.${suffix}`)
           } else {
-            setGenError(j.error ?? `HTTP ${res.status}`)
+            setGenError(`${j.error ?? `HTTP ${res.status}`}${suffix}`)
           }
           return
         }

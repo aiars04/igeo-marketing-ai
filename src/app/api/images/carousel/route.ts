@@ -193,8 +193,10 @@ export async function POST(req: NextRequest) {
         }
       }
       console.error('[carousel] rollback triggered:', reason)
-      // No exponemos el motivo crudo al cliente — puede contener nombres de columna/path
-      return NextResponse.json({ error: 'carousel_failed', carousel_id: carouselId, rolled_back: true }, { status })
+      return NextResponse.json(
+        { error: 'carousel_failed', carousel_id: carouselId, rolled_back: true, detail: reason.slice(0, 600) },
+        { status },
+      )
     }
 
     for (let i = 0; i < imagesBase64.length; i++) {
@@ -256,11 +258,18 @@ export async function POST(req: NextRequest) {
       assets: inserted,
     })
   } catch (err: unknown) {
-    console.error('[images/carousel] error:', err instanceof Error ? err.message : err)
-    const msg = (err instanceof Error ? err.message : '').toLowerCase()
-    const isTransient = msg.includes('unavailable') || msg.includes('exhausted') || msg.includes('quota')
+    const rawMsg = err instanceof Error ? err.message : String(err)
+    console.error('[images/carousel] error:', rawMsg)
+    const lower = rawMsg.toLowerCase()
+    const isTransient = lower.includes('unavailable') || lower.includes('exhausted') || lower.includes('quota')
+    // Solo perfiles activos (auth ya validada) llegan aquí, así que podemos
+    // devolver el detail concreto para diagnóstico. NO contiene API keys
+    // (los SDKs no las incluyen en el mensaje).
     return NextResponse.json(
-      { error: isTransient ? 'models_unavailable' : 'carousel_failed' },
+      {
+        error: isTransient ? 'models_unavailable' : 'carousel_failed',
+        detail: rawMsg.slice(0, 600),
+      },
       { status: isTransient ? 503 : 500 },
     )
   }

@@ -1026,6 +1026,7 @@ function ContentDetailModal({
             itemId={item.id}
             itemTitle={item.title}
             channel={item.channel as Channel}
+            contentTypeId={item.content_type_id}
             assignedImageId={imageId}
             assignedImageUrl={imageUrl}
             onAssigned={(assetId, url) => { onImageAssigned?.(item.id, assetId, url) }}
