@@ -28,6 +28,10 @@ export function calendarEventToContentItemInput(event: CalendarEvent): Partial<C
     market: marketRaw.toLowerCase() as Market,
     scheduled_at: startISO,
     ai_generated: false,
+    // Si el modal del calendario indicó subtipo (Post/Carrusel/Stories…),
+    // propágalo al content_item para que el matcher de plantillas creativas
+    // sea exacto. Si no, queda null → matcher cae al fallback heurístico.
+    ...(event.content_type_id ? { content_type_id: event.content_type_id } : {}),
   }
 }
 

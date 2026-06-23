@@ -252,7 +252,15 @@ export function SuggestImprovementDrawer({ open, onClose, userId }: Props) {
       {/* Drawer desde la derecha — SIN overlay difuminado, fondo de la app visible */}
       <aside
         aria-label="Sugerir mejora"
-        aria-hidden={!open || minimized}
+        // inert deshabilita interacción + accesibilidad cuando está cerrado.
+        // Antes usábamos aria-hidden, pero si un input dentro tenía foco al
+        // cerrar el drawer, el navegador advertía: "Blocked aria-hidden on
+        // an element because its descendant retained focus" (regla WAI-ARIA).
+        // `inert` no tiene ese problema porque también previene el foco.
+        // En React 19+ es `boolean`; en versiones anteriores el DOM acepta
+        // el atributo igualmente. Hacemos cast porque el typing depende de
+        // la versión de @types/react.
+        {...((!open || minimized) ? { inert: true } as unknown as { inert?: boolean } : {})}
         style={{
           position: 'fixed',
           top: 0,

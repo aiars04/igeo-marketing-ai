@@ -59,6 +59,10 @@ export interface Event {
   // Digital:
   channel?: string
   market?: string
+  /** Subtipo del canal (Post, Carrusel, Stories…) — FK content_types.id.
+   *  No se persiste en calendar_events; se usa solo para propagarlo al
+   *  content_item del pipeline cuando se crea el evento. */
+  content_type_id?: string | null
 }
 
 // Tipo de evento + opciones por categoría
@@ -187,6 +191,63 @@ function SelectField({
         }}
       />
     </div>
+  )
+}
+
+/**
+ * Selector inline de content_type (subtipo del canal). Carga dinámicamente
+ * /api/content-types?channel=X&active=true cada vez que cambia el canal.
+ * Si no hay subtipos para el canal, queda deshabilitado con hint.
+ */
+function ContentTypeSelectInline({
+  channel, value, onChange,
+}: {
+  channel: string
+  value: string
+  onChange: (id: string) => void
+}) {
+  const [options, setOptions] = useState<{ id: string; name: string }[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true)
+    fetch(`/api/content-types?channel=${encodeURIComponent(channel)}&active=true`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: { id: string; name: string }[]) => {
+        if (cancelled) return
+        setOptions(Array.isArray(rows) ? rows.map(r => ({ id: r.id, name: r.name })) : [])
+      })
+      .catch((e: unknown) => {
+        if (cancelled || (e instanceof Error && e.name === 'AbortError')) return
+        setOptions([])
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true; controller.abort() }
+  }, [channel])
+
+  const disabled = loading || options.length === 0
+  return (
+    <SelectField
+      value={value}
+      onChange={e => onChange(e.target.value)}
+    >
+      <option value="">
+        {loading
+          ? 'Cargando tipos…'
+          : options.length === 0
+            ? `Sin subtipos para ${channel} (gestionar en admin)`
+            : 'Tipo de contenido (opcional)'}
+      </option>
+      {!disabled && options.map(ct => (
+        <option key={ct.id} value={ct.id}>{ct.name}</option>
+      ))}
+    </SelectField>
   )
 }
 
@@ -375,6 +436,9 @@ export function EventManager({
       location: eventType === 'presential' ? newEvent.location : undefined,
       channel:  eventType === 'digital'    ? newEvent.channel  : undefined,
       market:   eventType === 'digital'    ? newEvent.market   : undefined,
+      // Solo aplica a digital — el handler en calendar/page.tsx lo propaga al
+      // content_item del pipeline cuando addPipelineItemFromCalendar se ejecuta.
+      content_type_id: eventType === 'digital' ? (newEvent.content_type_id ?? null) : null,
     }
     onEventCreate?.(event)
     setIsDialogOpen(false)
@@ -1484,7 +1548,10 @@ export function EventManager({
                             value={formData.channel ?? DIGITAL_CHANNELS[0]}
                             onChange={(e) => {
                               const channel = e.target.value
-                              updateField({ channel, color: CHANNEL_TO_COLOR[channel] ?? 'blue' })
+                              // Al cambiar el canal, limpiar content_type_id (los
+                              // subtipos son por canal). El nuevo selector lo
+                              // volverá a poblar al recargar.
+                              updateField({ channel, color: CHANNEL_TO_COLOR[channel] ?? 'blue', content_type_id: null })
                             }}
                           >
                             {DIGITAL_CHANNELS.map((c) => (
@@ -1503,6 +1570,13 @@ export function EventManager({
                           </SelectField>
                         </Field>
                       </div>
+                      <Field label="Tipo de contenido" optional>
+                        <ContentTypeSelectInline
+                          channel={formData.channel ?? DIGITAL_CHANNELS[0]}
+                          value={formData.content_type_id ?? ''}
+                          onChange={(id) => updateField({ content_type_id: id || null })}
+                        />
+                      </Field>
                       <Field label="Fecha de publicación">
                         <input
                           type="datetime-local"

@@ -734,8 +734,13 @@ export default function CalendarPage() {
               // (que tenía tempId aleatorio). Antes esto guardaba
               // content_items.calendar_item_id apuntando al tempId, que nunca
               // casaba con el id real del calendar_event → quedaban huérfanos.
+              //
+              // Mezclamos content_type_id del input local porque calendar_events
+              // NO persiste ese campo (es metadato sólo-UI). Así el content_item
+              // del pipeline sí lo recibe.
               if (ev.eventType === 'digital') {
-                const result = await addPipelineItemFromCalendar(dbEvent)
+                const enriched = { ...dbEvent, content_type_id: ev.content_type_id ?? null }
+                const result = await addPipelineItemFromCalendar(enriched)
                 if (result.ok) {
                   showToast('Evento creado · Tarjeta añadida a Pipeline', 'success')
                   await loadPipelineEvents()
