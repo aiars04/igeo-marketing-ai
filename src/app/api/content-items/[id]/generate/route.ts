@@ -65,16 +65,36 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     .single<ContentItem>()
   if (itemErr || !item) return NextResponse.json({ error: 'item_not_found' }, { status: 404 })
 
-  // 4) Buscar content_type del canal — el más reciente activo
-  const { data: ctRows } = await admin
-    .from('content_types')
-    .select('*')
-    .eq('channel', item.channel)
-    .eq('active', true)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .returns<ContentType[]>()
-  const ct = ctRows?.[0] ?? null
+  // 4) Buscar content_type del item.
+  //    Prioridad:
+  //      1) item.content_type_id (elegido explícitamente por el usuario,
+  //         migración 026). Si existe Y está activo, ese.
+  //      2) Fallback heurístico: el más reciente activo del canal
+  //         (compat con items históricos sin la columna).
+  //    Antes ignorábamos siempre item.content_type_id y usábamos el
+  //    fallback, lo que metía el format_spec EQUIVOCADO en el prompt
+  //    si el item era 'Carrusel IG' pero el último creado era 'Post IG'.
+  let ct: ContentType | null = null
+  if (item.content_type_id) {
+    const { data: exact } = await admin
+      .from('content_types')
+      .select('*')
+      .eq('id', item.content_type_id)
+      .eq('active', true)
+      .maybeSingle<ContentType>()
+    ct = exact ?? null
+  }
+  if (!ct) {
+    const { data: ctRows } = await admin
+      .from('content_types')
+      .select('*')
+      .eq('channel', item.channel)
+      .eq('active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .returns<ContentType[]>()
+    ct = ctRows?.[0] ?? null
+  }
 
   // 4b) Cargar brand_context: bloques relevantes para canal + mercado del item.
   // spain y latam comparten bloque; el resto tiene el suyo (market_<slug>).
