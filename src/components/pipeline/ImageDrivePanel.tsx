@@ -682,6 +682,7 @@ export function ImageDrivePanel({
           onAssignVariant={assignAsset}
           onAfterAssign={() => setGenModalOpen(false)}
           itemTitle={itemTitle}
+          isCarouselFormat={!!formatSpec?.carousel}
         />
 
         {/* Picker del banco — elegir o subir imagen propia */}
@@ -740,6 +741,7 @@ export function ImageDrivePanel({
         onAssignVariant={assignAsset}
         onAfterAssign={() => setGenModalOpen(false)}
         itemTitle={itemTitle}
+        isCarouselFormat={!!formatSpec?.carousel}
       />
 
       {/* Picker del banco — elegir o subir imagen propia */}
@@ -779,6 +781,9 @@ interface GenModalProps {
   onAssignVariant: (id: string, url: string) => Promise<void>
   onAfterAssign: () => void
   itemTitle: string
+  /** Si true, el content_type del item es un carrusel: deshabilita el modo
+   *  Individual (un carrusel necesita N imágenes separadas) y avisa con hint. */
+  isCarouselFormat?: boolean
 }
 
 function GenerationModal({
@@ -786,6 +791,7 @@ function GenerationModal({
   genPrompt, setGenPrompt, genPrompts, setGenPrompts,
   aspectRatio, setAspectRatio, generating, genProgress, genError,
   variants, assigningId, onGenerate, onAssignVariant, onAfterAssign, itemTitle,
+  isCarouselFormat = false,
 }: GenModalProps) {
 
   // Si hay variantes/curated, mostrar selector de imagen
@@ -900,19 +906,30 @@ function GenerationModal({
                 {MODES.map(m => {
                   const Icon = m.icon
                   const active = genMode === m.value
+                  // Individual deshabilitado para formatos carrusel: 1 imagen no
+                  // sirve para un carrusel de N slides. Antes esto causaba que
+                  // Gemini "interpretase" el prompt y devolviese una imagen
+                  // dividida en 4 viñetas en vez de 4 imágenes separadas
+                  // (bug reportado por Ramon 2026-06-23).
+                  const disabled = isCarouselFormat && m.value === 'individual'
                   return (
                     <button
                       key={m.value}
-                      onClick={() => setGenMode(m.value)}
+                      onClick={() => { if (!disabled) setGenMode(m.value) }}
+                      disabled={disabled}
+                      title={disabled
+                        ? 'No disponible: este formato es un carrusel; usa Variantes o Curado para generar N imágenes separadas.'
+                        : m.sub}
                       className="flex flex-col items-start transition-all"
                       style={{
                         padding: 12,
                         background: active ? 'var(--accent-soft)' : 'var(--surface-2)',
                         border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
                         borderRadius: 'var(--radius-md)',
-                        cursor: 'pointer',
+                        cursor: disabled ? 'not-allowed' : 'pointer',
                         textAlign: 'left',
                         gap: 4,
+                        opacity: disabled ? 0.45 : 1,
                       }}
                     >
                       <Icon size={14} aria-hidden="true" style={{ color: active ? 'var(--accent)' : 'var(--ink-2)' }} />
@@ -926,6 +943,12 @@ function GenerationModal({
                   )
                 })}
               </div>
+              {isCarouselFormat && (
+                <p style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6, lineHeight: 1.4 }}>
+                  Este formato es un <strong>carrusel</strong>: necesita N imágenes separadas (una por slide).
+                  Usa <strong>Variantes</strong> (mismo prompt) o <strong>Curado</strong> (1 prompt por slide).
+                </p>
+              )}
             </div>
 
             {/* ── Count (variants/curated) ─────────────────────────────── */}

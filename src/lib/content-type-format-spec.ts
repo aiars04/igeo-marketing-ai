@@ -104,7 +104,33 @@ export function buildFormatSpecPromptBlock(spec: ContentTypeFormatSpec | null | 
     const dims = spec.carousel.width && spec.carousel.height
       ? ` (${spec.carousel.width}×${spec.carousel.height} cada slide)`
       : ''
-    lines.push(`\nCARRUSEL: ${spec.carousel.min}–${spec.carousel.max} slides${dims}.`)
+    const n = spec.carousel.min === spec.carousel.max
+      ? `${spec.carousel.min} slides`
+      : `${spec.carousel.min}–${spec.carousel.max} slides`
+    lines.push(`\nCARRUSEL: ${n}${dims}.`)
+    // Instrucción EXPLÍCITA al LLM para que produzca copy estructurado por
+    // slide. Sin esto, los modelos devuelven un único bloque con "Texto del
+    // Post:" y todo seguido (bug reportado por Ramon 2026-06-23).
+    lines.push(
+      '',
+      'IMPORTANTE — formato OBLIGATORIO de salida cuando es carrusel:',
+      `Devuelve EXACTAMENTE ${spec.carousel.min} bloques separados, uno por slide,`,
+      'usando este formato literal (sin comentarios, sin "Texto del Post:", sin envolver en markdown extra):',
+      '',
+      '═══ SLIDE 1 ═══',
+      '<texto del slide 1 — máximo 60-80 caracteres si es portada; resto del slide debajo si aplica>',
+      '',
+      '═══ SLIDE 2 ═══',
+      '<texto del slide 2>',
+      '',
+      '… (continúa hasta el último slide)',
+      '',
+      '═══ CAPTION FEED ═══',
+      '<el caption que va debajo del post completo: hook + desarrollo + CTA + hashtags>',
+      '',
+      'Cada slide debe ser SOLO el texto que aparece sobre esa imagen (corto, impactante, una idea).',
+      'El CAPTION FEED es independiente y va al final, es el texto largo que el usuario ve bajo el carrusel.',
+    )
   }
 
   return `\n\n════ ESTRUCTURA DEL FORMATO ════\n${lines.join('\n')}`
