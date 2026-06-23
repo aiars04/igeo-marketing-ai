@@ -88,6 +88,24 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Validar content_type_id si viene definido: debe existir, estar activo y
+  // pertenecer al MISMO canal del item (no se puede asignar un Carrusel-IG
+  // a un item de LinkedIn).
+  let contentTypeId: string | null = null
+  if (body.content_type_id) {
+    const { data: ct } = await admin
+      .from('content_types')
+      .select('id, channel, active')
+      .eq('id', body.content_type_id)
+      .maybeSingle<{ id: string; channel: Channel; active: boolean }>()
+    if (!ct) return NextResponse.json({ error: 'invalid_content_type' }, { status: 400 })
+    if (!ct.active) return NextResponse.json({ error: 'content_type_inactive' }, { status: 400 })
+    if (ct.channel !== channel) {
+      return NextResponse.json({ error: 'content_type_channel_mismatch' }, { status: 400 })
+    }
+    contentTypeId = ct.id
+  }
+
   // En CREATE NUNCA aceptamos campos de auditoría/aprobación del cliente.
   // human_approved/approved_by/approved_at se setean vía PATCH con role check.
   // postiz_id, clarity_pass, clarity_summary, published_at se setean vía endpoints específicos.
@@ -110,6 +128,7 @@ export async function POST(req: NextRequest) {
     published_at: null,
     postiz_id: null,
     calendar_item_id: body.calendar_item_id ?? null,
+    content_type_id: contentTypeId,
     created_by: me.id,
   }
 

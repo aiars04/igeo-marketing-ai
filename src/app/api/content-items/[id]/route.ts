@@ -32,12 +32,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   let body: Partial<ContentItem>
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
 
-  // Cargar el item primero para verificar permisos + estado actual de aprobación
+  // Cargar el item primero para verificar permisos + estado actual de aprobación.
+  // Incluimos channel para validar coherencia con content_type_id si viene en el PATCH.
   const { data: target } = await admin
     .from('content_items')
-    .select('id, created_by, human_approved, scheduled_at')
+    .select('id, created_by, human_approved, scheduled_at, channel')
     .eq('id', id)
-    .single<Pick<ContentItem, 'id' | 'human_approved' | 'scheduled_at'> & { created_by: string | null }>()
+    .single<Pick<ContentItem, 'id' | 'human_approved' | 'scheduled_at' | 'channel'> & { created_by: string | null }>()
   if (!target) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const isOwner = target.created_by === me.id
@@ -126,6 +127,28 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       return NextResponse.json({ error: 'forbidden_field:clarity_summary' }, { status: 403 })
     }
     patch.clarity_summary = body.clarity_summary
+  }
+
+  // content_type_id — owner/priv puede cambiar el subtipo del canal. Validamos
+  // que el content_type exista, esté activo y pertenezca al MISMO canal del item
+  // (no se puede asignar un Carrusel-IG a un item de LinkedIn). Aceptamos null
+  // para "quitar" la asociación.
+  if (body.content_type_id !== undefined) {
+    if (body.content_type_id === null) {
+      patch.content_type_id = null
+    } else {
+      const { data: ct } = await admin
+        .from('content_types')
+        .select('id, channel, active')
+        .eq('id', body.content_type_id)
+        .maybeSingle<{ id: string; channel: string; active: boolean }>()
+      if (!ct) return NextResponse.json({ error: 'invalid_content_type' }, { status: 400 })
+      if (!ct.active) return NextResponse.json({ error: 'content_type_inactive' }, { status: 400 })
+      if (ct.channel !== target.channel) {
+        return NextResponse.json({ error: 'content_type_channel_mismatch' }, { status: 400 })
+      }
+      patch.content_type_id = ct.id
+    }
   }
 
   // body.approved_by / body.approved_at del cliente son SIEMPRE ignorados —

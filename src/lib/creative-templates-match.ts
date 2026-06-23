@@ -13,8 +13,11 @@
  *   - market  = item.market O market IS NULL (las que aplican a todos)
  *   - active  = true
  *   - content_type: si la plantilla NO tiene filas pivote → aplica a TODOS los
- *     content_types del canal. Si tiene → solo a los enlazados. El "content_type
- *     activo" del canal es el más reciente con active=true.
+ *     content_types del canal. Si tiene → solo a los enlazados.
+ *     El "content_type del item" se elige así, en orden:
+ *       1) item.content_type_id (lo que el usuario eligió explícitamente)
+ *       2) fallback heurístico: el content_type más reciente con active=true
+ *          del canal (mantiene compat con items históricos sin la columna).
  *
  * Devuelve max `cap` resultados (default 5), ordenados por created_at desc.
  */
@@ -42,20 +45,24 @@ export async function matchTemplatesForItem(
 ): Promise<TemplateMatchResult> {
   const cap = options.cap ?? DEFAULT_CAP
 
-  // Cargar item para conocer channel + market
+  // Cargar item para conocer channel + market + content_type_id (lo elegido
+  // explícitamente por el usuario, si lo hay).
   const { data: item } = await admin
     .from('content_items')
-    .select('id, channel, market')
+    .select('id, channel, market, content_type_id')
     .eq('id', contentItemId)
-    .single<Pick<ContentItem, 'id' | 'channel' | 'market'>>()
+    .single<Pick<ContentItem, 'id' | 'channel' | 'market' | 'content_type_id'>>()
 
   const channel = ((item?.channel ?? fallbackChannel) ?? '') as Channel
   if (!channel) return { templates: [], promptNotes: [], activeContentTypeId: null }
   const market = item?.market ?? null
 
-  // content_type activo del canal (1)
-  let activeContentTypeId: string | null = null
-  if (item) {
+  // Elegir content_type del item:
+  //   1) Si el item tiene content_type_id → ese (explícito del usuario).
+  //   2) Si no → fallback al más reciente activo del canal (compat items
+  //      históricos sin la columna, o creados sin elegir subtipo).
+  let activeContentTypeId: string | null = item?.content_type_id ?? null
+  if (!activeContentTypeId && item) {
     const { data: ctRows } = await admin
       .from('content_types')
       .select('id')

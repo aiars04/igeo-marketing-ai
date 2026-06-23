@@ -148,10 +148,18 @@ export default function PipelinePage() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleAdd = useCallback(async (stage: Stage, data: { title: string; channel: Channel }) => {
+  const handleAdd = useCallback(async (
+    stage: Stage,
+    data: { title: string; channel: Channel; contentTypeId: string | null },
+  ) => {
     const res = await fetch('/api/content-items', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: data.title, channel: data.channel, stage }),
+      body: JSON.stringify({
+        title: data.title,
+        channel: data.channel,
+        stage,
+        ...(data.contentTypeId ? { content_type_id: data.contentTypeId } : {}),
+      }),
     })
     if (!res.ok) {
       const j = await res.json().catch(() => ({}))

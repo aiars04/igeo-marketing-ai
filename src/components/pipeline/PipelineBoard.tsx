@@ -16,6 +16,7 @@ import { ExportContentMenu } from '@/components/pipeline/ExportContentMenu'
 import { MentionPicker } from '@/components/pipeline/MentionPicker'
 import { PostizPublishButton } from '@/components/pipeline/PostizPublishButton'
 import { PostizStateBanner } from '@/components/pipeline/PostizStateBanner'
+import { ContentTypeEditor } from '@/components/pipeline/ContentTypeEditor'
 import {
   getMarketTimezone, MARKET_TZ_LABEL, marketLocalToUtcISO, utcISOToMarketLocal, formatInTimezone,
 } from '@/lib/market-timezones'
@@ -71,7 +72,7 @@ const APPROVAL_STAGES: Stage[] = ['approval']
 interface BoardProps {
   items:               ContentItem[]
   filterChannels:      Channel[]
-  onAdd:               (stage: Stage, data: { title: string; channel: Channel }) => void
+  onAdd:               (stage: Stage, data: { title: string; channel: Channel; contentTypeId: string | null }) => void
   onMove:              (id: string, newStage: Stage) => void
   onDelete:            (id: string) => void
   onApprove:           (id: string, currentStage: Stage) => void
@@ -171,18 +172,50 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
   )
 }
 
-// ─── AddForm (lógica intacta) ────────────────────────────────────────────────
+// ─── AddForm ─────────────────────────────────────────────────────────────────
 
 function AddForm({
   onAdd, onCancel,
 }: {
-  onAdd: (title: string, channel: Channel) => void
+  onAdd: (title: string, channel: Channel, contentTypeId: string | null) => void
   onCancel: () => void
 }) {
   const [title, setTitle] = useState('')
   const [channel, setChannel] = useState<Channel>('linkedin')
+  // Subtipos del canal (Post, Carrusel, Stories…) gestionados en admin.
+  // Cargamos los activos del canal seleccionado cada vez que cambia.
+  const [contentTypes, setContentTypes] = useState<{ id: string; name: string }[]>([])
+  const [contentTypeId, setContentTypeId] = useState<string>('') // '' = sin elegir → fallback en servidor
+  const [loadingTypes, setLoadingTypes] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoadingTypes(true)
+    setContentTypeId('')
+    fetch(`/api/content-types?channel=${encodeURIComponent(channel)}&active=true`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: { id: string; name: string }[]) => {
+        if (cancelled) return
+        setContentTypes(Array.isArray(rows) ? rows.map(r => ({ id: r.id, name: r.name })) : [])
+      })
+      .catch((e: unknown) => {
+        if (cancelled || (e instanceof Error && e.name === 'AbortError')) return
+        setContentTypes([])
+      })
+      .finally(() => { if (!cancelled) setLoadingTypes(false) })
+    return () => { cancelled = true; controller.abort() }
+  }, [channel])
+
   const isValid = title.trim().length >= 3
-  const submit = () => { if (isValid) onAdd(title.trim(), channel) }
+  const submit = () => {
+    if (!isValid) return
+    onAdd(title.trim(), channel, contentTypeId || null)
+  }
 
   return (
     <div
@@ -203,10 +236,36 @@ function AddForm({
         value={channel}
         onChange={e => setChannel(e.target.value as Channel)}
         className="input"
+        aria-label="Canal"
         style={{ height: 32, borderRadius: 'var(--radius-md)' }}
       >
         {(['linkedin','instagram','facebook','x','blog','email','newsletter'] as Channel[]).map(c => (
           <option key={c} value={c}>{c}</option>
+        ))}
+      </select>
+      {/* Tipo de contenido — subtipos creados en admin → /content-types */}
+      <select
+        value={contentTypeId}
+        onChange={e => setContentTypeId(e.target.value)}
+        className="input"
+        aria-label="Tipo de contenido"
+        disabled={loadingTypes || contentTypes.length === 0}
+        title={
+          contentTypes.length === 0
+            ? `No hay subtipos para ${channel}. Crea uno en Admin → Tipos de contenido.`
+            : 'Elige el subtipo (Post, Carrusel, Stories…) para que las plantillas creativas coincidan exactamente.'
+        }
+        style={{ height: 32, borderRadius: 'var(--radius-md)' }}
+      >
+        <option value="">
+          {loadingTypes
+            ? 'Cargando tipos…'
+            : contentTypes.length === 0
+              ? `Sin tipos para ${channel} (gestionar en admin)`
+              : 'Tipo de contenido (opcional)'}
+        </option>
+        {contentTypes.map(ct => (
+          <option key={ct.id} value={ct.id}>{ct.name}</option>
         ))}
       </select>
       <div className="flex gap-2">
@@ -696,6 +755,9 @@ function ContentDetailModal({
       >
         <MetaRow label="Canal"><ChannelBadge channel={item.channel as Channel} /></MetaRow>
         <MetaRow label="Mercado">{MARKET_LABELS[item.market] ?? item.market}</MetaRow>
+        <MetaRow label="Tipo de contenido">
+          <ContentTypeEditor item={item} onUpdated={(updated) => onItemUpdated?.(updated)} />
+        </MetaRow>
         <MetaRow label="Estado">
           {(() => {
             const ds = displayStatus(item)
@@ -1449,7 +1511,7 @@ function Column({
   stage: Stage
   items: ContentItem[]
   filterChannels: Channel[]
-  onAdd: (s: Stage, data: { title: string; channel: Channel }) => void
+  onAdd: (s: Stage, data: { title: string; channel: Channel; contentTypeId: string | null }) => void
   onMove: (id: string, s: Stage) => void
   onApprove: (id: string, s: Stage) => void
   onReject: (id: string) => void
@@ -1571,7 +1633,10 @@ function Column({
           </div>
         ) : showAddForm ? (
           <AddForm
-            onAdd={(title, channel) => { onAdd(stage, { title, channel }); setShowAddForm(false) }}
+            onAdd={(title, channel, contentTypeId) => {
+              onAdd(stage, { title, channel, contentTypeId })
+              setShowAddForm(false)
+            }}
             onCancel={() => setShowAddForm(false)}
           />
         ) : (
