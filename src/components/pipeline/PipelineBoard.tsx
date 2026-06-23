@@ -17,6 +17,7 @@ import { MentionPicker } from '@/components/pipeline/MentionPicker'
 import { PostizPublishButton } from '@/components/pipeline/PostizPublishButton'
 import { PostizStateBanner } from '@/components/pipeline/PostizStateBanner'
 import { ContentTypeEditor } from '@/components/pipeline/ContentTypeEditor'
+import { ReplicateMarketsButton } from '@/components/pipeline/ReplicateMarketsButton'
 import {
   getMarketTimezone, MARKET_TZ_LABEL, marketLocalToUtcISO, utcISOToMarketLocal, formatInTimezone,
 } from '@/lib/market-timezones'
@@ -957,6 +958,21 @@ function ContentDetailModal({
                   <MentionPicker
                     channel={item.channel as Channel}
                     onInsert={insertIntoContent}
+                  />
+                )}
+                {/* Replicar en otros mercados (idioma + reglas locales) */}
+                {!confirmRegenerate && (
+                  <ReplicateMarketsButton
+                    item={item}
+                    onReplicated={(newItems) => {
+                      // Notificar al parent — onItemUpdated se usa para items
+                      // que YA existen, pero para los nuevos disparamos el
+                      // evento custom que el pipeline-store escucha para
+                      // refrescar. Si no hay listener, no pasa nada.
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('pipeline:changed', { detail: { newItems } }))
+                      }
+                    }}
                   />
                 )}
               </div>
