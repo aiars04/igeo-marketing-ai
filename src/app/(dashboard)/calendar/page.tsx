@@ -337,15 +337,28 @@ export default function CalendarPage() {
         return
       }
       const data = await res.json() as { inserted: number; events: CalendarEvent[] }
-      setEvents(prev => [...prev, ...data.events.map(dbEventToUI)])
+      const dbEvents = data.events.map(dbEventToUI)
+      setEvents(prev => [...prev, ...dbEvents])
 
-      // Crear tarjetas en pipeline para eventos digitales
-      for (const ev of parsed) {
-        if (ev.eventType === 'digital') {
-          addPipelineItemFromCalendar(ev).catch(() => {})
-        }
+      // Crear tarjetas en pipeline para eventos digitales.
+      // Usamos los eventos del row de BD (con id real), NO los del input
+      // local — antes el calendar_item_id del pipeline quedaba apuntando
+      // a un tempId aleatorio. Además, recogemos fallos en lugar de
+      // silenciarlos con `.catch(() => {})`.
+      const digitalDbEvents = dbEvents.filter(ev => ev.eventType === 'digital')
+      const pipelineResults = await Promise.all(
+        digitalDbEvents.map(ev => addPipelineItemFromCalendar(ev)),
+      )
+      const pipelineFailed = pipelineResults.filter(r => !r.ok && !r.duplicate).length
+
+      if (pipelineFailed > 0) {
+        showToast(
+          `${data.inserted} eventos importados (${pipelineFailed} no se pudieron añadir al Pipeline)`,
+          'error',
+        )
+      } else {
+        showToast(`${data.inserted} eventos importados`, 'success')
       }
-      showToast(`${data.inserted} eventos importados`, 'success')
     } catch (e) {
       showToast(`Error de red: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
     }
