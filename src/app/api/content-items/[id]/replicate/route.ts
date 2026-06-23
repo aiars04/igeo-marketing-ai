@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { buildMarketRulesPrompt, detectForbiddenTerms } from '@/lib/market-rules'
 import { buildFormatSpecPromptBlock } from '@/lib/content-type-format-spec'
 import { matchTemplatesForItem } from '@/lib/creative-templates-match'
+import { checkRateLimit, maybeCleanupRateLimits } from '@/lib/rate-limit'
 import { ALL_MARKETS } from '@/lib/utils'
 import type { ContentItem, ContentType, BrandContext, Profile, Channel, Market, Stage } from '@/types/database'
 
@@ -76,9 +77,10 @@ REGLAS DE ADAPTACIÓN:
 - Si el original tiene formato estructurado (═══ SLIDE 1 ═══ etc.), mantén EXACTAMENTE el mismo formato en la adaptación.`
 
 export const runtime = 'nodejs'
-// Cada llamada a Gemini puede tardar ~5-15s. Si replicamos en 4 mercados,
-// hablamos de hasta ~60s en el peor caso. Damos margen.
-export const maxDuration = 180
+// El plan Hobby de Vercel topa en 60s — declarar 180 no lo eleva. Cada
+// llamada a Gemini tarda ~5-15s, así que replicar a >4 mercados puede
+// acercarse al límite; si fuera un problema recurrente, trocear en lotes.
+export const maxDuration = 60
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   // 1) Auth
@@ -93,6 +95,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (!profile || !profile.active) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   if (profile.role !== 'admin' && profile.role !== 'manager') {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+
+  // Rate-limit (best-effort): replicar dispara N llamadas a Gemini. Frena
+  // bucles/dobles clicks que multiplicarían el coste.
+  maybeCleanupRateLimits()
+  const rl = checkRateLimit(`ai-replicate:${user.id}`, 5, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', retryInMs: rl.resetInMs },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.resetInMs / 1000)) } },
+    )
   }
 
   const { id } = await ctx.params

@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { genai, IMAGEN_BASE_MODEL, IMAGEN_DIMENSIONS, type AspectRatio } from '@/lib/gemini'
 import { generateWithNanoBanana, generateNanoBananaVariants } from '@/lib/nano-banana'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { checkRateLimit, maybeCleanupRateLimits } from '@/lib/rate-limit'
 import type { Profile } from '@/types/database'
 
 const BUCKET = 'content-assets'
@@ -12,7 +13,10 @@ const MIN_N = 2
 const MAX_N = 4
 
 export const runtime = 'nodejs'
-export const maxDuration = 180 // hasta 3 min (curated 4× puede tardar)
+// El plan Hobby de Vercel topa en 60s — declarar más no lo eleva, solo da un
+// timeout opaco. Para 4 slides curated que puedan acercarse al límite, el
+// frontend ya avisa de usar 2 prompts o modo Individual.
+export const maxDuration = 60
 
 // ── Fallback Nano Banana 2 → Imagen 4 Ultra → Imagen 4 Base ──────────────────
 type ModelType = 'nano-banana' | 'imagen-ultra' | 'imagen-base'
@@ -96,6 +100,17 @@ export async function POST(req: NextRequest) {
     .single<Pick<Profile, 'id' | 'role' | 'active'>>()
   if (!profile || !profile.active) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  // Rate-limit de generación IA (best-effort en serverless): frena bucles
+  // accidentales y dobles clicks que dispararían coste/cuota de Gemini.
+  maybeCleanupRateLimits()
+  const rl = checkRateLimit(`ai-image:${user.id}`, 10, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', retryInMs: rl.resetInMs },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.resetInMs / 1000)) } },
+    )
   }
 
   // 2) Validar body

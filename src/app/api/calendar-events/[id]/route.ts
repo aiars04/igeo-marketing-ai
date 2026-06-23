@@ -112,6 +112,21 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
+  // Antes de borrar el evento, desvincular cualquier content_item que se haya
+  // creado desde él (calendar_item_id = id del evento). Si no lo hacemos:
+  //   - el content_item queda huérfano apuntando a un evento inexistente, y
+  //   - el índice único parcial sobre calendar_item_id ENVENENA el dedup:
+  //     re-crear el mismo evento daría 409 contra un item fantasma.
+  // No borramos el content_item (puede tener trabajo hecho); solo soltamos el
+  // vínculo. Best-effort: si falla, seguimos con el borrado del evento.
+  const { error: unlinkErr } = await admin
+    .from('content_items')
+    .update({ calendar_item_id: null } as never)
+    .eq('calendar_item_id', id)
+  if (unlinkErr) {
+    console.warn('[calendar-events/DELETE] no se pudo desvincular content_items:', unlinkErr.message)
+  }
+
   const { error } = await admin.from('calendar_events').delete().eq('id', id)
   if (error) {
     console.error('[calendar-events/DELETE] failed:', error.message)

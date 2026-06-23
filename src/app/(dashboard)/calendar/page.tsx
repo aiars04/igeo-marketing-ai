@@ -768,11 +768,19 @@ export default function CalendarPage() {
             if (id.startsWith('pipeline-')) {
               const itemId = id.replace('pipeline-', '')
               if (partial.startTime) {
-                await fetch(`/api/content-items/${itemId}`, {
-                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ scheduled_at: new Date(partial.startTime).toISOString() }),
-                }).catch(() => null)
-                await loadPipelineEvents()
+                try {
+                  const res = await fetch(`/api/content-items/${itemId}`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scheduled_at: new Date(partial.startTime).toISOString() }),
+                  })
+                  if (!res.ok) {
+                    const j = await res.json().catch(() => ({}))
+                    showToast(`No se pudo reprogramar: ${j.error ?? res.statusText}`, 'error')
+                  }
+                } catch (e) {
+                  showToast(`Error de red: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
+                }
+                await loadPipelineEvents() // re-sincroniza desde server (revierte si falló)
               } else {
                 setPipelineEvents(prev => prev.map(e => e.id === id ? { ...e, ...partial } : e))
               }
@@ -800,14 +808,26 @@ export default function CalendarPage() {
             }
           }}
           onEventDelete={async (id) => {
-            // Pipeline events — PATCH scheduled_at: null
+            // Pipeline events — PATCH scheduled_at: null (quitar del calendario,
+            // el item sigue en el pipeline). Optimistic con rollback si falla.
             if (id.startsWith('pipeline-')) {
               const itemId = id.replace('pipeline-', '')
-              await fetch(`/api/content-items/${itemId}`, {
-                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ scheduled_at: null }),
-              }).catch(() => null)
+              const prevPipeline = pipelineEvents
               setPipelineEvents(prev => prev.filter(e => e.id !== id))
+              try {
+                const res = await fetch(`/api/content-items/${itemId}`, {
+                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ scheduled_at: null }),
+                })
+                if (!res.ok) {
+                  const j = await res.json().catch(() => ({}))
+                  showToast(`No se pudo quitar del calendario: ${j.error ?? res.statusText}`, 'error')
+                  setPipelineEvents(prevPipeline) // rollback
+                }
+              } catch (e) {
+                showToast(`Error de red: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
+                setPipelineEvents(prevPipeline) // rollback
+              }
               return
             }
 

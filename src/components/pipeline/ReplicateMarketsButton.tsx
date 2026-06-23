@@ -28,6 +28,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   replicate_failed:              'Error al replicar.',
   forbidden:                     'Solo admin/manager pueden replicar contenido.',
   unauthorized:                  'Tu sesión ha expirado. Refresca la página.',
+  rate_limited:                  'Demasiadas replicaciones seguidas. Espera un minuto y reintenta.',
 }
 function humanize(code: string | undefined): string {
   if (!code) return 'Error desconocido.'

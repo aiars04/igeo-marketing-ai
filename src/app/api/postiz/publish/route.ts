@@ -296,9 +296,16 @@ export async function POST(req: NextRequest) {
         if (type === 'now') {
           publishedAt = new Date().toISOString()
           updates.published_at = publishedAt
+          // Publicar ahora o programar mueve el item a la columna 'scheduled'
+          // del pipeline para que su stage refleje que ya salió a Postiz
+          // (antes el item se publicaba pero se quedaba en su columna previa,
+          // p.ej. 'design', y la columna Programación no reflejaba la realidad).
+          updates.stage = 'scheduled'
         } else if (type === 'schedule' && scheduledAt) {
           updates.scheduled_at = scheduledAt
+          updates.stage = 'scheduled'
         }
+        // type === 'draft' NO mueve el stage (es solo un borrador en Postiz).
 
         if (Object.keys(updates).length > 0) {
           const { error: updErr } = await admin

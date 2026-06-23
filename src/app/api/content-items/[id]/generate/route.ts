@@ -65,6 +65,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     .single<ContentItem>()
   if (itemErr || !item) return NextResponse.json({ error: 'item_not_found' }, { status: 404 })
 
+  // 3b) Autorización: generar/regenerar SOBREESCRIBE el content del item, así
+  // que aplicamos el mismo gate que el PATCH de /api/content-items/[id]:
+  // solo el dueño (created_by) o admin/manager pueden hacerlo. Sin esto, un
+  // user cualquiera podía pisar el copy de un item de otro.
+  const isOwner = item.created_by === user.id
+  const isPriv  = profile.role === 'admin' || profile.role === 'manager'
+  if (!isOwner && !isPriv) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+
   // 4) Buscar content_type del item.
   //    Prioridad:
   //      1) item.content_type_id (elegido explícitamente por el usuario,

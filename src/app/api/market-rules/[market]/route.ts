@@ -93,10 +93,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ market: strin
     return NextResponse.json({ error: 'no_changes' }, { status: 400 })
   }
 
+  // Upsert en vez de update: no todos los mercados tienen fila sembrada (p.ej.
+  // 'mexico' se añadió después del seed inicial). Con update + .single() un
+  // PATCH a un mercado sin fila daba 500 (0 filas afectadas). Upsert crea la
+  // fila si no existe y la actualiza si existe (conflicto en la columna market).
+  const upsertRow = { market, ...patch }
   const { data, error } = await admin
     .from('market_rules')
-    .update(patch as never)
-    .eq('market', market)
+    .upsert(upsertRow as never, { onConflict: 'market' })
     .select('*')
     .single<MarketRules>()
   if (error) {

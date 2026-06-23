@@ -98,20 +98,23 @@ const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
 /**
  * Política de reintentos:
- *   - Reintentamos en errores de red y respuestas 5xx (también 429).
- *   - 2 reintentos con backoff exponencial 500ms → 1500ms.
+ *   - SOLO reintentamos métodos IDEMPOTENTES (GET, DELETE). Un POST/PUT NO se
+ *     reintenta nunca: si la petición ya llegó a Postiz y creó el post pero la
+ *     respuesta se cortó (timeout/5xx de un proxy delante), reintentar
+ *     CREARÍA UN POST DUPLICADO en la red social. Preferimos fallar y que el
+ *     usuario reintente conscientemente a publicar dos veces sin querer.
+ *   - Para GET/DELETE: reintentamos en errores de red y respuestas 5xx/429,
+ *     con backoff exponencial 500ms → 1500ms (DELETE es idempotente en Postiz
+ *     y además tratamos el 404 como "ya borrado" en postizDeletePost).
  *   - NO reintentamos 4xx ≠ 429 (es petición mal hecha, no se va a curar).
- *   - GET es siempre idempotente. POST/PUT/DELETE de Postiz también lo son en
- *     la práctica (la API responde con error si ya existe), pero para
- *     reducir riesgo de duplicados solo reintentamos POST/PUT/DELETE si el
- *     fallo fue ANTES de respuesta (network error) o 5xx puro.
  */
 async function postizFetch<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const MAX_ATTEMPTS = 3
+  const isIdempotent = method === 'GET' || method === 'DELETE'
+  const MAX_ATTEMPTS = isIdempotent ? 3 : 1   // POST/PUT: un solo intento, sin retry
   const BACKOFF_MS   = [500, 1500] // entre intentos 1→2 y 2→3
   let lastErr: unknown
 
@@ -138,11 +141,11 @@ async function postizFetch<T>(
         throw new Error(`Postiz API ${method} ${path} → ${res.status}: ${text}`)
       }
 
-      // 5xx o 429 → marcamos error reintenable
+      // 5xx o 429 → error reintenable (solo si idempotente; si no, MAX_ATTEMPTS=1)
       const text = await res.text().catch(() => res.statusText)
       lastErr = new Error(`Postiz API ${method} ${path} → ${res.status}: ${text}`)
     } catch (err) {
-      // Errores de red, DNS, timeout, etc. — reintenables
+      // Errores de red, DNS, timeout, etc. — reintenables solo si idempotente
       lastErr = err
     }
     // Backoff antes de siguiente intento (excepto en el último)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Sparkles, Plus, ArrowRight, ThumbsDown, Loader2, CheckCircle2,
@@ -148,37 +148,52 @@ export default function IdeasPage() {
     return true
   }, [showToast])
 
+  // Guard anti doble-submit: una idea no puede convertirse dos veces a la vez.
+  // Sin esto, un doble-click rápido (antes de que la idea pase a 'converted')
+  // creaba DOS content_items idénticos en el pipeline.
+  const convertingRef = useRef<Set<string>>(new Set())
+
   const handleConvert = useCallback(async (idea: Idea): Promise<boolean> => {
-    // 1) Crear ítem en pipeline
-    const piRes = await fetch('/api/content-items', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: idea.title,
-        channel: idea.channel ?? 'linkedin',
-        stage: 'ideas',
-        market: idea.market,
-        description: idea.description,
-        ai_generated: idea.source === 'ai',
-      }),
-    })
-    if (!piRes.ok) {
-      const j = await piRes.json().catch(() => ({}))
-      showToast(`Error añadiendo al pipeline: ${j.error ?? piRes.statusText}`, 'error')
+    if (convertingRef.current.has(idea.id)) return false   // ya en curso
+    if (idea.status === 'converted') {
+      showToast('Esta idea ya está en el pipeline', 'info')
       return false
     }
-    // 2) Marcar idea como converted
-    const upRes = await fetch(`/api/ideas/${idea.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'converted' }),
-    })
-    if (upRes.ok) {
-      const updated = await upRes.json() as Idea
-      setIdeas(prev => prev.map(i => i.id === idea.id ? updated : i))
-    } else {
-      showToast('Pipeline OK, pero falló marcar como convertida', 'error')
+    convertingRef.current.add(idea.id)
+    try {
+      // 1) Crear ítem en pipeline
+      const piRes = await fetch('/api/content-items', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: idea.title,
+          channel: idea.channel ?? 'linkedin',
+          stage: 'ideas',
+          market: idea.market,
+          description: idea.description,
+          ai_generated: idea.source === 'ai',
+        }),
+      })
+      if (!piRes.ok) {
+        const j = await piRes.json().catch(() => ({}))
+        showToast(`Error añadiendo al pipeline: ${j.error ?? piRes.statusText}`, 'error')
+        return false
+      }
+      // 2) Marcar idea como converted
+      const upRes = await fetch(`/api/ideas/${idea.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'converted' }),
+      })
+      if (upRes.ok) {
+        const updated = await upRes.json() as Idea
+        setIdeas(prev => prev.map(i => i.id === idea.id ? updated : i))
+      } else {
+        showToast('Pipeline OK, pero falló marcar como convertida', 'error')
+      }
+      showToast('Añadida al pipeline ✓', 'success')
+      return true
+    } finally {
+      convertingRef.current.delete(idea.id)
     }
-    showToast('Añadida al pipeline ✓', 'success')
-    return true
   }, [showToast])
 
   const handleAddIdea = useCallback(async () => {
