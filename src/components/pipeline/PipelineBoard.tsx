@@ -19,6 +19,7 @@ import { PostizStateBanner } from '@/components/pipeline/PostizStateBanner'
 import {
   getMarketTimezone, MARKET_TZ_LABEL, marketLocalToUtcISO, utcISOToMarketLocal, formatInTimezone,
 } from '@/lib/market-timezones'
+import { MARKET_CONFIG, MARKET_LABELS } from '@/lib/utils'
 import type { ContentItem, Stage, Channel, Market } from '@/types/database'
 import type { LucideIcon } from 'lucide-react'
 
@@ -63,10 +64,9 @@ function displayStatus(item: ContentItem): { label: string; bg: string; color: s
 // el botón "Avanzar a [next]" mueve de stage sin marcar aprobación formal.
 const APPROVAL_STAGES: Stage[] = ['approval']
 
-const MARKET_LABEL: Record<string, string> = {
-  spain: 'ES', latam: 'LATAM', uk: 'INT', france: 'FR',
-  italy: 'IT', portugal: 'PT', brasil: 'BR', mexico: 'MX',
-}
+// Etiquetas de mercado: nombre completo en MARKET_LABELS (modales, metadatos),
+// abreviatura en MARKET_CONFIG[m].abbr (chips de cards estrechos). Fuente única
+// en @/lib/utils — ya no se redefinen localmente para evitar drift entre vistas.
 
 interface BoardProps {
   items:               ContentItem[]
@@ -695,7 +695,7 @@ function ContentDetailModal({
         }}
       >
         <MetaRow label="Canal"><ChannelBadge channel={item.channel as Channel} /></MetaRow>
-        <MetaRow label="Mercado">{MARKET_LABEL[item.market] ?? item.market}</MetaRow>
+        <MetaRow label="Mercado">{MARKET_LABELS[item.market] ?? item.market}</MetaRow>
         <MetaRow label="Estado">
           {(() => {
             const ds = displayStatus(item)
@@ -1211,7 +1211,7 @@ function Card({
               letterSpacing: '0.02em',
             }}
           >
-            {MARKET_LABEL[item.market] ?? item.market.toUpperCase()}
+            {MARKET_CONFIG[item.market]?.abbr ?? item.market.toUpperCase()}
           </span>
         </div>
         <div className="flex items-center gap-1 shrink-0">

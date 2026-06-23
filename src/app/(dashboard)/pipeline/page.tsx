@@ -5,7 +5,7 @@ import { PipelineBoard } from '@/components/pipeline/PipelineBoard'
 import { PackageBar, PackageDetailModal, type PackageWithStats } from '@/components/pipeline/PackageBar'
 import { BatchGenerateModal } from '@/components/pipeline/BatchGenerateModal'
 import { Sparkles, Filter, X, Loader2 } from 'lucide-react'
-import { cn, STAGE_CONFIG, STAGES } from '@/lib/utils'
+import { cn, STAGE_CONFIG, STAGES, ALL_MARKETS, MARKET_LABELS } from '@/lib/utils'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import type { ContentItem, Stage, Channel, Market } from '@/types/database'
 import { PIPELINE_CHANGED_EVENT } from '@/lib/stores/pipeline-store'
@@ -17,14 +17,7 @@ const CHANNEL_LABELS: Record<Channel, string> = {
   x: 'X / Twitter', blog: 'Blog', email: 'Email', newsletter: 'Newsletter',
 }
 
-const ALL_MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
-
-// Labels limpios sin emojis de bandera — en Windows no se renderizan y aparecen
-// los códigos ISO ("ES", "BR", "MX"…) pegados al nombre. Mantenemos solo texto.
-const MARKET_LABELS: Record<Market, string> = {
-  spain: 'España', latam: 'LATAM', uk: 'Internacional', france: 'Francia',
-  italy: 'Italia', portugal: 'Portugal', brasil: 'Brasil', mexico: 'México',
-}
+// ALL_MARKETS y MARKET_LABELS vienen de @/lib/utils → fuente única (evita drift).
 
 // ─── StatPill ─────────────────────────────────────────────────────────────────
 

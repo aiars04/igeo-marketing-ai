@@ -28,9 +28,9 @@ import {
   Download,
   Sparkles,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, ALL_MARKETS, MARKET_CONFIG } from "@/lib/utils"
 import { useChannelColors, getResolvedSlug } from "@/lib/channel-colors"
-import type { Channel } from "@/types/database"
+import type { Channel, Market } from "@/types/database"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,13 +75,13 @@ const DIGITAL_CHANNEL_LABEL: Record<typeof DIGITAL_CHANNELS[number], string> = {
   facebook:   'Facebook',
 }
 // Labels limpios sin emojis de bandera (en Windows no se renderizan).
-const DIGITAL_MARKETS = [
-  { value: 'spain',    label: 'España'        },
-  { value: 'uk',       label: 'Internacional' },
-  { value: 'latam',    label: 'LATAM'         },
-  { value: 'france',   label: 'Francia'       },
-  { value: 'portugal', label: 'Portugal'      },
-] as const
+// Derivado de la fuente única @/lib/utils — antes esta lista omitía Italia,
+// Brasil y México, lo que causaba la inconsistencia reportada por Ramon
+// (la lista de mercados en el calendario no coincidía con Ideas/Pipeline).
+const DIGITAL_MARKETS: ReadonlyArray<{ value: Market; label: string }> = ALL_MARKETS.map(m => ({
+  value: m,
+  label: MARKET_CONFIG[m].label,
+}))
 // Mantener sincronizado con defaultColors / EVENT_STYLES. Es lo que el modal
 // de edición ofrece como swatches asignables al crear/editar un evento.
 const COLOR_KEYS = [

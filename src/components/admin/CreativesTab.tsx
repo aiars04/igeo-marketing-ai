@@ -15,6 +15,7 @@ import {
   Plus, Pencil, Trash2, Upload, Image as ImageIcon, X, Loader2,
   ToggleLeft, ToggleRight, Filter, ImagePlus, ZoomIn, Download, ExternalLink,
 } from 'lucide-react'
+import { ALL_MARKETS, MARKET_CONFIG } from '@/lib/utils'
 import type { Channel, Market, ContentType, CreativeTemplateWithRefs } from '@/types/database'
 
 interface Props {
@@ -26,16 +27,12 @@ const CHANNEL_LABEL: Record<Channel, string> = {
   linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook',
   x: 'X', blog: 'Blog', email: 'Email', newsletter: 'Newsletter',
 }
+// MARKETS derivados de @/lib/utils. La primera opción ('') representa
+// "plantilla global válida para todos los mercados" — propio de creatives,
+// no se aplica a Ideas/Calendar/Pipeline (donde cada item es de UN mercado).
 const MARKETS: { value: Market | ''; label: string }[] = [
-  { value: '',         label: 'Todos los mercados' },
-  { value: 'spain',    label: 'España'        },
-  { value: 'latam',    label: 'LATAM'         },
-  { value: 'uk',       label: 'Internacional' },
-  { value: 'france',   label: 'Francia'       },
-  { value: 'italy',    label: 'Italia'        },
-  { value: 'portugal', label: 'Portugal'      },
-  { value: 'brasil',   label: 'Brasil'        },
-  { value: 'mexico',   label: 'México'        },
+  { value: '', label: 'Todos los mercados' },
+  ...ALL_MARKETS.map(m => ({ value: m as Market, label: MARKET_CONFIG[m].label })),
 ]
 const ROLE_SUGGESTIONS = ['banner', 'thumbnail', 'cover', 'background', 'logo_overlay', 'slide']
 

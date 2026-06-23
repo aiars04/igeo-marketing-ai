@@ -6,7 +6,7 @@ import { addPipelineItemFromCalendar } from '@/lib/stores/pipeline-store'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import { Modal } from '@/components/ui/Modal'
 import { AlertCircle, Check, X, Upload, Filter } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, ALL_MARKETS, MARKET_LABELS } from '@/lib/utils'
 import type { ContentItem, CalendarEvent, Channel, Market } from '@/types/database'
 
 // Filtros disponibles — mismos valores y orden que el pipeline.
@@ -15,11 +15,7 @@ const CHANNEL_LABELS: Record<Channel, string> = {
   linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook',
   x: 'X / Twitter', blog: 'Blog', email: 'Email', newsletter: 'Newsletter',
 }
-const ALL_MARKETS: Market[] = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
-const MARKET_LABELS: Record<Market, string> = {
-  spain: 'España', latam: 'LATAM', uk: 'Internacional', france: 'Francia',
-  italy: 'Italia', portugal: 'Portugal', brasil: 'Brasil', mexico: 'México',
-}
+// ALL_MARKETS y MARKET_LABELS vienen de @/lib/utils → fuente única (evita drift).
 
 // ─── CSV helpers ─────────────────────────────────────────────────────────────
 

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { ALL_MARKETS, MARKET_CONFIG } from '@/lib/utils'
 import type { ContentItem, Profile, Channel, Market } from '@/types/database'
 
 const CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
-const MARKETS:  Market[]  = ['spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico']
+// MARKETS y MARKET_LABEL ahora vienen de @/lib/utils (fuente única).
+const MARKETS: Market[] = ALL_MARKETS
 
 // Tope conservador para evitar inserts masivos accidentales por un slip de UI.
 const MAX_BATCH_ITEMS = 50
@@ -12,10 +14,10 @@ const CHANNEL_LABEL: Record<Channel, string> = {
   linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook',
   x: 'X', blog: 'Blog', email: 'Email', newsletter: 'Newsletter',
 }
-const MARKET_LABEL: Record<Market, string> = {
-  spain: 'ES', latam: 'LATAM', uk: 'INT', france: 'FR',
-  italy: 'IT', portugal: 'PT', brasil: 'BR', mexico: 'MX',
-}
+// Para títulos auto-generados usamos la abreviatura (ES, LATAM, INT, FR, …).
+const MARKET_LABEL: Record<Market, string> = Object.fromEntries(
+  ALL_MARKETS.map(m => [m, MARKET_CONFIG[m].abbr]),
+) as Record<Market, string>
 
 async function requireActor() {
   const supabase = await createClient()

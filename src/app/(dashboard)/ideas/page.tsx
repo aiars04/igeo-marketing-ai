@@ -9,6 +9,7 @@ import {
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
 import { Modal } from '@/components/ui/Modal'
 import { useToast, Toasts } from '@/components/ui/Toast'
+import { ALL_MARKETS, MARKET_LABELS, MARKET_CONFIG } from '@/lib/utils'
 import type { Channel, Idea, Market } from '@/types/database'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -39,21 +40,14 @@ const CHANNEL_COLORS: Record<Channel, string> = {
   newsletter: '#34c759',
 }
 
-const MARKETS: { value: Market; label: string }[] = [
-  { value: 'spain',    label: 'España' },
-  { value: 'uk',       label: 'Internacional' },
-  { value: 'latam',    label: 'LATAM' },
-  { value: 'france',   label: 'Francia' },
-  { value: 'italy',    label: 'Italia' },
-  { value: 'portugal', label: 'Portugal' },
-  { value: 'brasil',   label: 'Brasil' },
-  { value: 'mexico',   label: 'México' },
-]
-
-const MARKET_LABELS: Record<Market, string> = {
-  spain: 'España', uk: 'Internacional', latam: 'LATAM',
-  france: 'Francia', italy: 'Italia', portugal: 'Portugal', brasil: 'Brasil', mexico: 'México',
-}
+// MARKETS derivado de la fuente única (lib/utils). Mantiene el orden canónico
+// y garantiza que TODOS los mercados activos están aquí — antes la lista local
+// podía omitir alguno sin que tsc lo detectara.
+const MARKETS: { value: Market; label: string }[] = ALL_MARKETS.map(m => ({
+  value: m,
+  label: MARKET_CONFIG[m].label,
+}))
+// MARKET_LABELS también viene de @/lib/utils (importado arriba).
 
 const SUGGEST_COUNTS = [3, 5, 10] as const
 type SuggestCount = typeof SUGGEST_COUNTS[number]

@@ -34,17 +34,17 @@ export const CHANNEL_CONFIG: Record<Channel, { label: string; color: string; ico
   newsletter: { label: 'Newsletter', color: 'text-violet-400',  icon: 'newsletter' },
 }
 
-export const MARKET_CONFIG: Record<Market, { label: string; flag: string; abbr?: string }> = {
-  spain:    { label: 'España',        flag: '🇪🇸' },
-  latam:    { label: 'LATAM',         flag: '',   abbr: 'LTM' },
+export const MARKET_CONFIG: Record<Market, { label: string; flag: string; abbr: string }> = {
+  spain:    { label: 'España',        flag: '🇪🇸', abbr: 'ES'    },
+  latam:    { label: 'LATAM',         flag: '',   abbr: 'LATAM' },
   // El slug interno sigue siendo `uk` por compatibilidad con datos existentes,
   // pero conceptualmente el usuario lo trata como "mercado internacional".
-  uk:       { label: 'Internacional', flag: '🌐', abbr: 'INT' },
-  france:   { label: 'Francia',       flag: '🇫🇷' },
-  italy:    { label: 'Italia',        flag: '🇮🇹' },
-  portugal: { label: 'Portugal',      flag: '🇵🇹' },
-  brasil:   { label: 'Brasil',        flag: '🇧🇷' },
-  mexico:   { label: 'México',        flag: '🇲🇽' },
+  uk:       { label: 'Internacional', flag: '🌐', abbr: 'INT'   },
+  france:   { label: 'Francia',       flag: '🇫🇷', abbr: 'FR'    },
+  italy:    { label: 'Italia',        flag: '🇮🇹', abbr: 'IT'    },
+  portugal: { label: 'Portugal',      flag: '🇵🇹', abbr: 'PT'    },
+  brasil:   { label: 'Brasil',        flag: '🇧🇷', abbr: 'BR'    },
+  mexico:   { label: 'México',        flag: '🇲🇽', abbr: 'MX'    },
 }
 
 // Orden canónico para listados/filtros. Importa desde aquí para garantizar que
@@ -52,5 +52,14 @@ export const MARKET_CONFIG: Record<Market, { label: string; flag: string; abbr?:
 export const ALL_MARKETS: Market[] = [
   'spain', 'latam', 'uk', 'france', 'italy', 'portugal', 'brasil', 'mexico',
 ]
+
+/**
+ * Tabla `Record<Market, string>` derivada de MARKET_CONFIG.
+ * Importa esto en vez de redefinir un MARKET_LABELS local en cada página —
+ * así no hay drift entre vistas y todas muestran el mismo nombre.
+ */
+export const MARKET_LABELS: Record<Market, string> = Object.fromEntries(
+  ALL_MARKETS.map(m => [m, MARKET_CONFIG[m].label]),
+) as Record<Market, string>
 
 export const STAGES: Stage[] = ['ideas', 'copy', 'design', 'approval', 'scheduled', 'analyzed']

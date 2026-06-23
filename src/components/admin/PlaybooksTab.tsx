@@ -7,6 +7,7 @@ import {
   BookOpen,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
+import { ALL_MARKETS, MARKET_LABELS } from '@/lib/utils'
 import type {
   Playbook, PlaybookStep, PlaybookType, PlaybookTaskType,
   Channel, Market, MarketScope,
@@ -40,11 +41,9 @@ const TASK_TYPES: { value: PlaybookTaskType; label: string }[] = [
 ]
 
 const CHANNELS: Channel[] = ['linkedin','instagram','facebook','x','blog','email','newsletter']
-const MARKETS: Market[] = ['spain','latam','uk','france','italy','portugal','brasil','mexico']
-const MARKET_LABEL: Record<Market, string> = {
-  spain: 'España', latam: 'LATAM', uk: 'Internacional', france: 'Francia',
-  italy: 'Italia', portugal: 'Portugal', brasil: 'Brasil', mexico: 'México',
-}
+// MARKETS y MARKET_LABEL ahora vienen de @/lib/utils (ALL_MARKETS + MARKET_LABELS).
+const MARKETS: Market[] = ALL_MARKETS
+const MARKET_LABEL = MARKET_LABELS
 
 const typeIcon = (t: PlaybookType) => PLAYBOOK_TYPES.find(x => x.value === t)?.icon ?? '📄'
 const typeLabel = (t: PlaybookType) => PLAYBOOK_TYPES.find(x => x.value === t)?.label ?? t
