@@ -33,12 +33,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
 
   // Cargar el item primero para verificar permisos + estado actual de aprobación.
-  // Incluimos channel para validar coherencia con content_type_id si viene en el PATCH.
+  // Incluimos channel (coherencia content_type_id) y content (guard de stage).
   const { data: target } = await admin
     .from('content_items')
-    .select('id, created_by, human_approved, scheduled_at, channel')
+    .select('id, created_by, human_approved, scheduled_at, channel, content')
     .eq('id', id)
-    .single<Pick<ContentItem, 'id' | 'human_approved' | 'scheduled_at' | 'channel'> & { created_by: string | null }>()
+    .single<Pick<ContentItem, 'id' | 'human_approved' | 'scheduled_at' | 'channel' | 'content'> & { created_by: string | null }>()
   if (!target) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const isOwner = target.created_by === me.id
@@ -56,7 +56,20 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   // Tier 1 — campos libres
   if (body.stage !== undefined) {
     if (!STAGES.includes(body.stage as Stage)) {
+      // Esto también bloquea el stage legacy 'published' (no está en STAGES):
+      // es de solo-lectura para filas históricas, el código nuevo no lo emite.
       return NextResponse.json({ error: 'invalid_stage' }, { status: 400 })
+    }
+    // Guard suave anti estado-absurdo: NO permitimos mover a 'scheduled'
+    // (listo para publicar) ni 'analyzed' (publicado/análisis) un item SIN
+    // contenido. No restringimos el resto de movimientos del Kanban (ideas↔
+    // copy↔design↔approval son libres) — solo evitamos programar/publicar el
+    // vacío. El contenido efectivo es el que venga en este PATCH o el actual.
+    if (body.stage === 'scheduled' || body.stage === 'analyzed') {
+      const effectiveContent = body.content !== undefined ? body.content : target.content
+      if (!effectiveContent || !String(effectiveContent).trim()) {
+        return NextResponse.json({ error: 'content_required_for_stage' }, { status: 400 })
+      }
     }
     patch.stage = body.stage
   }

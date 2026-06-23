@@ -323,6 +323,8 @@ export interface ContentItem {
   // Migración 026 — subtipo de canal elegido por el usuario (FK content_types.id).
   // NULL → fallback al "más reciente activo del canal" en el matcher.
   content_type_id:   string | null
+  // Migración 027 — origen si este item es una réplica multi-mercado. NULL = nativo.
+  replicated_from:   string | null
   created_by: string | null
   created_at: string
   updated_at: string

@@ -26,6 +26,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   empty_llm_response:            'El modelo devolvió respuesta vacía.',
   models_unavailable:            'Modelos saturados, reintenta en unos minutos.',
   replicate_failed:              'Error al replicar.',
+  already_exists:                'Ya existe una réplica de este contenido en ese mercado.',
   forbidden:                     'Solo admin/manager pueden replicar contenido.',
   unauthorized:                  'Tu sesión ha expirado. Refresca la página.',
   rate_limited:                  'Demasiadas replicaciones seguidas. Espera un minuto y reintenta.',

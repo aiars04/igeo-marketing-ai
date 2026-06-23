@@ -142,6 +142,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: 'all_targets_match_source_market' }, { status: 400 })
   }
 
+  // Dedup: ¿ya existe una réplica de ESTE origen para alguno de los mercados
+  // pedidos? (migración 027 garantiza unicidad por (replicated_from, market)).
+  // Los que ya existen se saltan y se reportan como 'already_exists' en vez de
+  // crear duplicados.
+  const { data: existingReplicas } = await admin
+    .from('content_items')
+    .select('market')
+    .eq('replicated_from', source.id)
+    .in('market', targets)
+    .returns<Array<{ market: Market }>>()
+  const alreadyReplicated = new Set((existingReplicas ?? []).map(r => r.market))
+
   // 4) Cargar content_type (mismo orden de prioridad que el endpoint /generate):
   //    1) item.content_type_id si está activo
   //    2) fallback al más reciente activo del canal
@@ -174,6 +186,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }> = []
 
   for (const target of targets) {
+    // Saltar mercados que ya tienen réplica de este origen (no duplicar).
+    if (alreadyReplicated.has(target)) {
+      results.push({ market: target, ok: false, error: 'already_exists' })
+      continue
+    }
     try {
       // 5a) Cargar brand_context específico del nuevo mercado
       const channelBlockKey = `channel_${source.channel}`
@@ -286,6 +303,8 @@ ESTILO: ${ct.style}`
         // Mantenemos calendar_item_id null porque la réplica no es el evento original
         calendar_item_id: null,
         content_type_id:  source.content_type_id,
+        // Trazabilidad/dedup: esta réplica viene de `source.id`.
+        replicated_from:  source.id,
         // package_id y playbook_step_id no se replican — son específicos del original
         package_id:       null,
         playbook_step_id: null,
@@ -295,7 +314,11 @@ ESTILO: ${ct.style}`
         .from('content_items').insert(insertRow as never)
         .select('*').single<ContentItem>()
       if (insErr || !inserted) {
-        results.push({ market: target, ok: false, error: insErr?.message ?? 'db_insert_failed' })
+        // Violación del índice único (replicated_from, market) → otra petición
+        // concurrente ya creó la réplica. Lo tratamos como 'already_exists'.
+        const dup = (insErr?.message ?? '').toLowerCase().includes('duplicate')
+          || insErr?.code === '23505'
+        results.push({ market: target, ok: false, error: dup ? 'already_exists' : (insErr?.message ?? 'db_insert_failed') })
         continue
       }
       results.push({ market: target, ok: true, item: inserted })
