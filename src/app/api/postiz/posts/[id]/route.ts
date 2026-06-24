@@ -10,7 +10,8 @@ import type { Profile } from '@/types/database'
  * content_item asociado: limpia postiz_id, scheduled_at, published_at y
  * publish_state para que el item vuelva a poder publicarse desde 0.
  *
- * Requiere rol admin/manager. Si el manager no creó el item, devuelve 403.
+ * Requiere rol admin/manager — cualquiera de los dos puede cancelar
+ * cualquier post del workspace (mismo criterio que /publish, app interna).
  */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: postizId } = await params

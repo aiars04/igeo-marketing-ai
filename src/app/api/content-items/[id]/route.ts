@@ -81,6 +81,18 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const fromIdx = STAGES.indexOf(target.stage as Stage)
     const toIdx = STAGES.indexOf(body.stage as Stage)
     const isGoingBack = fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx
+    // Defensa en backend de la regla canGoBack (que en frontend vive en
+    // PipelineBoard.tsx). Sin esto, un curl directo, una pestaña stale o un
+    // cliente desactualizado podría retroceder un item con publicación VIVA
+    // en Postiz, dejando el post programado/publicado huérfano de pipeline.
+    // Solo permitido retroceder cuando: no hay postiz_id, o el estado es
+    // 'failed' (caso que además limpiamos justo debajo).
+    if (isGoingBack && target.postiz_id && target.publish_state !== 'failed') {
+      return NextResponse.json(
+        { error: 'cannot_go_back_with_active_post', detail: 'No se puede retroceder un item con publicación activa en Postiz. Cancela la publicación primero.' },
+        { status: 409 },
+      )
+    }
     if (isGoingBack && target.postiz_id && target.publish_state === 'failed') {
       patch.postiz_id = null
       patch.publish_state = null
