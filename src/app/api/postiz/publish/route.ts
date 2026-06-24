@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { postizCreatePost, postizUploadFromUrl, postizGetChannels, type PostizCreatePostBody } from '@/lib/postiz'
+import { postizCreatePost, postizDeletePost, postizUploadFromUrl, postizGetChannels, type PostizCreatePostBody } from '@/lib/postiz'
 import { checkRateLimit, maybeCleanupRateLimits } from '@/lib/rate-limit'
 import type { Profile } from '@/types/database'
 
@@ -200,11 +200,48 @@ export async function POST(req: NextRequest) {
   if (contentItemId) {
     const { data: targetItem, error: itemErr } = await admin
       .from('content_items')
-      .select('id')
+      .select('id, postiz_id, publish_state')
       .eq('id', contentItemId)
-      .maybeSingle<{ id: string }>()
+      .maybeSingle<{ id: string; postiz_id: string | null; publish_state: string | null }>()
     if (itemErr || !targetItem) {
       return NextResponse.json({ error: 'content_item_not_found' }, { status: 404 })
+    }
+    // Pre-check anti race de doble publicación: si el item ya tiene postiz_id
+    // y el estado no es 'failed', está vivo en Postiz — republicar dejaría el
+    // post viejo huérfano (no apuntable desde la UI) y crearía un duplicado.
+    // El usuario debe Cancelar primero (limpia postiz_id) o Volver desde un
+    // failed (también limpia postiz_id, ver content-items PATCH).
+    if (targetItem.postiz_id && targetItem.publish_state !== 'failed') {
+      return NextResponse.json(
+        { error: 'already_published_or_in_flight', detail: 'Este item ya tiene un post en Postiz. Cancela la publicación antes de volver a publicar.' },
+        { status: 409 },
+      )
+    }
+    // Reintentar desde 'failed' SIN retroceder stage: el postiz_id viejo
+    // (del intento fallido, ya muerto en Postiz) bloquearía el CAS posterior
+    // con un 409 espurio. Lo limpiamos AHORA, de forma atómica condicionada al
+    // postiz_id viejo concreto: si otro request ya lo cambió entre tanto, este
+    // UPDATE no hace nada y el CAS de abajo decidirá quién gana.
+    if (targetItem.postiz_id && targetItem.publish_state === 'failed') {
+      const { error: clearErr } = await admin
+        .from('content_items')
+        .update({
+          postiz_id: null,
+          publish_state: null,
+          publish_error: null,
+          publish_synced_at: null,
+          published_at: null,
+        } as never)
+        .eq('id', contentItemId)
+        .eq('postiz_id', targetItem.postiz_id)
+      if (clearErr) {
+        // Si el cleanup falla, el postiz_id viejo sigue ahí y el CAS posterior
+        // lo confundirá con una race ajena → rollback espurio del post nuevo.
+        // Mejor abortar AQUÍ sin tocar Postiz que gastar una llamada gratis +
+        // un delete-rollback engañando al usuario con un mensaje de race.
+        console.error('[postiz/publish] cleanup de postiz_id viejo falló:', clearErr.message)
+        return NextResponse.json({ error: 'precheck_cleanup_failed' }, { status: 500 })
+      }
     }
   }
 
@@ -305,17 +342,36 @@ export async function POST(req: NextRequest) {
         // type === 'draft' NO mueve el stage (es solo un borrador en Postiz).
 
         if (Object.keys(updates).length > 0) {
-          const { error: updErr } = await admin
+          // CAS contra race genuina: dos requests que pasaron el pre-check
+          // simultáneamente competirán aquí. `.is('postiz_id', null)` solo
+          // matchea filas que SIGUEN sin postiz_id — el segundo update afecta
+          // 0 filas. Detectamos esa colisión y rollback del post huérfano en
+          // Postiz (best-effort) para no dejar basura no apuntable.
+          const { data: updated, error: updErr } = await admin
             .from('content_items')
             // `as never` es el patrón usado en el resto del codebase porque
             // los tipos generados de Supabase no infieren bien el shape de
-            // .update() para tablas con muchas columnas. Las claves de
-            // `updates` son string literales acotadas (postiz_id,
-            // published_at, scheduled_at), así que el cast es seguro.
+            // .update() para tablas con muchas columnas.
             .update(updates as never)
             .eq('id', contentItemId)
+            .is('postiz_id', null)
+            .select('id')
           if (updErr) {
             console.warn('[postiz/publish] no se pudo actualizar content_item:', updErr.message)
+          } else if (!updated || updated.length === 0) {
+            // Race detectada: otro request ya escribió postiz_id en el item.
+            // Borramos el post recién creado en Postiz para no dejar huérfano.
+            console.warn('[postiz/publish] race detectada — rollback del post huérfano:', postizId)
+            if (postizId) {
+              try { await postizDeletePost(postizId) }
+              catch (rbErr) {
+                console.error('[postiz/publish] rollback fallido — post huérfano en Postiz:', postizId, rbErr instanceof Error ? rbErr.message : rbErr)
+              }
+            }
+            return NextResponse.json(
+              { error: 'race_conflict', detail: 'Otro usuario publicó este item simultáneamente. El post duplicado se ha cancelado en Postiz.' },
+              { status: 409 },
+            )
           } else {
             linkedItemId = contentItemId
           }
