@@ -714,8 +714,14 @@ function BriefDetailModal({
         toast(`Error: ${j.error ?? 'no_se_pudo'}`, 'error')
         return
       }
+      // El endpoint devuelve el content_item creado. Aplicamos su id como
+      // related_content_item_id para que el botón "Ver en pipeline" aparezca
+      // de inmediato (antes quedaba undefined hasta recargar).
+      const data = await res.json().catch(() => ({})) as { content_item?: { id: string } }
       toast('Convertido a pipeline (Ideas)', 'success')
-      onUpdated({ ...brief, status: 'converted' })
+      onUpdated({ ...brief, status: 'converted', related_content_item_id: data.content_item?.id ?? brief.related_content_item_id })
+    } catch (e) {
+      toast(`Error de red: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
     } finally { setConverting(false) }
   }
 

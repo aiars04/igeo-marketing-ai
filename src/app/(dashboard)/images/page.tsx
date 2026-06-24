@@ -417,21 +417,57 @@ export default function ImagesPage() {
 
   const handleApproveAllCarousel = async () => {
     if (!carouselDetail) return
-    for (const a of carouselDetail.assets) {
-      if (!a.approved) await handleToggleApprove(a.id)
+    // PATCH directo (no via handleToggleApprove) para emitir UN SOLO toast en
+    // vez de uno por slide. Actualizamos el estado de los que sí se aprobaron.
+    const pending = carouselDetail.assets.filter(a => !a.approved)
+    if (pending.length === 0) { showToast('El carrusel ya está aprobado', 'info'); return }
+    const okIds: string[] = []
+    let failed = 0
+    for (const a of pending) {
+      try {
+        const res = await fetch(`/api/images/${a.id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+        })
+        if (res.ok) okIds.push(a.id); else failed++
+      } catch { failed++ }
     }
-    showToast('Carrusel aprobado completo', 'success')
+    if (okIds.length > 0) {
+      setImages(prev => prev.map(i => okIds.includes(i.id) ? { ...i, approved: true } : i))
+      setCarouselDetail(prev => prev
+        ? { ...prev, assets: prev.assets.map(a => okIds.includes(a.id) ? { ...a, approved: true } : a) }
+        : null)
+    }
+    showToast(
+      failed === 0
+        ? `Carrusel aprobado (${okIds.length} imágenes)`
+        : `${okIds.length} aprobadas, ${failed} fallaron`,
+      failed === 0 ? 'success' : 'error',
+    )
   }
 
   const handleDeleteCarousel = async () => {
     if (!carouselDetail) return
     const ids = carouselDetail.assets.map(a => a.id)
+    const deleted: string[] = []
+    let failed = 0
     for (const id of ids) {
-      await fetch(`/api/images/${id}`, { method: 'DELETE' })
+      try {
+        const res = await fetch(`/api/images/${id}`, { method: 'DELETE' })
+        if (res.ok) deleted.push(id); else failed++
+      } catch { failed++ }
     }
-    setImages(prev => prev.filter(i => !ids.includes(i.id)))
-    showToast(`Carrusel eliminado (${ids.length} imágenes)`, 'info')
-    closeCarousel()
+    // Solo quitamos de la UI los que SÍ se borraron (antes los quitaba todos
+    // aunque el DELETE fallara → desincronización UI/BD).
+    if (deleted.length > 0) {
+      setImages(prev => prev.filter(i => !deleted.includes(i.id)))
+    }
+    showToast(
+      failed === 0
+        ? `Carrusel eliminado (${deleted.length} imágenes)`
+        : `${deleted.length} eliminadas, ${failed} fallaron`,
+      failed === 0 ? 'info' : 'error',
+    )
+    if (failed === 0) closeCarousel()
   }
 
   // Pipeline items — cargar lista al abrir el modal de detalle

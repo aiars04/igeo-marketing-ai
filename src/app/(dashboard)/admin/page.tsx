@@ -986,7 +986,16 @@ export default function AdminPage() {
     }
   }
 
-  const handleDelete = (id: string) => { remove(id); setDeleteConfirm(null); toast('Tipo eliminado', 'success') }
+  const handleDelete = async (id: string) => {
+    setDeleteConfirm(null)
+    try {
+      await remove(id)               // lanza si la respuesta no es OK
+      toast('Tipo eliminado', 'success')
+    } catch (e) {
+      // Antes el toast de éxito salía aunque el DELETE fallara.
+      toast(`Error al eliminar: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
+    }
+  }
 
   const activeCount   = types.filter(t => t.active).length
   const inactiveCount = types.length - activeCount
@@ -1145,7 +1154,18 @@ export default function AdminPage() {
                 ct={ct}
                 docCount={docCounts[ct.id] ?? 0}
                 onEdit={openEdit}
-                onToggle={id => { toggle(id); toast(types.find(t=>t.id===id)?.active ? 'Tipo desactivado' : 'Tipo activado', 'success') }}
+                onToggle={async id => {
+                  // El nuevo estado es el OPUESTO del actual. Antes el toast leía
+                  // el estado previo (síncrono, antes de que toggle resolviera) →
+                  // mensaje incoherente. Además toggle podía fallar sin avisar.
+                  const willBeActive = !(types.find(t => t.id === id)?.active)
+                  try {
+                    await toggle(id)
+                    toast(willBeActive ? 'Tipo activado' : 'Tipo desactivado', 'success')
+                  } catch (e) {
+                    toast(`Error: ${e instanceof Error ? e.message : 'no se pudo cambiar'}`, 'error')
+                  }
+                }}
                 onDelete={id => setDeleteConfirm(id)}
                 onOpenDocs={ct => setDocsTarget(ct)}
               />

@@ -14,13 +14,52 @@ interface ModalProps {
 export function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
   const maxWidth = size === 'sm' ? 440 : size === 'lg' ? 720 : size === 'xl' ? 880 : 560
   const panelRef = useRef<HTMLDivElement>(null)
+  // Elemento que tenía el foco antes de abrir, para restaurarlo al cerrar.
+  const prevFocusRef = useRef<HTMLElement | null>(null)
 
+  // Escape para cerrar.
   useEffect(() => {
     if (!open) return
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [open, onClose])
+
+  // Gestión de foco (WAI-ARIA dialog): al abrir, guardar el foco previo y
+  // moverlo al panel; al cerrar/desmontar, restaurarlo. Además, focus trap:
+  // Tab no se escapa del modal.
+  useEffect(() => {
+    if (!open) return
+    prevFocusRef.current = document.activeElement as HTMLElement | null
+
+    const panel = panelRef.current
+    const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+    // Mover el foco al primer elemento enfocable (o al panel) al abrir.
+    const focusables = panel ? Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)) : []
+    ;(focusables[0] ?? panel)?.focus?.()
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !panel) return
+      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE))
+        .filter(el => el.offsetParent !== null) // visibles
+      if (items.length === 0) { e.preventDefault(); return }
+      const first = items[0]
+      const last = items[items.length - 1]
+      const active = document.activeElement as HTMLElement
+      if (e.shiftKey) {
+        if (active === first || !panel.contains(active)) { e.preventDefault(); last.focus() }
+      } else {
+        if (active === last || !panel.contains(active)) { e.preventDefault(); first.focus() }
+      }
+    }
+    window.addEventListener('keydown', handleTab)
+    return () => {
+      window.removeEventListener('keydown', handleTab)
+      // Restaurar el foco al elemento que lo tenía antes de abrir.
+      prevFocusRef.current?.focus?.()
+    }
+  }, [open])
 
   if (!open) return null
 
@@ -41,6 +80,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        tabIndex={-1}
         className="animate-scale-in w-full relative overflow-hidden flex flex-col"
         style={{
           maxWidth,

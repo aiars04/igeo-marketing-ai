@@ -176,6 +176,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const modelUsed = modelForChannel(source.channel as Channel)
 
+  // Plantillas visuales: el matching es sobre source.id y NO cambia entre
+  // mercados, así que lo calculamos UNA vez aquí (antes eran ~3 queries por
+  // cada mercado destino, todas con idéntico resultado).
+  let creativeTemplatesSection = ''
+  try {
+    const { promptNotes } = await matchTemplatesForItem(admin, source.id, source.channel, { cap: 5 })
+    if (promptNotes.length > 0) {
+      creativeTemplatesSection = `\n\n════ PLANTILLAS VISUALES QUE ACOMPAÑARÁN A ESTE COPY ════
+${promptNotes.map(n => `  · ${n}`).join('\n')}`
+    }
+  } catch { /* no bloqueante */ }
+
   // 5) Procesar cada mercado destino en SERIE (evita ráfagas a Gemini que
   //    podrían dar 429). Cada uno tiene su propio resultado.
   const results: Array<{
@@ -219,15 +231,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       // 5c) Format spec si aplica (el formato no cambia entre mercados)
       const formatSpecSection = ct ? buildFormatSpecPromptBlock(ct.format_spec) : ''
 
-      // 5d) Plantillas visuales — mismas que el original (helper toma item.id)
-      let creativeTemplatesSection = ''
-      try {
-        const { promptNotes } = await matchTemplatesForItem(admin, source.id, source.channel, { cap: 5 })
-        if (promptNotes.length > 0) {
-          creativeTemplatesSection = `\n\n════ PLANTILLAS VISUALES QUE ACOMPAÑARÁN A ESTE COPY ════
-${promptNotes.map(n => `  · ${n}`).join('\n')}`
-        }
-      } catch { /* no bloqueante */ }
+      // 5d) Plantillas visuales: ya calculadas fuera del loop (creativeTemplatesSection).
 
       // 5e) Construir prompt
       const systemPrompt = ct

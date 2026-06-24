@@ -205,11 +205,34 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
+  // Recoger los archivos de Storage de los assets vinculados ANTES de borrar.
+  // El FK content_assets.content_item_id es ON DELETE CASCADE → al borrar el
+  // item, las FILAS de content_assets se borran solas, pero los ARCHIVOS del
+  // bucket quedarían huérfanos para siempre (fuga de almacenamiento). Los
+  // recogemos aquí y los limpiamos tras el delete (best-effort).
+  const { data: assets } = await admin
+    .from('content_assets')
+    .select('storage_path')
+    .eq('content_item_id', id)
+    .returns<Array<{ storage_path: string | null }>>()
+  const storagePaths = (assets ?? [])
+    .map(a => a.storage_path)
+    .filter((p): p is string => !!p)
+
   const { error } = await admin.from('content_items').delete().eq('id', id)
   if (error) {
     console.error('[content-items/DELETE] failed:', error.message)
     return NextResponse.json({ error: 'delete_failed' }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true })
+  // Limpieza de Storage best-effort: si falla, solo quedan archivos huérfanos
+  // (no filas), y el item ya está borrado. No bloqueamos la respuesta.
+  if (storagePaths.length > 0) {
+    const { error: rmErr } = await admin.storage.from('content-assets').remove(storagePaths)
+    if (rmErr) {
+      console.warn('[content-items/DELETE] no se pudieron borrar archivos de Storage:', rmErr.message)
+    }
+  }
+
+  return NextResponse.json({ ok: true, removedAssets: storagePaths.length })
 }

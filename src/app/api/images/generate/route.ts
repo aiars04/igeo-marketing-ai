@@ -95,6 +95,7 @@ Context: This image will be used for ${context}.`
   }
 }
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { checkRateLimit, maybeCleanupRateLimits } from '@/lib/rate-limit'
 import type { Profile } from '@/types/database'
 
 const BUCKET = 'content-assets'
@@ -150,6 +151,17 @@ export async function POST(req: NextRequest) {
     .single<Pick<Profile, 'id' | 'role' | 'active'>>()
   if (!profile || !profile.active) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  // Rate-limit IA best-effort (consistente con carousel): frena bucles/dobles
+  // clicks que dispararían coste/cuota de Gemini.
+  maybeCleanupRateLimits()
+  const rl = checkRateLimit(`ai-image:${user.id}`, 15, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', retryInMs: rl.resetInMs },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.resetInMs / 1000)) } },
+    )
   }
 
   // 2) Validar body

@@ -122,6 +122,13 @@ export async function POST(req: NextRequest) {
   }
   const market: Market = body.market ?? 'spain'
 
+  // Validar status: la columna campaign_packages.status NO tiene CHECK en BD,
+  // así que un valor arbitrario se persistiría y rompería los filtros. El PATCH
+  // ya valida; el POST también debe.
+  if (body.status !== undefined && !STATUSES.includes(body.status as PackageStatus)) {
+    return NextResponse.json({ error: 'invalid_status' }, { status: 400 })
+  }
+
   const insertRow = {
     title,
     package_type: packageType,

@@ -29,6 +29,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const auth = await requireActor()
   if ('response' in auth) return auth.response
   const { profile: me, admin } = auth
+  // Instanciar crea un campaign_package + N content_items (operación masiva).
+  // Igual que editorial-plan/generate, lo restringimos a admin/manager — un
+  // 'user' normal no debe poder generar paquetes en bucle.
+  if (me.role !== 'admin' && me.role !== 'manager') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
   const { id: playbookId } = await ctx.params
 
   let body: {

@@ -58,6 +58,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const check = canActOn(me, target)
   if (!check.ok) return NextResponse.json({ error: check.reason }, { status: 403 })
 
+  // Validar role contra el enum (el POST ya lo hace; el PATCH no lo hacía →
+  // un valor inválido daba 500 genérico de la BD en vez de 400 claro).
+  if (body.role !== undefined && !['admin', 'manager', 'user'].includes(body.role)) {
+    return NextResponse.json({ error: 'invalid_role' }, { status: 400 })
+  }
+
   // Manager: solo puede cambiar full_name + active de un user; rol siempre 'user'
   if (me.role === 'manager') {
     if (body.role && body.role !== 'user') {

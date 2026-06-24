@@ -482,6 +482,12 @@ function TemplateModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // URL del blob de previsualización (para revocarlo y no fugar memoria).
+  const objectUrlRef = useRef<string | null>(null)
+  // Revocar el object URL al desmontar el modal.
+  useEffect(() => () => {
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
+  }, [])
 
   // Reset al abrir/cambiar de target
   useEffect(() => {
@@ -518,6 +524,9 @@ function TemplateModal({
 
   const handleFileChange = (f: File | null) => {
     setError(null)
+    // Revocar el blob anterior (si lo había) antes de crear/limpiar — evita
+    // fuga de memoria al cambiar de archivo varias veces.
+    if (objectUrlRef.current) { URL.revokeObjectURL(objectUrlRef.current); objectUrlRef.current = null }
     if (!f) {
       setFile(null); setFilePreview(initial?.signed_url ?? null); setDimensions(null)
       return
@@ -528,6 +537,7 @@ function TemplateModal({
     }
     setFile(f)
     const url = URL.createObjectURL(f)
+    objectUrlRef.current = url
     setFilePreview(url)
     // Detectar dimensiones (no aplica a SVG)
     if (f.type !== 'image/svg+xml') {

@@ -162,6 +162,10 @@ export default function OrchestratorPage() {
       const data = await res.json() as PlanReport
       setReport(data)
       toast(`Plan generado · ${data.summary.total_pieces} piezas`, 'success')
+    } catch (e) {
+      // Sin este catch, un fallo de red dejaba al usuario sin feedback (el
+      // botón paraba de cargar por el finally pero no se mostraba el error).
+      toast(`Error de red: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
     } finally {
       setSubmitting(false)
     }

@@ -54,7 +54,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'db_failed' }, { status: 500 })
   }
 
-  return NextResponse.json(data ?? [])
+  // Normalizar el stage legacy 'published' (permitido por el CHECK de la
+  // migración 018 para filas históricas, pero NO existe en el tipo Stage ni
+  // tiene columna en el Kanban). Sin esto, un item 'published' no caería en
+  // ninguna columna del pipeline y desaparecería de la UI silenciosamente.
+  const normalized = (data ?? []).map(item =>
+    (item.stage as string) === 'published' ? { ...item, stage: 'analyzed' as const } : item,
+  )
+
+  return NextResponse.json(normalized)
 }
 
 // ── POST /api/content-items ─────────────────────────────────────────
