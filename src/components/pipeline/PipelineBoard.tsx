@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import {
   Plus, Sparkles, MoreHorizontal, Calendar,
   Lightbulb, PenLine, Layers, Zap, BarChart2,
-  CheckCircle2, CheckCheck, ChevronRight, ArrowRight, Trash2,
+  CheckCircle2, CheckCheck, ChevronRight, ArrowRight, ArrowLeft, Trash2,
   ImageIcon, RefreshCw, Loader2, X,
 } from 'lucide-react'
 import { STAGE_CONFIG, STAGES } from '@/lib/utils'
@@ -122,7 +122,11 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
   const idx = STAGES.indexOf(item.stage as Stage)
   const next = idx < STAGES.length - 1 ? STAGES[idx + 1] : null
   const nextCfg = next ? STAGE_CONFIG[next] : null
-  if (!next || !nextCfg) return null
+  const prev = idx > 0 ? STAGES[idx - 1] : null
+  const prevCfg = prev ? STAGE_CONFIG[prev] : null
+  const canGoBack = !!prev && !!prevCfg && !prevCfg.automatic
+  // Si no hay adelante NI atrás, no mostramos menú.
+  if ((!next || !nextCfg) && !canGoBack) return null
 
   const toggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -154,17 +158,32 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
               boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
             }}
           >
-            <button
-              onClick={e => { e.stopPropagation(); onMove(item.id, next); setPos(null) }}
-              className="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-[var(--accent-soft)] transition-colors"
-              style={{ color: 'var(--ink)' }}
-            >
-              <ChevronRight size={13} style={{ color: nextCfg.accentHex, flexShrink: 0 }} aria-hidden="true" />
-              <div>
-                <p style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.3 }}>Mover a</p>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3 }}>{nextCfg.label}</p>
-              </div>
-            </button>
+            {next && nextCfg && (
+              <button
+                onClick={e => { e.stopPropagation(); onMove(item.id, next); setPos(null) }}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-[var(--accent-soft)] transition-colors"
+                style={{ color: 'var(--ink)' }}
+              >
+                <ChevronRight size={13} style={{ color: nextCfg.accentHex, flexShrink: 0 }} aria-hidden="true" />
+                <div>
+                  <p style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.3 }}>Mover a</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3 }}>{nextCfg.label}</p>
+                </div>
+              </button>
+            )}
+            {canGoBack && prev && prevCfg && (
+              <button
+                onClick={e => { e.stopPropagation(); onMove(item.id, prev); setPos(null) }}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-[var(--surface-2)] transition-colors"
+                style={{ color: 'var(--ink)' }}
+              >
+                <ArrowLeft size={13} style={{ color: prevCfg.accentHex, flexShrink: 0 }} aria-hidden="true" />
+                <div>
+                  <p style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.3 }}>Volver a</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3 }}>{prevCfg.label}</p>
+                </div>
+              </button>
+            )}
           </div>
         </>,
         document.body
@@ -380,6 +399,12 @@ function ContentDetailModal({
   const idx = STAGES.indexOf(item.stage as Stage)
   const next = idx < STAGES.length - 1 ? STAGES[idx + 1] : null
   const nextCfg = next ? STAGE_CONFIG[next] : null
+  // Stage anterior (para el botón "Volver a …"). Solo válido si existe un
+  // stage previo no automático — los stages automáticos no son destinos
+  // razonables de retroceso manual.
+  const prev = idx > 0 ? STAGES[idx - 1] : null
+  const prevCfg = prev ? STAGE_CONFIG[prev] : null
+  const canGoBack = !!prev && !!prevCfg && !prevCfg.automatic
   const isApprovalStage = APPROVAL_STAGES.includes(item.stage as Stage)
   const needsApproval = isApprovalStage && !item.human_approved
   const canAdvanceWithoutApproval = !isApprovalStage && !!next && !stageCfg.automatic
@@ -1019,8 +1044,11 @@ function ContentDetailModal({
         )}
       </div>
 
-      {/* ── Sección Visual — siempre visible en design / scheduled / analyzed ── */}
-      {(item.stage === 'design' || item.stage === 'scheduled' || item.stage === 'analyzed') && (
+      {/* ── Sección Visual — visible desde 'design' en adelante.
+           Antes faltaba 'approval' → al pasar el item a esa columna, la imagen
+           desaparecía del modal y no había forma de previsualizarla o cambiarla
+           (bug reportado por Ramon 2026-06-24). */}
+      {(item.stage === 'design' || item.stage === 'approval' || item.stage === 'scheduled' || item.stage === 'analyzed') && (
         <div
           style={{
             background: 'var(--surface-2)',
@@ -1175,6 +1203,31 @@ function ContentDetailModal({
                 onItemUpdated?.({ ...item, ...update } as ContentItem)
               }}
             />
+
+            {/* Volver al stage anterior — útil sobre todo en 'approval' para
+                regresar a 'design' si hay que retocar la pieza antes de aprobar.
+                Antes no había forma de retroceder desde el modal (solo rechazar
+                o aprobar), bug reportado por Ramon 2026-06-24. */}
+            {!isRejected && canGoBack && prev && prevCfg && (
+              <button
+                onClick={() => { onMove(item.id, prev); onClose() }}
+                className="inline-flex items-center transition-colors"
+                title={`Volver a ${prevCfg.label}`}
+                style={{
+                  gap: 6,
+                  height: 36,
+                  padding: '0 14px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--ink-2)',
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-pill)',
+                }}
+              >
+                <ArrowLeft size={13} aria-hidden="true" /> Volver a {prevCfg.label}
+              </button>
+            )}
 
             {/* Rechazar — gris-rojo cuando aplica */}
             {!isRejected && (needsApproval || canAdvanceWithoutApproval) && (
