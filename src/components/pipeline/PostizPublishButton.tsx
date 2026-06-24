@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Send, Loader2, AlertCircle, CheckCircle2, ImageOff, ChevronDown, ChevronRight } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { usePostizChannels, usePostizPublish } from '@/hooks/use-postiz'
+import { useCanPublish } from '@/hooks/use-current-user'
 import { utcISOToMarketLocal, marketLocalToUtcISO } from '@/lib/market-timezones'
 import { getSocialLimit } from '@/lib/social-limits'
 import type { ContentItem } from '@/types/database'
@@ -55,8 +56,12 @@ type PublishType = 'draft' | 'schedule' | 'now'
  */
 export function PostizPublishButton({ item, imageUrl, imageUrls, onPublished }: Props) {
   const [open, setOpen] = useState(false)
+  const canPublish = useCanPublish()
   const alreadySent = !!item.published_at || !!item.postiz_id
   if (alreadySent) return null
+  // Gate visual: solo admin/manager. El backend ya rechaza con 403, pero
+  // ocultar el botón evita confundir a users normales con un error al pulsar.
+  if (!canPublish) return null
   const hasContent = !!item.content?.trim()
 
   return (

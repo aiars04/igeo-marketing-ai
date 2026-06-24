@@ -21,6 +21,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { SuggestImprovementDrawer } from '@/components/SuggestImprovementDrawer'
 import { ChannelColorsCssVars } from '@/components/ChannelColorsCssVars'
+import { clearCurrentUserCache } from '@/hooks/use-current-user'
 
 type Profile = {
   user_id: string
@@ -74,6 +75,10 @@ export function AppShell({
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
+    // Sin esto, si el siguiente usuario inicia sesión sin recargar la página
+    // entera (SPA), el cache module-global retiene el perfil viejo y le
+    // muestra botones de admin/manager que el backend luego rechaza con 403.
+    clearCurrentUserCache()
     router.push('/login')
     router.refresh()
   }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { AlertCircle, XCircle, CheckCircle2, Clock, Loader2 } from 'lucide-react'
 import { usePostizCancel } from '@/hooks/use-postiz'
+import { useCanPublish } from '@/hooks/use-current-user'
 import type { ContentItem } from '@/types/database'
 
 interface Props {
@@ -19,6 +20,7 @@ export function PostizStateBanner({ item, onCancelled }: Props) {
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { cancel, cancelling } = usePostizCancel()
+  const canCancelPublish = useCanPublish()
 
   const handleCancel = async () => {
     if (!item.postiz_id) return
@@ -75,7 +77,9 @@ export function PostizStateBanner({ item, onCancelled }: Props) {
     red:   { bg: 'rgba(239,68,68,0.10)', bd: 'rgba(239,68,68,0.30)', fg: '#b91c1c' },
   }[color]
 
-  const canCancel = !!item.postiz_id && publishState !== 'failed'
+  // Gate visual: solo admin/manager pueden cancelar. El backend ya rechaza
+  // con 403, pero ocultar el botón evita confundir al usuario "user".
+  const canCancel = !!item.postiz_id && publishState !== 'failed' && canCancelPublish
 
   return (
     <div
