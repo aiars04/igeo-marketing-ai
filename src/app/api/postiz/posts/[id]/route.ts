@@ -36,17 +36,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
-  // Validar propiedad del item antes de cancelar (manager solo sus propios items).
+  // Buscar el content_item asociado al post (puede no existir si el post fue
+  // creado fuera de la app). Cualquier admin/manager puede cancelar — es una
+  // app interna donde el contenido es del equipo (mismo criterio que /publish).
   const { data: targetItem } = await admin
     .from('content_items')
-    .select('id, created_by')
+    .select('id')
     .eq('postiz_id', postizId)
-    .maybeSingle<{ id: string; created_by: string | null }>()
-
-  if (targetItem && profile.role !== 'admin'
-      && targetItem.created_by && targetItem.created_by !== user.id) {
-    return NextResponse.json({ error: 'forbidden_not_owner' }, { status: 403 })
-  }
+    .maybeSingle<{ id: string }>()
 
   // 1) Cancelar en Postiz (idempotente — 404 también se considera éxito).
   try {

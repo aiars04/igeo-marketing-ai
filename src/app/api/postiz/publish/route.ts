@@ -189,25 +189,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'scheduledAt_required_for_schedule' }, { status: 400 })
   }
 
-  // Si el caller pasa contentItemId, validar que el item existe y que el
-  // usuario tiene permiso para tocarlo.
+  // Si el caller pasa contentItemId, validar SOLO que el item existe.
   //
-  // Regla de propiedad:
-  //   - admin → puede publicar/vincular cualquier item.
-  //   - manager → solo items que él creó (content_items.created_by = user.id).
-  //
-  // Esto deja la puerta abierta a multi-tenant sin tocar nada más.
+  // Regla de propiedad: cualquier admin o manager puede publicar/cancelar
+  // cualquier item del workspace. Es una app interna corporativa donde el
+  // contenido es del equipo, no de cada usuario individual — Alvaro publica
+  // lo que ha redactado Ramon, etc. Antes restringíamos a 'manager solo lo
+  // suyo' como defensa multi-tenant, pero estorbaba el flujo real (bug
+  // reportado 2026-06-24). El gate de rol admin/manager arriba se mantiene.
   if (contentItemId) {
     const { data: targetItem, error: itemErr } = await admin
       .from('content_items')
-      .select('id, created_by')
+      .select('id')
       .eq('id', contentItemId)
-      .maybeSingle<{ id: string; created_by: string | null }>()
+      .maybeSingle<{ id: string }>()
     if (itemErr || !targetItem) {
       return NextResponse.json({ error: 'content_item_not_found' }, { status: 404 })
-    }
-    if (profile.role !== 'admin' && targetItem.created_by && targetItem.created_by !== user.id) {
-      return NextResponse.json({ error: 'forbidden_not_owner' }, { status: 403 })
     }
   }
 
