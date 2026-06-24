@@ -36,9 +36,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   // Incluimos channel (coherencia content_type_id) y content (guard de stage).
   const { data: target } = await admin
     .from('content_items')
-    .select('id, created_by, human_approved, scheduled_at, channel, content')
+    .select('id, created_by, human_approved, scheduled_at, channel, content, stage, postiz_id, publish_state')
     .eq('id', id)
-    .single<Pick<ContentItem, 'id' | 'human_approved' | 'scheduled_at' | 'channel' | 'content'> & { created_by: string | null }>()
+    .single<Pick<ContentItem, 'id' | 'human_approved' | 'scheduled_at' | 'channel' | 'content' | 'stage' | 'postiz_id' | 'publish_state'> & { created_by: string | null }>()
   if (!target) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const isOwner = target.created_by === me.id
@@ -72,6 +72,22 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       }
     }
     patch.stage = body.stage
+
+    // Limpieza de vínculo Postiz al RETROCEDER desde un post fallido. Sin esto,
+    // el usuario queda atascado: el botón Publicar se oculta (alreadySent por
+    // postiz_id) y el banner de cancelar tampoco aparece (filtro de stage en
+    // PipelineBoard). Permitimos volver sin obligar a cancelar primero, pero el
+    // postiz_id viejo apunta a un post ya muerto en Postiz → lo desligamos.
+    const fromIdx = STAGES.indexOf(target.stage as Stage)
+    const toIdx = STAGES.indexOf(body.stage as Stage)
+    const isGoingBack = fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx
+    if (isGoingBack && target.postiz_id && target.publish_state === 'failed') {
+      patch.postiz_id = null
+      patch.publish_state = null
+      patch.publish_error = null
+      patch.publish_synced_at = null
+      patch.published_at = null
+    }
   }
   if (body.title !== undefined && typeof body.title === 'string') {
     const t = body.title.trim()
