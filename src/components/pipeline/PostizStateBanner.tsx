@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { AlertCircle, XCircle, CheckCircle2, Clock, Loader2 } from 'lucide-react'
 import { usePostizCancel } from '@/hooks/use-postiz'
 import { useCanPublish } from '@/hooks/use-current-user'
+import { humanizePostizError } from '@/lib/postiz-errors'
 import type { ContentItem } from '@/types/database'
 
 interface Props {
@@ -38,9 +39,10 @@ export function PostizStateBanner({ item, onCancelled }: Props) {
   const publishState = item.publish_state
   const { title, subtitle, Icon, color } = (() => {
     if (publishState === 'failed') {
+      const humanized = humanizePostizError(item.publish_error)
       return {
-        title:    'Falló al publicar',
-        subtitle: item.publish_error ?? 'La red social rechazó la publicación.',
+        title:    `Falló al publicar — ${humanized.title}`,
+        subtitle: humanized.action ?? (item.publish_error ?? 'La red social rechazó la publicación.'),
         Icon:     XCircle,
         color:    'red' as const,
       }
