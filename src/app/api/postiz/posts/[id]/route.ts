@@ -42,9 +42,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   // app interna donde el contenido es del equipo (mismo criterio que /publish).
   const { data: targetItem } = await admin
     .from('content_items')
-    .select('id')
+    .select('id, stage')
     .eq('postiz_id', postizId)
-    .maybeSingle<{ id: string }>()
+    .maybeSingle<{ id: string; stage: string }>()
 
   // 1) Cancelar en Postiz (idempotente — 404 también se considera éxito).
   try {
@@ -56,16 +56,25 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   // 2) Limpiar el item asociado (si existía en nuestra BD).
   if (targetItem) {
+    const cleanup: Record<string, unknown> = {
+      postiz_id:        null,
+      published_at:     null,
+      publish_state:    null,
+      publish_error:    null,
+      publish_synced_at: null,
+      // scheduled_at lo dejamos — puede que el user quiera reusar la fecha al republicar.
+    }
+    // Revertir stage a 'approval' si estaba en 'scheduled' o 'analyzed': sin
+    // publicación activa, mantenerlo en esas columnas miente al usuario (parece
+    // listo/publicado pero ya no lo está). Si estaba en stage anterior (raro
+    // porque publish lo fuerza a 'scheduled', pero podría ocurrir con type=
+    // 'draft' o intervención manual), lo dejamos como está.
+    if (targetItem.stage === 'scheduled' || targetItem.stage === 'analyzed') {
+      cleanup.stage = 'approval'
+    }
     const { error: updErr } = await admin
       .from('content_items')
-      .update({
-        postiz_id:        null,
-        published_at:     null,
-        publish_state:    null,
-        publish_error:    null,
-        publish_synced_at: null,
-        // scheduled_at lo dejamos — puede que el user quiera reusar la fecha al republicar.
-      } as never)
+      .update(cleanup as never)
       .eq('id', targetItem.id)
     if (updErr) {
       console.warn('[postiz/posts/delete] no se pudo limpiar content_item:', updErr.message)

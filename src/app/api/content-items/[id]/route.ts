@@ -222,15 +222,26 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
 
   const { data: target } = await admin
     .from('content_items')
-    .select('id, created_by')
+    .select('id, created_by, postiz_id, publish_state')
     .eq('id', id)
-    .single<Pick<ContentItem, 'id'> & { created_by: string | null }>()
+    .single<Pick<ContentItem, 'id' | 'postiz_id' | 'publish_state'> & { created_by: string | null }>()
   if (!target) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const isOwner = target.created_by === me.id
   const isAdmin = me.role === 'admin'
   if (!isOwner && !isAdmin) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+
+  // Defensa: borrar un item con publicación VIVA en Postiz dejaría el post en
+  // la red social sin forma de referenciarlo desde la app (no cancelable, no
+  // visible). Forzar al usuario a Cancelar primero. 'failed' sí se permite —
+  // el post ya está muerto en Postiz, no hay huérfano que crear.
+  if (target.postiz_id && target.publish_state !== 'failed') {
+    return NextResponse.json(
+      { error: 'cannot_delete_with_active_post', detail: 'No se puede eliminar un item con publicación activa en Postiz. Cancela la publicación primero.' },
+      { status: 409 },
+    )
   }
 
   // Recoger los archivos de Storage de los assets vinculados ANTES de borrar.

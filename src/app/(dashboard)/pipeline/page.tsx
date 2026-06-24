@@ -204,7 +204,9 @@ export default function PipelinePage() {
       const res = await fetch(`/api/content-items/${id}`, { method: 'DELETE' })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
-        showToast(`Error: ${j.error ?? res.statusText}`, 'error')
+        // `detail` (cuando viene) es la frase en español lista para mostrar.
+        // El `error` técnico es fallback.
+        showToast(j.detail ?? `Error: ${j.error ?? res.statusText}`, 'error')
         setItems(prev)
         return
       }
