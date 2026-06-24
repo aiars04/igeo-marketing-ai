@@ -124,7 +124,10 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
   const nextCfg = next ? STAGE_CONFIG[next] : null
   const prev = idx > 0 ? STAGES[idx - 1] : null
   const prevCfg = prev ? STAGE_CONFIG[prev] : null
-  const canGoBack = !!prev && !!prevCfg && !prevCfg.automatic
+  // Misma regla que en el modal: no retroceder si hay post activo en Postiz
+  // (postiz_id) — habría que cancelarlo primero para no dejar fantasmas.
+  const hasActivePostizPost = !!item.postiz_id
+  const canGoBack = !!prev && !!prevCfg && !prevCfg.automatic && !hasActivePostizPost
   // Si no hay adelante NI atrás, no mostramos menú.
   if ((!next || !nextCfg) && !canGoBack) return null
 
@@ -399,12 +402,16 @@ function ContentDetailModal({
   const idx = STAGES.indexOf(item.stage as Stage)
   const next = idx < STAGES.length - 1 ? STAGES[idx + 1] : null
   const nextCfg = next ? STAGE_CONFIG[next] : null
-  // Stage anterior (para el botón "Volver a …"). Solo válido si existe un
-  // stage previo no automático — los stages automáticos no son destinos
-  // razonables de retroceso manual.
+  // Stage anterior (para el botón "Volver a …"). Solo válido si:
+  //   - existe un stage previo no automático, Y
+  //   - el item no tiene un post activo en Postiz (postiz_id). Si lo tiene,
+  //     retroceder solo cambiaría el stage local y la BD, dejando el post
+  //     fantasma en Postiz. El usuario debe "Cancelar publicación" primero
+  //     (botón ya disponible en el PostizStateBanner del modal).
   const prev = idx > 0 ? STAGES[idx - 1] : null
   const prevCfg = prev ? STAGE_CONFIG[prev] : null
-  const canGoBack = !!prev && !!prevCfg && !prevCfg.automatic
+  const hasActivePostizPost = !!item.postiz_id
+  const canGoBack = !!prev && !!prevCfg && !prevCfg.automatic && !hasActivePostizPost
   const isApprovalStage = APPROVAL_STAGES.includes(item.stage as Stage)
   const needsApproval = isApprovalStage && !item.human_approved
   const canAdvanceWithoutApproval = !isApprovalStage && !!next && !stageCfg.automatic
