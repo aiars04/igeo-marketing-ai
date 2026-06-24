@@ -24,7 +24,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   unknown_channel_ids:              'Algún canal seleccionado ya no está conectado en Postiz. Recarga la página y vuelve a elegir.',
   unauthorized:                     'Tu sesión ha expirado. Refresca la página.',
   forbidden:                        'No tienes permiso para publicar (rol admin/manager requerido).',
-  forbidden_not_owner:              'Solo el creador del item (o un admin) puede publicarlo.',
   bad_json:                         'Petición mal formada. Recarga la página y vuelve a intentarlo.',
   rate_limited:                     'Has publicado demasiado rápido. Espera unos segundos y reintenta.',
 }

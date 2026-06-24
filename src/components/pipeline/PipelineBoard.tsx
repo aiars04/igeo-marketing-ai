@@ -126,7 +126,10 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
   const prevCfg = prev ? STAGE_CONFIG[prev] : null
   // Misma regla que en el modal: no retroceder si hay post activo en Postiz
   // (postiz_id) — habría que cancelarlo primero para no dejar fantasmas.
-  const hasActivePostizPost = !!item.postiz_id
+  // Si publish_state='failed', el post NO está activo en la red social (la
+  // publicación falló), así que se permite retroceder directamente sin
+  // obligar a un "Cancelar publicación" superfluo.
+  const hasActivePostizPost = !!item.postiz_id && item.publish_state !== 'failed'
   const canGoBack = !!prev && !!prevCfg && !prevCfg.automatic && !hasActivePostizPost
   // Si no hay adelante NI atrás, no mostramos menú.
   if ((!next || !nextCfg) && !canGoBack) return null
@@ -404,13 +407,12 @@ function ContentDetailModal({
   const nextCfg = next ? STAGE_CONFIG[next] : null
   // Stage anterior (para el botón "Volver a …"). Solo válido si:
   //   - existe un stage previo no automático, Y
-  //   - el item no tiene un post activo en Postiz (postiz_id). Si lo tiene,
-  //     retroceder solo cambiaría el stage local y la BD, dejando el post
-  //     fantasma en Postiz. El usuario debe "Cancelar publicación" primero
-  //     (botón ya disponible en el PostizStateBanner del modal).
+  //   - el item no tiene un post ACTIVO en Postiz (postiz_id + publish_state
+  //     != 'failed'). Si publish_state='failed' el post no está realmente
+  //     en la red social, así que retroceder es seguro sin cancelar antes.
   const prev = idx > 0 ? STAGES[idx - 1] : null
   const prevCfg = prev ? STAGE_CONFIG[prev] : null
-  const hasActivePostizPost = !!item.postiz_id
+  const hasActivePostizPost = !!item.postiz_id && item.publish_state !== 'failed'
   const canGoBack = !!prev && !!prevCfg && !prevCfg.automatic && !hasActivePostizPost
   const isApprovalStage = APPROVAL_STAGES.includes(item.stage as Stage)
   const needsApproval = isApprovalStage && !item.human_approved
