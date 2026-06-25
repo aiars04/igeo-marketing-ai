@@ -13,6 +13,10 @@ export interface HumanizedPostizError {
   title: string
   /** Acción concreta que el usuario debe hacer (opcional). */
   action: string | null
+  /** True si un patrón conocido matcheó. False = es el mensaje crudo de la
+   * red social. El banner usa este flag para no mostrar el mismo texto en
+   * title y subtitle cuando no hay traducción aplicable. */
+  matched: boolean
 }
 
 interface Pattern {
@@ -78,13 +82,13 @@ const PATTERNS: Pattern[] = [
 
 export function humanizePostizError(raw: string | null | undefined): HumanizedPostizError {
   if (!raw || !raw.trim()) {
-    return { title: 'La red social rechazó la publicación.', action: null }
+    return { title: 'La red social rechazó la publicación.', action: null, matched: false }
   }
   for (const p of PATTERNS) {
     if (p.match.test(raw)) {
-      return { title: p.title, action: p.action }
+      return { title: p.title, action: p.action, matched: true }
     }
   }
   // Fallback: devolver el mensaje original (truncado por seguridad).
-  return { title: raw.slice(0, 300), action: null }
+  return { title: raw.slice(0, 300), action: null, matched: false }
 }

@@ -794,18 +794,42 @@ export function ImageDrivePanel({
           <ImagePlus size={13} aria-hidden="true" />
           Elegir del banco
         </button>
-        {replicatedFrom && (
+        {replicatedFrom && !translateConfirm && (
           <button
             className="btn-pill-secondary"
-            onClick={handleTranslateFromOriginal}
+            onClick={() => setTranslateConfirm(true)}
             disabled={translating}
             title="Recrea la imagen del item original con el texto traducido al idioma de este mercado"
           >
-            {translating
-              ? <Loader2 size={13} className="animate-spin" aria-hidden="true" />
-              : <Languages size={13} aria-hidden="true" />}
-            {translating ? 'Traduciendo imagen…' : 'Traducir imagen del original'}
+            <Languages size={13} aria-hidden="true" />
+            Traducir imagen del original
           </button>
+        )}
+        {replicatedFrom && translateConfirm && (
+          <div className="flex items-center gap-2">
+            <span style={{ fontSize: 11, color: 'var(--ink-2)' }}>
+              ¿Generar la imagen traducida del original?
+            </span>
+            <button
+              className="btn-secondary"
+              onClick={() => setTranslateConfirm(false)}
+              disabled={translating}
+              style={{ height: 28, fontSize: 11, padding: '0 10px' }}
+            >
+              Cancelar
+            </button>
+            <button
+              className="btn-cta"
+              onClick={handleTranslateFromOriginal}
+              disabled={translating}
+              style={{ height: 28, fontSize: 11, padding: '0 10px' }}
+            >
+              {translating
+                ? <Loader2 size={11} className="animate-spin" aria-hidden="true" />
+                : <Languages size={11} aria-hidden="true" />}
+              {translating ? 'Traduciendo…' : 'Sí, traducir'}
+            </button>
+          </div>
         )}
       </div>
       <p style={{ fontSize: 11, color: 'var(--ink-3)' }}>

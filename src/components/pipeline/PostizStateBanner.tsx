@@ -40,9 +40,14 @@ export function PostizStateBanner({ item, onCancelled }: Props) {
   const { title, subtitle, Icon, color } = (() => {
     if (publishState === 'failed') {
       const humanized = humanizePostizError(item.publish_error)
+      // Si matcheó un patrón conocido: título = causa traducida, subtitle = acción.
+      // Si no matcheó: título = 'Falló al publicar' a secas, subtitle = mensaje crudo
+      // (evita mostrar la misma frase dos veces).
       return {
-        title:    `Falló al publicar — ${humanized.title}`,
-        subtitle: humanized.action ?? (item.publish_error ?? 'La red social rechazó la publicación.'),
+        title:    humanized.matched ? `Falló al publicar — ${humanized.title}` : 'Falló al publicar',
+        subtitle: humanized.matched
+          ? (humanized.action ?? humanized.title)
+          : humanized.title,
         Icon:     XCircle,
         color:    'red' as const,
       }

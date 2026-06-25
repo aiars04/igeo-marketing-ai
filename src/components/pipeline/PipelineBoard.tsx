@@ -545,6 +545,15 @@ function ContentDetailModal({
     setTitleError(null)
   }, [item.id, item.title])
 
+  // Reset del panel de regenerar (brief + confirm) cuando el item cambia:
+  // sin esto, al navegar de item A a item B el textarea conservaría el brief
+  // escrito en A, confundiendo al usuario.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRegenInstructions('')
+    setConfirmRegenerate(false)
+  }, [item.id])
+
   // Sync editScheduledAt cuando el item cambia desde fuera. Reinterpretamos
   // el ISO en el TZ del mercado del item por si el market también cambió.
   useEffect(() => {
