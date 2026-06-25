@@ -66,6 +66,18 @@ export function ImageDrivePanel({
   const [genPrompt, setGenPrompt]       = useState('')
   const [genPrompts, setGenPrompts]     = useState<string[]>(['', '', '', ''])
   const [aspectRatio, setAspectRatio]   = useState<AspectRatio>('1:1')
+  // Ratio por slide (solo modo curated). Inicializa con 4 slots — el array
+  // se trunca/extiende según genCount y se usa solo cuando genMode==='curated'.
+  // Si el usuario no toca ninguno, se queda igual al aspectRatio global.
+  const [perPromptRatios, setPerPromptRatios] = useState<AspectRatio[]>(['1:1', '1:1', '1:1', '1:1'])
+  // Cuando el usuario cambia el ratio GLOBAL, propagarlo a todos los slots
+  // de curated. Sin esto, el ratio global y los slots se desincronizan y se
+  // generan imágenes en ratios que el usuario no eligió conscientemente.
+  // Si después quiere personalizar slot a slot, lo hace en su selector.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPerPromptRatios(prev => prev.map(() => aspectRatio))
+  }, [aspectRatio])
   const [generating, setGenerating]     = useState(false)
   const [genProgress, setGenProgress]   = useState('')
   const [genError, setGenError]         = useState<string | null>(null)
@@ -167,17 +179,21 @@ export function ImageDrivePanel({
       // rango usamos el extremo más cercano.
       const raw = car.min ?? 2
       const count: 2 | 3 | 4 = raw <= 2 ? 2 : raw >= 4 ? 4 : 3
+      const ratio = ratioFromDims(car.width, car.height)
       setGenMode('variants')
       setGenCount(count)
       setGenPrompt(itemTitle)
       setGenPrompts(['', '', '', ''])
-      setAspectRatio(ratioFromDims(car.width, car.height))
+      setAspectRatio(ratio)
+      // En curated, cada slide arranca con el ratio sugerido por el formato.
+      setPerPromptRatios([ratio, ratio, ratio, ratio])
     } else {
       setGenMode('individual')
       setGenCount(4)
       setGenPrompt(itemTitle)
       setGenPrompts(['', '', '', ''])
       setAspectRatio('1:1')
+      setPerPromptRatios(['1:1', '1:1', '1:1', '1:1'])
     }
     setGenError(null)
     setGenProgress('')
@@ -405,10 +421,20 @@ export function ImageDrivePanel({
           setGenError(`Rellena los ${genCount} prompts`)
           return
         }
+        // Ratio por slide: si alguno difiere del global, lo mandamos al backend;
+        // si todos coinciden con el global, omitimos el campo (compat hacia atrás).
+        const slidesRatios = perPromptRatios.slice(0, genCount)
+        const sendPerSlide = slidesRatios.some(r => r !== aspectRatio)
         const res = await fetch('/api/images/carousel', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode: 'curated', prompts: valid, aspectRatio, channel }),
+          body: JSON.stringify({
+            mode: 'curated',
+            prompts: valid,
+            aspectRatio,
+            channel,
+            ...(sendPerSlide ? { aspectRatios: slidesRatios } : {}),
+          }),
         })
         if (!res.ok) {
           const j = await res.json().catch(() => ({})) as { error?: string; detail?: string }
@@ -429,7 +455,7 @@ export function ImageDrivePanel({
       setGenerating(false)
       setGenProgress('')
     }
-  }, [genMode, genPrompt, genPrompts, genCount, aspectRatio, channel, itemTitle, itemId, assignAsset])
+  }, [genMode, genPrompt, genPrompts, genCount, aspectRatio, perPromptRatios, channel, itemTitle, itemId, assignAsset])
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER — Estado: imagen ya asignada
@@ -752,6 +778,7 @@ export function ImageDrivePanel({
           genPrompt={genPrompt} setGenPrompt={setGenPrompt}
           genPrompts={genPrompts} setGenPrompts={setGenPrompts}
           aspectRatio={aspectRatio} setAspectRatio={setAspectRatio}
+          perPromptRatios={perPromptRatios} setPerPromptRatios={setPerPromptRatios}
           generating={generating}
           genProgress={genProgress}
           genError={genError}
@@ -848,6 +875,7 @@ export function ImageDrivePanel({
         genPrompt={genPrompt} setGenPrompt={setGenPrompt}
         genPrompts={genPrompts} setGenPrompts={setGenPrompts}
         aspectRatio={aspectRatio} setAspectRatio={setAspectRatio}
+        perPromptRatios={perPromptRatios} setPerPromptRatios={setPerPromptRatios}
         generating={generating}
         genProgress={genProgress}
         genError={genError}
@@ -888,6 +916,9 @@ interface GenModalProps {
   setGenPrompts: (p: string[]) => void
   aspectRatio: AspectRatio
   setAspectRatio: (r: AspectRatio) => void
+  /** Ratios por slide en modo curated. Length 4 (slots máximos). */
+  perPromptRatios: AspectRatio[]
+  setPerPromptRatios: (r: AspectRatio[]) => void
   generating: boolean
   genProgress: string
   genError: string | null
@@ -905,7 +936,8 @@ interface GenModalProps {
 function GenerationModal({
   open, onClose, genMode, setGenMode, genCount, setGenCount,
   genPrompt, setGenPrompt, genPrompts, setGenPrompts,
-  aspectRatio, setAspectRatio, generating, genProgress, genError,
+  aspectRatio, setAspectRatio, perPromptRatios, setPerPromptRatios,
+  generating, genProgress, genError,
   variants, assigningId, onGenerate, onAssignVariant, onAfterAssign, itemTitle,
   isCarouselFormat = false,
 }: GenModalProps) {
@@ -1121,40 +1153,69 @@ function GenerationModal({
                   Prompts ({genCount} slides distintos)
                 </p>
                 <div className="flex flex-col gap-2">
-                  {Array.from({ length: genCount }).map((_, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <div
-                        className="shrink-0 flex items-center justify-center"
-                        style={{
-                          width: 28, height: 28,
-                          borderRadius: 'var(--radius-sm)',
-                          background: 'var(--accent-soft)',
-                          color: 'var(--accent)',
-                          fontSize: 12, fontWeight: 700,
-                          marginTop: 4,
-                        }}
-                      >
-                        {i + 1}
+                  {Array.from({ length: genCount }).map((_, i) => {
+                    const slideRatio = perPromptRatios[i] ?? aspectRatio
+                    const slideDims = i < perPromptRatios.length
+                      ? (RATIOS.find(r => r.value === slideRatio)?.sub ?? '')
+                      : ''
+                    return (
+                      <div key={i} className="flex items-start gap-2">
+                        <div
+                          className="shrink-0 flex items-center justify-center"
+                          style={{
+                            width: 28, height: 28,
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'var(--accent-soft)',
+                            color: 'var(--accent)',
+                            fontSize: 12, fontWeight: 700,
+                            marginTop: 4,
+                          }}
+                        >
+                          {i + 1}
+                        </div>
+                        <textarea
+                          value={genPrompts[i] ?? ''}
+                          onChange={e => {
+                            const next = [...genPrompts]
+                            next[i] = e.target.value
+                            setGenPrompts(next)
+                          }}
+                          placeholder={`Slide ${i + 1}…`}
+                          rows={2}
+                          className="input flex-1"
+                          style={{ minHeight: 56, fontSize: 13, padding: 10, fontFamily: 'inherit', resize: 'vertical' }}
+                        />
+                        {/* Selector compacto de ratio por slide. Si no se toca,
+                            usa el aspectRatio global. */}
+                        <div className="shrink-0 flex flex-col items-stretch gap-1" style={{ marginTop: 4, width: 96 }}>
+                          <select
+                            value={slideRatio}
+                            onChange={e => {
+                              const next = [...perPromptRatios]
+                              next[i] = e.target.value as AspectRatio
+                              setPerPromptRatios(next)
+                            }}
+                            className="input"
+                            style={{ height: 28, fontSize: 12, padding: '0 6px', fontFamily: 'inherit' }}
+                            title="Formato de esta imagen"
+                          >
+                            {RATIOS.map(r => (
+                              <option key={r.value} value={r.value}>{r.label}</option>
+                            ))}
+                          </select>
+                          <span style={{ fontSize: 10, color: 'var(--ink-3)', lineHeight: 1.2, textAlign: 'center' }}>
+                            {slideDims}
+                          </span>
+                        </div>
                       </div>
-                      <textarea
-                        value={genPrompts[i] ?? ''}
-                        onChange={e => {
-                          const next = [...genPrompts]
-                          next[i] = e.target.value
-                          setGenPrompts(next)
-                        }}
-                        placeholder={`Slide ${i + 1}…`}
-                        rows={2}
-                        className="input flex-1"
-                        style={{ minHeight: 56, fontSize: 13, padding: 10, fontFamily: 'inherit', resize: 'vertical' }}
-                      />
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
 
-            {/* ── Aspect ratio ─────────────────────────────────────────── */}
+            {/* ── Aspect ratio (en curated, cada slide tiene el suyo) ──── */}
+            {genMode !== 'curated' && (
             <div>
               <p className="section-label" style={{ marginBottom: 8 }}>Formato</p>
               <div
@@ -1191,6 +1252,7 @@ function GenerationModal({
                 })}
               </div>
             </div>
+            )}
 
             {/* Error */}
             {genError && (

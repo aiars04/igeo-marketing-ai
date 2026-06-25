@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 2) Validar body
-  let body: { mode?: string; prompts?: string[]; aspectRatio?: string }
+  let body: { mode?: string; prompts?: string[]; aspectRatio?: string; aspectRatios?: string[] }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
 
   const mode = body.mode === 'variants' || body.mode === 'curated' ? body.mode : null
@@ -125,7 +125,29 @@ export async function POST(req: NextRequest) {
 
   const aspectRatio: AspectRatio =
     (ALLOWED_RATIOS.includes(body.aspectRatio as AspectRatio) ? body.aspectRatio : '1:1') as AspectRatio
-  const size = IMAGEN_DIMENSIONS[aspectRatio]
+  // Dimensiones calculadas por slide dentro del loop (cada slide puede tener
+  // su propio ratio en modo curated), así que ya no precomputamos un size único.
+
+  // aspectRatios por slide (modo curated). Si llega y es válido, manda sobre
+  // el aspectRatio global; si no, todos los slides usan el global (comportamiento
+  // previo). En modo variants se ignora — todas las variantes comparten ratio.
+  let perSlideRatios: AspectRatio[] | null = null
+  if (mode === 'curated' && Array.isArray(body.aspectRatios)) {
+    if (body.aspectRatios.length !== prompts.length) {
+      return NextResponse.json(
+        { error: 'aspect_ratios_length_mismatch', detail: 'aspectRatios debe tener la misma longitud que prompts.' },
+        { status: 400 },
+      )
+    }
+    const invalid = body.aspectRatios.find(r => !ALLOWED_RATIOS.includes(r as AspectRatio))
+    if (invalid !== undefined) {
+      return NextResponse.json(
+        { error: 'invalid_aspect_ratio', detail: `Ratio no soportado: ${String(invalid)}` },
+        { status: 400 },
+      )
+    }
+    perSlideRatios = body.aspectRatios as AspectRatio[]
+  }
 
   // Validar N según modo
   if (mode === 'variants') {
@@ -160,10 +182,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'no_images_returned' }, { status: 502 })
       }
     } else {
-      // curated: secuencial, 1 call por slide
+      // curated: secuencial, 1 call por slide. Cada slide puede tener su
+      // propio aspect ratio (perSlideRatios), o todos comparten el global.
       for (let i = 0; i < prompts.length; i++) {
-        const { imageBytes, modelUsed } = await generateOneWithFallback(prompts[i], aspectRatio)
-        console.log(`Carousel curated slide ${i + 1}/${prompts.length} → ${modelUsed}`)
+        const slideRatio = perSlideRatios?.[i] ?? aspectRatio
+        const { imageBytes, modelUsed } = await generateOneWithFallback(prompts[i], slideRatio)
+        console.log(`Carousel curated slide ${i + 1}/${prompts.length} (${slideRatio}) → ${modelUsed}`)
         imagesBase64.push(imageBytes)
         promptsForRow.push(prompts[i])
       }
@@ -215,7 +239,11 @@ export async function POST(req: NextRequest) {
     }
 
     for (let i = 0; i < imagesBase64.length; i++) {
-      const filename = `${user.id}/${ts}-c${carouselId.slice(0, 8)}-${i}-${aspectRatio.replace(':', 'x')}.png`
+      // Ratio efectivo del slide: en variants todos comparten el global; en
+      // curated puede haber uno por slide si vino perSlideRatios.
+      const slideRatio: AspectRatio = perSlideRatios?.[i] ?? aspectRatio
+      const slideSize = IMAGEN_DIMENSIONS[slideRatio]
+      const filename = `${user.id}/${ts}-c${carouselId.slice(0, 8)}-${i}-${slideRatio.replace(':', 'x')}.png`
       const buffer = Buffer.from(imagesBase64[i], 'base64')
 
       const { error: upErr } = await admin.storage
@@ -233,9 +261,9 @@ export async function POST(req: NextRequest) {
         prompt: promptsForRow[i],
         approved: false,
         created_by: user.id,
-        aspect_ratio: aspectRatio,
-        width: size.width,
-        height: size.height,
+        aspect_ratio: slideRatio,
+        width: slideSize.width,
+        height: slideSize.height,
         mime_type: 'image/png',
         asset_type: 'image',
         carousel_id: carouselId,
@@ -258,11 +286,11 @@ export async function POST(req: NextRequest) {
         prompt: promptsForRow[i],
         position: i,
         carousel_id: carouselId,
-        aspect_ratio: aspectRatio,
+        aspect_ratio: slideRatio,
         approved: false,
         created_at: asset.created_at,
-        width: size.width,
-        height: size.height,
+        width: slideSize.width,
+        height: slideSize.height,
       })
     }
 
@@ -270,6 +298,7 @@ export async function POST(req: NextRequest) {
       carousel_id: carouselId,
       mode,
       aspectRatio,
+      aspectRatios: perSlideRatios ?? null,
       assets: inserted,
     })
   } catch (err: unknown) {
