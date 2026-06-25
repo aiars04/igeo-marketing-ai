@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import {
   Image as ImageIcon, Sparkles, Upload, Check, MoreHorizontal, Loader2, Trash2,
   Download, Copy, RefreshCw, Calendar as CalendarIcon, Maximize2, AlertCircle, Search, X,
-  ChevronLeft, ChevronRight, Layers,
+  ChevronLeft, ChevronRight, Layers, CheckSquare,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { useToast, Toasts } from '@/components/ui/Toast'
@@ -168,6 +168,12 @@ export default function ImagesPage() {
   const [filter, setFilter] = useState<FilterMode>('all')
   const [search, setSearch] = useState('')
 
+  // Selección múltiple para borrado en lote
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+
   // Folders
   const [folders, setFolders] = useState<FolderWithCount[]>([])
   const [totalCount, setTotalCount] = useState(0)
@@ -241,6 +247,11 @@ export default function ImagesPage() {
     }
     if (initialDone) {
       fetchImages(selectedFolder)
+      // Limpiar la selección al cambiar de carpeta: los items seleccionados
+      // ya no estarían visibles en la nueva carpeta, y si el usuario pulsa
+      // "Eliminar N" se borrarían imágenes que no está viendo.
+      setSelectedIds(new Set())
+      setConfirmBulkDelete(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFolder])
@@ -328,6 +339,81 @@ export default function ImagesPage() {
     }
     setImages(prev => prev.filter(i => i.id !== id))
     showToast('Imagen eliminada', 'info')
+  }
+
+  // ── Selección múltiple ─────────────────────────────────────────────────
+  const toggleSelectionMode = () => {
+    setSelectionMode(prev => {
+      const next = !prev
+      if (!next) setSelectedIds(new Set()) // al salir, limpiar
+      setConfirmBulkDelete(false)
+      return next
+    })
+  }
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+  const selectAllVisible = (visibleIds: string[]) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      for (const id of visibleIds) next.add(id)
+      return next
+    })
+  }
+  const clearSelection = () => {
+    setSelectedIds(new Set())
+    setConfirmBulkDelete(false)
+  }
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return
+    setBulkDeleting(true)
+    try {
+      const ids = Array.from(selectedIds)
+      const res = await fetch('/api/images/batch-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        showToast(`Error: ${j.detail ?? j.error ?? res.statusText}`, 'error')
+        return
+      }
+      const data = await res.json() as {
+        deleted: number
+        skipped: { notFound: string[]; forbidden: string[] }
+      }
+      // Optimistic local: quita todas las que el backend reporta como borradas.
+      // Reconstruimos sumando notFound (ya no existían) — también las quitamos
+      // del state local porque el listado anterior las mostraba.
+      const removedFromUI = new Set<string>([
+        ...ids.filter(id => !data.skipped.forbidden.includes(id)),
+      ])
+      setImages(prev => prev.filter(i => !removedFromUI.has(i.id)))
+      setSelectedIds(new Set())
+      setConfirmBulkDelete(false)
+      setSelectionMode(false)
+      // Refrescar contadores de carpetas
+      fetchFolders()
+      const denied = data.skipped.forbidden.length
+      if (denied > 0) {
+        showToast(
+          `Eliminadas ${data.deleted}. ${denied} no se pudieron borrar (solo puede borrarlas el creador o un admin).`,
+          'info',
+        )
+      } else {
+        showToast(`Eliminadas ${data.deleted} imágenes`, 'success')
+      }
+    } catch (e) {
+      showToast(`Error: ${e instanceof Error ? e.message : 'desconocido'}`, 'error')
+    } finally {
+      setBulkDeleting(false)
+    }
   }
 
   // Generación
@@ -713,6 +799,115 @@ export default function ImagesPage() {
             {gridUnits.length} resultado{gridUnits.length === 1 ? '' : 's'}
           </span>
         )}
+
+        {/* Controles de selección múltiple. Apilados a la derecha. */}
+        <div className="flex items-center gap-2" style={{ marginLeft: 'auto' }}>
+          {!selectionMode ? (
+            <button
+              onClick={toggleSelectionMode}
+              style={{
+                height: 30, padding: '0 12px', fontSize: 11, fontWeight: 600,
+                borderRadius: 'var(--radius-pill)',
+                border: '1px solid var(--border)',
+                background: 'var(--surface-2)',
+                color: 'var(--ink-2)',
+                cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+              }}
+              title="Activa el modo selección para borrar varias imágenes a la vez"
+            >
+              <CheckSquare size={13} aria-hidden="true" /> Seleccionar
+            </button>
+          ) : (
+            <>
+              <span className="text-[11px] tabular-nums" style={{ color: 'var(--ink-2)', fontWeight: 600 }}>
+                {selectedIds.size} seleccionada{selectedIds.size === 1 ? '' : 's'}
+              </span>
+              <button
+                onClick={() => {
+                  const visibleIds = gridUnits.flatMap(u => u.kind === 'single' ? [u.asset.id] : u.assets.map(a => a.id))
+                  selectAllVisible(visibleIds)
+                }}
+                disabled={bulkDeleting}
+                style={{
+                  height: 30, padding: '0 12px', fontSize: 11, fontWeight: 600,
+                  borderRadius: 'var(--radius-pill)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface-2)', color: 'var(--ink-2)',
+                  cursor: 'pointer',
+                }}
+              >
+                Seleccionar visibles
+              </button>
+              {selectedIds.size > 0 && !confirmBulkDelete && (
+                <button
+                  onClick={() => setConfirmBulkDelete(true)}
+                  disabled={bulkDeleting}
+                  style={{
+                    height: 30, padding: '0 12px', fontSize: 11, fontWeight: 600,
+                    borderRadius: 'var(--radius-pill)',
+                    border: '1px solid #dc2626',
+                    background: '#dc2626', color: '#fff',
+                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                  }}
+                >
+                  <Trash2 size={12} aria-hidden="true" /> Eliminar {selectedIds.size}
+                </button>
+              )}
+              {confirmBulkDelete && (
+                <>
+                  <span className="text-[11px]" style={{ color: '#b91c1c', fontWeight: 600 }}>
+                    ¿Borrar {selectedIds.size} imagen{selectedIds.size === 1 ? '' : 'es'}?
+                  </span>
+                  <button
+                    onClick={() => setConfirmBulkDelete(false)}
+                    disabled={bulkDeleting}
+                    style={{
+                      height: 30, padding: '0 12px', fontSize: 11, fontWeight: 500,
+                      borderRadius: 'var(--radius-pill)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface)', color: 'var(--ink)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleBatchDelete}
+                    disabled={bulkDeleting}
+                    style={{
+                      height: 30, padding: '0 12px', fontSize: 11, fontWeight: 700,
+                      borderRadius: 'var(--radius-pill)',
+                      border: '1px solid #dc2626',
+                      background: '#dc2626', color: '#fff',
+                      cursor: bulkDeleting ? 'wait' : 'pointer',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    {bulkDeleting
+                      ? <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                      : <Trash2 size={12} aria-hidden="true" />}
+                    {bulkDeleting ? 'Borrando…' : 'Sí, borrar'}
+                  </button>
+                </>
+              )}
+              <button
+                onClick={selectedIds.size > 0 && !confirmBulkDelete ? clearSelection : toggleSelectionMode}
+                disabled={bulkDeleting}
+                style={{
+                  height: 30, padding: '0 10px', fontSize: 11, fontWeight: 500,
+                  borderRadius: 'var(--radius-pill)',
+                  border: '1px solid var(--border)',
+                  background: 'transparent', color: 'var(--ink-3)',
+                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
+                }}
+                title={selectedIds.size > 0 && !confirmBulkDelete ? 'Quitar selección' : 'Salir del modo selección'}
+              >
+                <X size={12} aria-hidden="true" />
+                {selectedIds.size > 0 && !confirmBulkDelete ? 'Limpiar' : 'Salir'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto" style={{ paddingLeft: 40, paddingRight: 24, paddingTop: 24, paddingBottom: 24 }}>
@@ -738,21 +933,54 @@ export default function ImagesPage() {
             {gridUnits.map(unit => {
               if (unit.kind === 'single') {
                 const img = unit.asset
+                const isSelected = selectedIds.has(img.id)
                 return (
                   <div
                     key={img.id}
                     className="image-card group"
-                    onClick={() => openDetail(img)}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(img) } }}
+                    onClick={() => {
+                      if (selectionMode) toggleSelected(img.id)
+                      else openDetail(img)
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        if (selectionMode) toggleSelected(img.id)
+                        else openDetail(img)
+                      }
+                    }}
                     role="button" tabIndex={0}
-                    aria-label={`Abrir detalle: ${img.prompt ?? 'imagen subida'}`}
-                    style={{ cursor: 'pointer' }}
+                    aria-label={selectionMode
+                      ? `${isSelected ? 'Deseleccionar' : 'Seleccionar'} imagen: ${img.prompt ?? 'imagen subida'}`
+                      : `Abrir detalle: ${img.prompt ?? 'imagen subida'}`}
+                    aria-pressed={selectionMode ? isSelected : undefined}
+                    style={{
+                      cursor: 'pointer',
+                      outline: selectionMode && isSelected ? '3px solid var(--accent)' : undefined,
+                      outlineOffset: selectionMode && isSelected ? '-3px' : undefined,
+                    }}
                   >
                     <div className="aspect-square overflow-hidden" style={{ background: 'var(--surface-2)' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={img.url} alt={img.prompt ?? 'Imagen'} loading="lazy"
                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     </div>
+                    {selectionMode && (
+                      <div
+                        aria-hidden="true"
+                        style={{
+                          position: 'absolute', top: 8, left: 8,
+                          width: 24, height: 24,
+                          borderRadius: 6,
+                          background: isSelected ? 'var(--accent)' : 'rgba(0,0,0,0.55)',
+                          border: isSelected ? 'none' : '1px solid rgba(255,255,255,0.6)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        {isSelected && <Check size={14} strokeWidth={3} style={{ color: '#fff' }} />}
+                      </div>
+                    )}
                     <div className="absolute top-2 right-2 flex gap-1">
                       {img.aspect_ratio && (
                         <span
@@ -794,17 +1022,45 @@ export default function ImagesPage() {
               const cov = unit.cover
               const n = unit.assets.length
               const allApproved = unit.assets.every(a => a.approved)
+              const carouselIds = unit.assets.map(a => a.id)
+              const carouselAllSelected = carouselIds.every(id => selectedIds.has(id))
+              const carouselSomeSelected = !carouselAllSelected && carouselIds.some(id => selectedIds.has(id))
+              const toggleCarouselSelection = () => {
+                setSelectedIds(prev => {
+                  const next = new Set(prev)
+                  if (carouselAllSelected) {
+                    for (const id of carouselIds) next.delete(id)
+                  } else {
+                    for (const id of carouselIds) next.add(id)
+                  }
+                  return next
+                })
+              }
               return (
                 <div
                   key={unit.carouselId}
                   style={{
                     position: 'relative',
                     cursor: 'pointer',
+                    outline: selectionMode && carouselAllSelected ? '3px solid var(--accent)' : undefined,
+                    outlineOffset: selectionMode && carouselAllSelected ? '-3px' : undefined,
                   }}
-                  onClick={() => openCarousel(unit.carouselId, unit.assets)}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCarousel(unit.carouselId, unit.assets) } }}
+                  onClick={() => {
+                    if (selectionMode) toggleCarouselSelection()
+                    else openCarousel(unit.carouselId, unit.assets)
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      if (selectionMode) toggleCarouselSelection()
+                      else openCarousel(unit.carouselId, unit.assets)
+                    }
+                  }}
                   role="button" tabIndex={0}
-                  aria-label={`Abrir carrusel de ${n} imágenes`}
+                  aria-label={selectionMode
+                    ? `${carouselAllSelected ? 'Deseleccionar' : 'Seleccionar'} carrusel de ${n} imágenes`
+                    : `Abrir carrusel de ${n} imágenes`}
+                  aria-pressed={selectionMode ? carouselAllSelected : undefined}
                 >
                   {/* Stack hint — 2 capas detrás */}
                   <div
@@ -838,6 +1094,28 @@ export default function ImagesPage() {
                       <img src={cov.url} alt={cov.prompt ?? 'Carrusel'} loading="lazy"
                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     </div>
+                    {selectionMode && (
+                      <div
+                        aria-hidden="true"
+                        style={{
+                          position: 'absolute', top: 8, left: 8,
+                          width: 24, height: 24,
+                          borderRadius: 6,
+                          background: carouselAllSelected
+                            ? 'var(--accent)'
+                            : carouselSomeSelected
+                              ? 'rgba(234,88,12,0.45)'
+                              : 'rgba(0,0,0,0.55)',
+                          border: carouselAllSelected ? 'none' : '1px solid rgba(255,255,255,0.6)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          pointerEvents: 'none',
+                          zIndex: 3,
+                        }}
+                      >
+                        {carouselAllSelected && <Check size={14} strokeWidth={3} style={{ color: '#fff' }} />}
+                        {carouselSomeSelected && <span style={{ color: '#fff', fontSize: 12, fontWeight: 700, lineHeight: 1 }}>–</span>}
+                      </div>
+                    )}
                     {/* Badges */}
                     <div className="absolute top-2 right-2 flex gap-1">
                       <span
