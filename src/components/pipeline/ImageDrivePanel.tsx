@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import {
   Sparkles, Loader2, RefreshCw, X, Check, ImagePlus, Layers, Grid3x3, Wand2, AlertCircle,
-  Maximize2, Download,
+  Maximize2, Download, Languages,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { ImageBankPicker } from '@/components/pipeline/ImageBankPicker'
@@ -25,6 +25,9 @@ interface Props {
   /** content_type_id del item (puede ser null para items históricos). Si viene,
    *  se usa para cargar el format_spec exacto en vez del "primero del canal". */
   contentTypeId?:   string | null
+  /** Si el item es una réplica de otro mercado, contiene el id del item origen.
+   *  Cuando viene !=null, se muestra el botón "Traducir imagen del original". */
+  replicatedFrom?:  string | null
   assignedImageId:  string | null
   assignedImageUrl: string | null
   onAssigned:       (assetId: string, url: string) => void
@@ -49,7 +52,7 @@ const MODES: { value: GenMode; label: string; sub: string; icon: typeof Sparkles
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function ImageDrivePanel({
-  itemId, itemTitle, channel, contentTypeId, assignedImageId, assignedImageUrl, onAssigned, onUnassigned,
+  itemId, itemTitle, channel, contentTypeId, replicatedFrom, assignedImageId, assignedImageUrl, onAssigned, onUnassigned,
 }: Props) {
   // Inline panel state
   const [unassigning, setUnassigning] = useState(false)
@@ -75,6 +78,10 @@ export function ImageDrivePanel({
 
   // Bank picker: elegir imagen del banco existente o subir una nueva propia
   const [bankPickerOpen, setBankPickerOpen] = useState(false)
+
+  // Estado del flujo "traducir imagen del original" (solo si replicatedFrom)
+  const [translating, setTranslating] = useState(false)
+  const [translateConfirm, setTranslateConfirm] = useState(false)
 
   // Plantillas usadas al generar el asset asignado (pill "Generada con X").
   // Se hidrata via dos fetch ligeros: asset → template_ids → nombres.
@@ -246,6 +253,42 @@ export function ImageDrivePanel({
       setUnassigning(false)
     }
   }, [assignedImageId, onUnassigned])
+
+  // ── Traducir imagen del item original (solo réplicas) ──────────────────
+  // Genera una imagen idéntica a la del item origen pero con el texto
+  // traducido al idioma del mercado destino. El endpoint hace toda la
+  // mecánica: lee la imagen del source, llama Nano Banana con el original
+  // como ref visual y prompt de traducción, crea el asset vinculado a este
+  // item. Aquí solo asignamos la nueva imagen al item (sobrescribiendo la
+  // anterior si la había).
+  const handleTranslateFromOriginal = useCallback(async () => {
+    if (!replicatedFrom) return
+    setTranslating(true)
+    setActionError(null)
+    try {
+      const res = await fetch(`/api/content-items/${itemId}/translate-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setActionError(j.detail ?? `No se pudo traducir la imagen: ${j.error ?? `HTTP ${res.status}`}`)
+        return
+      }
+      const data = await res.json() as { id: string; url: string }
+      // Desasignar la imagen anterior (si la había) y asignar la nueva.
+      // `assignAsset` ya cubre ambos pasos, pero el endpoint translate-image
+      // ya vincula el asset con content_item_id directamente — solo
+      // necesitamos avisar al parent vía onAssigned.
+      onAssigned(data.id, data.url)
+      setTranslateConfirm(false)
+    } catch (e) {
+      setActionError(e instanceof Error ? `No se pudo traducir la imagen: ${e.message}` : 'No se pudo traducir la imagen')
+    } finally {
+      setTranslating(false)
+    }
+  }, [replicatedFrom, itemId, onAssigned])
 
   // ── Generar con retry + backoff exponencial ────────────────────────────
   // Backoff progresivo en segundos entre intentos: 0s, 4s, 10s, 20s, 35s
@@ -628,21 +671,57 @@ export function ImageDrivePanel({
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   className="btn-pill-secondary"
                   onClick={() => setConfirmRegen(true)}
-                  disabled={unassigning}
+                  disabled={unassigning || translating}
                 >
                   <RefreshCw size={12} aria-hidden="true" /> Regenerar
                 </button>
                 <button
                   className="btn-pill-secondary"
                   onClick={() => setBankPickerOpen(true)}
-                  disabled={unassigning}
+                  disabled={unassigning || translating}
                 >
                   <ImagePlus size={12} aria-hidden="true" /> Cambiar del banco
                 </button>
+                {replicatedFrom && !translateConfirm && (
+                  <button
+                    className="btn-pill-secondary"
+                    onClick={() => setTranslateConfirm(true)}
+                    disabled={unassigning || translating}
+                    title="Sustituye la imagen actual por la del item original con el texto traducido"
+                  >
+                    <Languages size={12} aria-hidden="true" /> Traducir del original
+                  </button>
+                )}
+                {replicatedFrom && translateConfirm && (
+                  <div className="flex items-center gap-2">
+                    <span style={{ fontSize: 11, color: 'var(--red-2)' }}>
+                      ¿Sustituir la imagen actual?
+                    </span>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setTranslateConfirm(false)}
+                      disabled={translating}
+                      style={{ height: 28, fontSize: 11, padding: '0 10px' }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      className="btn-destructive"
+                      onClick={handleTranslateFromOriginal}
+                      disabled={translating}
+                      style={{ height: 28, fontSize: 11, padding: '0 10px' }}
+                    >
+                      {translating
+                        ? <Loader2 size={11} className="animate-spin" aria-hidden="true" />
+                        : <Languages size={11} aria-hidden="true" />}
+                      {translating ? 'Traduciendo…' : 'Sí, traducir'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -715,6 +794,19 @@ export function ImageDrivePanel({
           <ImagePlus size={13} aria-hidden="true" />
           Elegir del banco
         </button>
+        {replicatedFrom && (
+          <button
+            className="btn-pill-secondary"
+            onClick={handleTranslateFromOriginal}
+            disabled={translating}
+            title="Recrea la imagen del item original con el texto traducido al idioma de este mercado"
+          >
+            {translating
+              ? <Loader2 size={13} className="animate-spin" aria-hidden="true" />
+              : <Languages size={13} aria-hidden="true" />}
+            {translating ? 'Traduciendo imagen…' : 'Traducir imagen del original'}
+          </button>
+        )}
       </div>
       <p style={{ fontSize: 11, color: 'var(--ink-3)' }}>
         Nano Banana 2 para el canal <strong>{channel}</strong> · 4 ratios · 3 modos · o sube/elige una propia

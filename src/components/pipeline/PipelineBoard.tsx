@@ -1121,6 +1121,7 @@ function ContentDetailModal({
             itemTitle={item.title}
             channel={item.channel as Channel}
             contentTypeId={item.content_type_id}
+            replicatedFrom={item.replicated_from}
             assignedImageId={imageId}
             assignedImageUrl={imageUrl}
             onAssigned={(assetId, url) => { onImageAssigned?.(item.id, assetId, url) }}
