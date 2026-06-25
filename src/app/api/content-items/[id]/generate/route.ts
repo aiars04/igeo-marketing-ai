@@ -55,9 +55,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const { id } = await ctx.params
 
-  // 2) Body (opcional regenerate flag — no usado por backend, solo info)
-  let body: { regenerate?: boolean } = {}
+  // 2) Body opcional: regenerate flag (informa al LLM que pruebe un enfoque
+  // distinto) y extraInstructions (brief libre del usuario para guiar la
+  // regeneración: "más conciso", "incluye dato X", "tono más casual", etc.)
+  let body: { regenerate?: boolean; extraInstructions?: string } = {}
   try { body = await req.json() } catch {}
+  // Sanitizar instrucciones extra: trim + tope de 1000 chars para evitar que
+  // un usuario meta un prompt gigante que rompa el contexto del modelo o
+  // intente jailbreaks largos. 1000 chars es suficiente para un brief.
+  const extraInstructions = typeof body.extraInstructions === 'string'
+    ? body.extraInstructions.trim().slice(0, 1000)
+    : ''
 
   // 3) Cargar item
   const { data: item, error: itemErr } = await admin
@@ -194,6 +202,11 @@ ESTILO: ${ct.style}`
     `MERCADO: ${item.market} (escribe en ${MARKET_LANG[item.market] ?? 'español'})`,
     item.campaign ? `CAMPAÑA: ${item.campaign}` : null,
     body.regenerate ? '\nNota: es una regeneración, prueba un enfoque distinto al anterior.' : null,
+    // Las instrucciones del usuario van AL FINAL y en bloque marcado, para
+    // que el modelo las trate como override prioritario sobre el resto.
+    extraInstructions
+      ? `\n════ INSTRUCCIONES ADICIONALES DEL USUARIO (prioridad alta) ════\n${extraInstructions}`
+      : null,
   ].filter(Boolean).join('\n')
 
   const modelUsed = modelForChannel(item.channel as Channel)

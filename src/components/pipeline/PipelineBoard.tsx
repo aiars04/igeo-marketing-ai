@@ -425,6 +425,7 @@ function ContentDetailModal({
   const [generating, setGenerating] = useState(false)
   const [savingContent, setSavingContent] = useState(false)
   const [confirmRegenerate, setConfirmRegenerate] = useState(false)
+  const [regenInstructions, setRegenInstructions] = useState('')
   const [genError, setGenError] = useState<string | null>(null)
   // Ref al textarea para insertar @menciones en la posición del cursor.
   const contentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -555,13 +556,13 @@ function ContentDetailModal({
   const canGenerate = item.stage === 'ideas' || item.stage === 'copy'
   const isDirty = (editContent ?? '') !== (item.content ?? '')
 
-  const handleGenerate = useCallback(async (regenerate = false) => {
+  const handleGenerate = useCallback(async (regenerate = false, extraInstructions = '') => {
     setGenError(null)
     setGenerating(true)
     try {
       const res = await fetch(`/api/content-items/${item.id}/generate`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ regenerate }),
+        body: JSON.stringify({ regenerate, extraInstructions: extraInstructions.trim() || undefined }),
       })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
@@ -571,6 +572,7 @@ function ContentDetailModal({
       const data = await res.json() as { item: ContentItem }
       onItemUpdated?.(data.item)
       setConfirmRegenerate(false)
+      setRegenInstructions('')
     } catch (e) {
       setGenError(e instanceof Error ? e.message : 'unknown')
     } finally {
@@ -946,24 +948,63 @@ function ContentDetailModal({
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2 flex-wrap">
                 {confirmRegenerate ? (
-                  <div className="flex items-center gap-2">
-                    <span style={{ fontSize: 12, color: 'var(--red-2)' }}>
-                      ¿Sobrescribir el contenido actual?
-                    </span>
-                    <button
-                      className="btn-secondary"
-                      onClick={() => setConfirmRegenerate(false)}
-                      style={{ height: 28, fontSize: 11, padding: '0 10px' }}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      className="btn-destructive"
-                      onClick={() => handleGenerate(true)}
-                      style={{ height: 28, fontSize: 11, padding: '0 10px' }}
-                    >
-                      <RefreshCw size={11} aria-hidden="true" /> Sí, regenerar
-                    </button>
+                  <div
+                    className="flex flex-col gap-2"
+                    style={{
+                      flexBasis: '100%',
+                      padding: 12,
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--surface-2)',
+                    }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>
+                      ¿Sobrescribir el contenido con uno nuevo?
+                    </div>
+                    <label style={{ fontSize: 11, color: 'var(--ink-2)', display: 'block' }}>
+                      Instrucciones opcionales para el modelo (deja vacío para regenerar tal cual):
+                    </label>
+                    <textarea
+                      value={regenInstructions}
+                      onChange={e => setRegenInstructions(e.target.value.slice(0, 1000))}
+                      placeholder="Ej: más conciso, tono más casual, incluye el dato de los 30 años, termina con CTA a /contacto, evita la palabra 'innovador'…"
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        fontSize: 12,
+                        padding: 8,
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--surface)',
+                        color: 'var(--ink)',
+                        resize: 'vertical',
+                        fontFamily: 'inherit',
+                      }}
+                      disabled={generating}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span style={{ fontSize: 10, color: 'var(--ink-3)' }}>
+                        {regenInstructions.length}/1000
+                      </span>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          className="btn-secondary"
+                          onClick={() => { setConfirmRegenerate(false); setRegenInstructions('') }}
+                          disabled={generating}
+                          style={{ height: 28, fontSize: 11, padding: '0 10px' }}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          className="btn-destructive"
+                          onClick={() => handleGenerate(true, regenInstructions)}
+                          disabled={generating}
+                          style={{ height: 28, fontSize: 11, padding: '0 10px' }}
+                        >
+                          <RefreshCw size={11} aria-hidden="true" /> {generating ? 'Generando…' : 'Sí, regenerar'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <button
