@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 2) Validar body
-  let body: { prompt?: string; aspectRatio?: string; channel?: string; content_item_id?: string }
+  let body: { prompt?: string; aspectRatio?: string; channel?: string; content_item_id?: string; baseImageUrl?: string }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
 
   const prompt = body.prompt?.trim()
@@ -174,6 +174,35 @@ export async function POST(req: NextRequest) {
   const aspectRatio: AspectRatio =
     (ALLOWED_RATIOS.includes(body.aspectRatio as AspectRatio) ? body.aspectRatio : '1:1') as AspectRatio
   const size = IMAGEN_DIMENSIONS[aspectRatio]
+
+  // baseImageUrl: foto del usuario sobre la que Nano Banana hará EDICIÓN
+  // (image-to-image, no text-to-image). Se acepta solo si apunta al Storage
+  // de Supabase del proyecto — evitamos SSRF y URLs arbitrarias del exterior.
+  // Si la URL no pasa el guard la rechazamos antes de descargar nada.
+  const baseImageUrl = typeof body.baseImageUrl === 'string' && body.baseImageUrl.length > 0
+    ? body.baseImageUrl
+    : null
+  if (baseImageUrl) {
+    try {
+      const u = new URL(baseImageUrl)
+      if (u.protocol !== 'https:') {
+        return NextResponse.json({ error: 'invalid_base_image_url' }, { status: 400 })
+      }
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      if (!supabaseUrl) {
+        return NextResponse.json({ error: 'server_misconfigured' }, { status: 500 })
+      }
+      const supabaseHost = new URL(supabaseUrl).host
+      if (u.host !== supabaseHost) {
+        return NextResponse.json({ error: 'invalid_base_image_url' }, { status: 400 })
+      }
+      if (!/^\/storage\/v1\/object\/public\//.test(u.pathname)) {
+        return NextResponse.json({ error: 'invalid_base_image_url' }, { status: 400 })
+      }
+    } catch {
+      return NextResponse.json({ error: 'invalid_base_image_url' }, { status: 400 })
+    }
+  }
 
   // 2b) Si llega content_item_id, validamos que el usuario tenga permiso sobre
   // ese item ANTES de vincular el asset y de buscar plantillas. Mismo gate que
@@ -216,21 +245,81 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // 2c) Si hay baseImageUrl, descargarla del Storage. Va PRIMERO en el array
+  // de refs (la foto del usuario es la BASE a editar; las plantillas son guía
+  // de estilo secundaria). Si la descarga falla, ABORTAMOS con 502 — el
+  // usuario subió la foto explícitamente y espera image-to-image; degradar
+  // silenciosamente a text-to-image violaría esa expectativa.
+  // Whitelist de mime types aceptados por Nano Banana (mismos que upload).
+  const BASE_IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp'])
+  const BASE_IMAGE_MAX_BYTES = 10 * 1024 * 1024 // 10 MB (consistente con upload)
+  let baseImageRef: NanoBananaReference | null = null
+  if (baseImageUrl) {
+    let respStatus: number | string = '?'
+    let respMime = ''
+    try {
+      const resp = await fetch(baseImageUrl)
+      respStatus = resp.status
+      if (!resp.ok) {
+        return NextResponse.json(
+          { error: 'base_image_unavailable', detail: `No se pudo descargar la foto base (HTTP ${resp.status}). Reintenta o sube la foto de nuevo.` },
+          { status: 502 },
+        )
+      }
+      const rawMime = (resp.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase()
+      respMime = rawMime
+      if (!BASE_IMAGE_MIMES.has(rawMime)) {
+        return NextResponse.json(
+          { error: 'base_image_invalid_mime', detail: `Formato no soportado para foto base: ${rawMime || 'desconocido'}. Usa PNG, JPG o WebP.` },
+          { status: 400 },
+        )
+      }
+      const arrBuf = await resp.arrayBuffer()
+      if (arrBuf.byteLength > BASE_IMAGE_MAX_BYTES) {
+        return NextResponse.json(
+          { error: 'base_image_too_large', detail: 'La foto base supera los 10 MB.' },
+          { status: 413 },
+        )
+      }
+      baseImageRef = {
+        imageBase64: Buffer.from(arrBuf).toString('base64'),
+        mimeType: rawMime,
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('[images/generate] baseImageUrl fetch error:', { status: respStatus, mime: respMime, msg })
+      return NextResponse.json(
+        { error: 'base_image_unavailable', detail: 'Error de red al descargar la foto base.' },
+        { status: 502 },
+      )
+    }
+  }
+
   try {
     // 3a) Enriquecer el prompt con Gemini Flash (degradación silenciosa si falla)
     const enhancedPromptBase = await enhancePromptForChannel(prompt, aspectRatio)
-    // Si hay plantillas, añadimos sus notas como guía de estilo final.
+    // Si hay foto base, dejamos claro al modelo que es image-to-image: usar
+    // la PRIMERA imagen adjunta como punto de partida y EDITARLA siguiendo
+    // el prompt y las plantillas. Sin esto, el modelo a veces ignora la
+    // base y genera desde cero.
+    const baseDirective = baseImageRef
+      ? `IMPORTANT — image editing task: the FIRST attached image is the base photo provided by the user. PRESERVE its main subject, framing and lighting; apply the edits described in the prompt (overlays, logos, brand elements) and match the style suggested by the remaining reference images.\n\n`
+      : ''
     const enhancedPrompt = templatesPromptNotes.length > 0
-      ? `${enhancedPromptBase}\n\nBrand & template guidance:\n${templatesPromptNotes.map(n => `- ${n}`).join('\n')}`
-      : enhancedPromptBase
+      ? `${baseDirective}${enhancedPromptBase}\n\nBrand & template guidance:\n${templatesPromptNotes.map(n => `- ${n}`).join('\n')}`
+      : `${baseDirective}${enhancedPromptBase}`
 
-    // 3b) Si hay refs visuales, vamos DIRECTO a Nano Banana (Imagen 4 no soporta
-    // multi-image input). Si falla → error directo (no fallback ciego sin refs,
-    // perdería el sentido del feature). Si no hay refs, cascada completa.
-    const { imageBytes: imageBase64, modelUsed } = templateRefs.length > 0
-      ? await generateWithNanoBanana(enhancedPrompt, aspectRatio, templateRefs)
+    // 3b) Refs combinados: foto base PRIMERO (si la hay), luego plantillas.
+    // Nano Banana es image-to-image friendly cuando recibe una imagen
+    // marcada como "base" en el prompt. Si NO hay refs en absoluto,
+    // caemos a la cascada normal (Imagen 4) que NO soporta multi-image.
+    const allRefs: NanoBananaReference[] = baseImageRef
+      ? [baseImageRef, ...templateRefs]
+      : templateRefs
+    const { imageBytes: imageBase64, modelUsed } = allRefs.length > 0
+      ? await generateWithNanoBanana(enhancedPrompt, aspectRatio, allRefs, { editingMode: !!baseImageRef })
       : await generateWithFallback(enhancedPrompt, aspectRatio)
-    console.log(`Image generated with model: ${modelUsed} (refs=${templateRefs.length})`)
+    console.log(`Image generated with model: ${modelUsed} (base=${baseImageRef ? 1 : 0}, templateRefs=${templateRefs.length})`)
 
     // 4) Subir a Supabase Storage
     const filename = `${user.id}/${Date.now()}-${aspectRatio.replace(':', 'x')}.png`
@@ -261,9 +350,14 @@ export async function POST(req: NextRequest) {
 
     // 5) Insertar en content_assets — incluye template_ids[] para trazabilidad
     //    y content_item_id si vino (lo vincula directo al item del pipeline).
+    //    Si hubo foto base (image-to-image), anotamos su URL al prompt para
+    //    poder auditar más tarde "qué foto se editó" sin necesitar tabla nueva.
+    const persistedPrompt = baseImageUrl
+      ? `${prompt}\n\n[base_image: ${baseImageUrl}]`
+      : prompt
     const insertRow = {
       storage_path: filename,
-      prompt,
+      prompt: persistedPrompt,
       approved: false,
       created_by: user.id,
       aspect_ratio: aspectRatio,

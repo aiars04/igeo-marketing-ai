@@ -46,12 +46,16 @@ export async function generateWithNanoBanana(
   prompt: string,
   aspectRatio: string,
   references: NanoBananaReference[] = [],
+  opts: { editingMode?: boolean } = {},
 ): Promise<{ imageBytes: string; modelUsed: string }> {
   const hint = ASPECT_HINTS[aspectRatio] ?? ''
   const refsUsed = references.slice(0, MAX_REFERENCES)
 
   // Pista textual de uso de referencias — refuerza que el modelo las consulte.
-  const refHint = refsUsed.length > 0
+  // En editingMode el prompt YA contiene una directiva específica (preservar
+  // la primera imagen como base) — añadir el hint genérico "adapt content to
+  // the new prompt" contradice esa instrucción. Saltarlo.
+  const refHint = refsUsed.length > 0 && !opts.editingMode
     ? `\n\nUse the ${refsUsed.length} attached reference image${refsUsed.length === 1 ? '' : 's'} as visual guide for brand identity, color palette, composition style and layout. Match the visual language closely but adapt the content to the new prompt.`
     : ''
   const finalPrompt = `${prompt}\n\n${hint}${refHint}`.trim()

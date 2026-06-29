@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import {
   Sparkles, Loader2, RefreshCw, X, Check, ImagePlus, Layers, Grid3x3, Wand2, AlertCircle,
-  Maximize2, Download, Languages,
+  Maximize2, Download, Languages, Upload,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { ImageBankPicker } from '@/components/pipeline/ImageBankPicker'
@@ -70,6 +70,13 @@ export function ImageDrivePanel({
   // se trunca/extiende según genCount y se usa solo cuando genMode==='curated'.
   // Si el usuario no toca ninguno, se queda igual al aspectRatio global.
   const [perPromptRatios, setPerPromptRatios] = useState<AspectRatio[]>(['1:1', '1:1', '1:1', '1:1'])
+  // Foto base opcional para image-to-image (solo en modo individual). Si
+  // está presente, el endpoint la usa como punto de partida y la edita
+  // siguiendo el prompt + plantillas. Útil para editar fotos reales de
+  // eventos (añadir logo, ajustar marca, etc.).
+  const [baseImage, setBaseImage] = useState<{ url: string; id: string } | null>(null)
+  const [baseImageUploading, setBaseImageUploading] = useState(false)
+  const [baseImageError, setBaseImageError] = useState<string | null>(null)
   // Cuando el usuario cambia el ratio GLOBAL, propagarlo a todos los slots
   // de curated. Sin esto, el ratio global y los slots se desincronizan y se
   // generan imágenes en ratios que el usuario no eligió conscientemente.
@@ -198,6 +205,8 @@ export function ImageDrivePanel({
     setGenError(null)
     setGenProgress('')
     setVariants(null)
+    setBaseImage(null)
+    setBaseImageError(null)
     setGenModalOpen(true)
   }, [itemTitle, formatSpec])
 
@@ -269,6 +278,37 @@ export function ImageDrivePanel({
       setUnassigning(false)
     }
   }, [assignedImageId, onUnassigned])
+
+  // ── Subir foto base para image-to-image (modo individual) ──────────────
+  // Sube la foto al endpoint /api/images/upload, que la guarda en el bucket
+  // 'content-assets' y devuelve url pública. Esa URL la pasamos al endpoint
+  // /api/images/generate como baseImageUrl para que Nano Banana la edite.
+  const handleBaseImageUpload = useCallback(async (file: File) => {
+    setBaseImageError(null)
+    setBaseImageUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('channel', channel)
+      const res = await fetch('/api/images/upload', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setBaseImageError(`No se pudo subir la foto: ${j.error ?? `HTTP ${res.status}`}`)
+        return
+      }
+      const data = await res.json() as { id: string; url: string }
+      setBaseImage({ id: data.id, url: data.url })
+    } catch (e) {
+      setBaseImageError(e instanceof Error ? `Subida fallida: ${e.message}` : 'Subida fallida')
+    } finally {
+      setBaseImageUploading(false)
+    }
+  }, [channel])
+
+  const clearBaseImage = useCallback(() => {
+    setBaseImage(null)
+    setBaseImageError(null)
+  }, [])
 
   // ── Traducir imagen del item original (solo réplicas) ──────────────────
   // Genera una imagen idéntica a la del item origen pero con el texto
@@ -355,7 +395,15 @@ export function ImageDrivePanel({
             headers: { 'Content-Type': 'application/json' },
             // content_item_id activa la inyección de plantillas maestras como
             // referencia visual (Fase 2 de Creativos digitales).
-            body: JSON.stringify({ prompt: promptFinal, aspectRatio, channel, content_item_id: itemId }),
+            // baseImageUrl (opcional) habilita image-to-image: Nano Banana
+            // edita la foto subida aplicando prompt + plantillas.
+            body: JSON.stringify({
+              prompt: promptFinal,
+              aspectRatio,
+              channel,
+              content_item_id: itemId,
+              ...(baseImage ? { baseImageUrl: baseImage.url } : {}),
+            }),
           })
           if (res.ok) {
             const data = await res.json() as { id: string; url: string }
@@ -363,9 +411,18 @@ export function ImageDrivePanel({
             setGenModalOpen(false)
             return
           }
-          const j = await res.json().catch(() => ({})) as { error?: string }
+          const j = await res.json().catch(() => ({})) as { error?: string; detail?: string }
           lastError = j.error ?? `HTTP ${res.status}`
-          if (!isTransient(res.status, lastError)) break // error definitivo, no reintentar
+          if (!isTransient(res.status, lastError)) {
+            // Error definitivo: si viene `detail` en español (caso base_image_*),
+            // mostrarlo tal cual; sino el mensaje genérico de saturación queda
+            // raro. Aborta el bucle de retry.
+            if (j.detail) {
+              setGenError(j.detail)
+              return
+            }
+            break
+          }
         }
         setGenError(`Nano Banana 2 está saturado (${lastError}). Espera unos segundos y vuelve a intentarlo.`)
         return
@@ -455,7 +512,7 @@ export function ImageDrivePanel({
       setGenerating(false)
       setGenProgress('')
     }
-  }, [genMode, genPrompt, genPrompts, genCount, aspectRatio, perPromptRatios, channel, itemTitle, itemId, assignAsset])
+  }, [genMode, genPrompt, genPrompts, genCount, aspectRatio, perPromptRatios, baseImage, channel, itemTitle, itemId, assignAsset])
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER — Estado: imagen ya asignada
@@ -779,6 +836,11 @@ export function ImageDrivePanel({
           genPrompts={genPrompts} setGenPrompts={setGenPrompts}
           aspectRatio={aspectRatio} setAspectRatio={setAspectRatio}
           perPromptRatios={perPromptRatios} setPerPromptRatios={setPerPromptRatios}
+          baseImage={baseImage}
+          baseImageUploading={baseImageUploading}
+          baseImageError={baseImageError}
+          onBaseImageUpload={handleBaseImageUpload}
+          onClearBaseImage={clearBaseImage}
           generating={generating}
           genProgress={genProgress}
           genError={genError}
@@ -876,6 +938,11 @@ export function ImageDrivePanel({
         genPrompts={genPrompts} setGenPrompts={setGenPrompts}
         aspectRatio={aspectRatio} setAspectRatio={setAspectRatio}
         perPromptRatios={perPromptRatios} setPerPromptRatios={setPerPromptRatios}
+        baseImage={baseImage}
+        baseImageUploading={baseImageUploading}
+        baseImageError={baseImageError}
+        onBaseImageUpload={handleBaseImageUpload}
+        onClearBaseImage={clearBaseImage}
         generating={generating}
         genProgress={genProgress}
         genError={genError}
@@ -919,6 +986,12 @@ interface GenModalProps {
   /** Ratios por slide en modo curated. Length 4 (slots máximos). */
   perPromptRatios: AspectRatio[]
   setPerPromptRatios: (r: AspectRatio[]) => void
+  /** Foto base subida por el usuario (modo individual, image-to-image). */
+  baseImage: { id: string; url: string } | null
+  baseImageUploading: boolean
+  baseImageError: string | null
+  onBaseImageUpload: (file: File) => void
+  onClearBaseImage: () => void
   generating: boolean
   genProgress: string
   genError: string | null
@@ -937,6 +1010,7 @@ function GenerationModal({
   open, onClose, genMode, setGenMode, genCount, setGenCount,
   genPrompt, setGenPrompt, genPrompts, setGenPrompts,
   aspectRatio, setAspectRatio, perPromptRatios, setPerPromptRatios,
+  baseImage, baseImageUploading, baseImageError, onBaseImageUpload, onClearBaseImage,
   generating, genProgress, genError,
   variants, assigningId, onGenerate, onAssignVariant, onAfterAssign, itemTitle,
   isCarouselFormat = false,
@@ -1134,6 +1208,7 @@ function GenerationModal({
 
             {/* ── Prompt(s) ────────────────────────────────────────────── */}
             {(genMode === 'individual' || genMode === 'variants') ? (
+              <>
               <div>
                 <p className="section-label" style={{ marginBottom: 8 }}>
                   Prompt {genMode === 'variants' ? '(se usará para todas las variantes)' : ''}
@@ -1147,6 +1222,109 @@ function GenerationModal({
                   style={{ minHeight: 80, fontSize: 13, padding: 12, fontFamily: 'inherit', resize: 'vertical' }}
                 />
               </div>
+
+              {/* Foto base opcional (solo modo Individual). Si se sube, Nano
+                  Banana hará image-to-image: editar la foto aplicando prompt +
+                  plantillas (ideal para fotos de eventos a las que añadir
+                  logo/branding sin re-generar desde cero). */}
+              {genMode === 'individual' && (
+                <div>
+                  <p className="section-label" style={{ marginBottom: 8 }}>
+                    Foto base (opcional)
+                  </p>
+                  {baseImage ? (
+                    <div
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: 10,
+                        background: 'var(--surface-2)',
+                        border: '1px solid var(--accent)',
+                        borderRadius: 'var(--radius-md)',
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={baseImage.url}
+                        alt="Foto base"
+                        style={{
+                          width: 56, height: 56, objectFit: 'cover',
+                          borderRadius: 'var(--radius-sm)', flexShrink: 0,
+                          border: '1px solid var(--border)',
+                        }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', margin: 0 }}>
+                          Foto base cargada
+                        </p>
+                        <p style={{ fontSize: 11, color: 'var(--ink-3)', margin: '2px 0 0', lineHeight: 1.3 }}>
+                          Nano Banana 2 la usará como punto de partida y aplicará el prompt + plantillas encima.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={onClearBaseImage}
+                        title="Quitar foto base"
+                        aria-label="Quitar foto base"
+                        style={{
+                          width: 28, height: 28, flexShrink: 0,
+                          background: 'transparent', border: '1px solid var(--border)',
+                          borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: 'var(--ink-2)',
+                        }}
+                      >
+                        <X size={13} aria-hidden="true" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        padding: '14px 12px',
+                        border: '1px dashed var(--border)',
+                        borderRadius: 'var(--radius-md)',
+                        background: 'var(--surface-2)',
+                        cursor: baseImageUploading ? 'wait' : 'pointer',
+                        color: 'var(--ink-2)',
+                        fontSize: 12, fontWeight: 500,
+                      }}
+                    >
+                      {baseImageUploading ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                          Subiendo foto…
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={14} aria-hidden="true" />
+                          Subir foto de evento (PNG, JPG, WebP — max 10 MB)
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={e => {
+                          const f = e.target.files?.[0]
+                          if (f) onBaseImageUpload(f)
+                          // Permite re-seleccionar el mismo archivo tras un clear
+                          e.target.value = ''
+                        }}
+                        disabled={baseImageUploading}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  )}
+                  {baseImageError && (
+                    <p style={{ fontSize: 11, color: 'var(--red-2)', marginTop: 6 }}>
+                      {baseImageError}
+                    </p>
+                  )}
+                  <p style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 6, lineHeight: 1.4 }}>
+                    Si subes una foto, el modelo la editará en lugar de generar desde cero. Útil para añadir logo / marca a fotos reales de eventos.
+                  </p>
+                </div>
+              )}
+              </>
             ) : (
               <div>
                 <p className="section-label" style={{ marginBottom: 8 }}>
