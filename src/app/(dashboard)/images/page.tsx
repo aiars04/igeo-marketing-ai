@@ -28,6 +28,15 @@ interface ImageAsset {
   position: number | null
   channel: string | null
   folder_id: string | null
+  asset_type?: string | null
+  mime_type?: string | null
+}
+
+/** True si el asset es un vídeo (asset_type='video' o URL con extensión .mp4/.mov/.webm). */
+function isVideoAsset(a: { asset_type?: string | null; url: string }): boolean {
+  if (a.asset_type === 'video') return true
+  const path = a.url.split('?')[0].toLowerCase()
+  return path.endsWith('.mp4') || path.endsWith('.mov') || path.endsWith('.webm')
 }
 
 interface PipelineItemLite {
@@ -961,9 +970,14 @@ export default function ImagesPage() {
                     }}
                   >
                     <div className="aspect-square overflow-hidden" style={{ background: 'var(--surface-2)' }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img.url} alt={img.prompt ?? 'Imagen'} loading="lazy"
-                           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      {isVideoAsset(img) ? (
+                        <video src={img.url} preload="metadata" muted
+                               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />
+                      ) : (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={img.url} alt={img.prompt ?? 'Imagen'} loading="lazy"
+                             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      )}
                     </div>
                     {selectionMode && (
                       <div

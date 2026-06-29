@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Sparkles, Loader2, RefreshCw, X, Check, ImagePlus, Layers, Grid3x3, Wand2, AlertCircle,
-  Maximize2, Download, Languages, Upload,
+  Maximize2, Download, Languages, Upload, Film,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { ImageBankPicker } from '@/components/pipeline/ImageBankPicker'
@@ -48,6 +48,20 @@ const MODES: { value: GenMode; label: string; sub: string; icon: typeof Sparkles
   { value: 'variants',   label: 'Variantes',  sub: '1 prompt · 2-4 variantes',      icon: Layers    },
   { value: 'curated',    label: 'Curado',     sub: '2-4 prompts · 2-4 imágenes',    icon: Grid3x3   },
 ]
+
+/**
+ * Detecta si una URL apunta a un vídeo por su extensión.
+ * Usado para renderizar <video> en vez de <img> cuando el asset asignado
+ * al item es un vídeo subido por el usuario (asset_type='video' en BD).
+ * Como `itemImageMap` solo guarda {id, url}, derivamos el tipo de la URL.
+ */
+function isVideoUrl(url: string | null | undefined): boolean {
+  if (!url) return false
+  // El bucket Supabase preserva la extensión original (mp4/mov/webm),
+  // y la URL pública ignora query strings.
+  const path = url.split('?')[0].toLowerCase()
+  return path.endsWith('.mp4') || path.endsWith('.mov') || path.endsWith('.webm')
+}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -105,6 +119,12 @@ export function ImageDrivePanel({
   // Estado del flujo "traducir imagen del original" (solo si replicatedFrom)
   const [translating, setTranslating] = useState(false)
   const [translateConfirm, setTranslateConfirm] = useState(false)
+
+  // Estado del upload de vídeo (MP4/MOV/WebM hasta 100MB). Se asigna al
+  // item tras subir, igual que una imagen. Postiz acepta video via
+  // `upload-from-url` sin necesidad de cambios en publish.
+  const [videoUploading, setVideoUploading] = useState(false)
+  const videoReqTokenRef = useRef(0)
 
   // Plantillas usadas al generar el asset asignado (pill "Generada con X").
   // Se hidrata via dos fetch ligeros: asset → template_ids → nombres.
@@ -324,6 +344,82 @@ export function ImageDrivePanel({
     setBaseImageError(null)
     setBaseImageUploading(false)
   }, [])
+
+  // ── Subir vídeo pregrabado (MP4/MOV/WebM) y asignarlo al item ──────────
+  // Flujo en 3 pasos para SALTAR el límite de body de Vercel (~4.5 MB en
+  // serverless functions). Sin este patrón, vídeos reales (>5 MB) fallaban
+  // con un 413 opaco antes de llegar al endpoint:
+  //
+  //   1. POST /api/videos/sign-upload → URL firmada de Supabase Storage.
+  //   2. PUT del archivo DIRECTAMENTE al bucket (browser → Supabase, no pasa
+  //      por la función serverless, así que no aplica el límite de Vercel).
+  //   3. POST /api/videos/register → crea content_asset y vincula al item.
+  //
+  // Tope efectivo: el límite del bucket Supabase (50 MB por defecto, hasta
+  // 5 GB con plan Pro). Mucho más que el modelo serverless.
+  const handleVideoUpload = useCallback(async (file: File) => {
+    videoReqTokenRef.current += 1
+    const myToken = videoReqTokenRef.current
+    setActionError(null)
+    setVideoUploading(true)
+    try {
+      // Validación temprana cliente: MIME y tamaño (defensiva, el backend
+      // también valida).
+      const ALLOWED = new Set(['video/mp4', 'video/quicktime', 'video/webm'])
+      if (!ALLOWED.has(file.type)) {
+        setActionError(`Formato no soportado (${file.type || 'desconocido'}). Usa MP4, MOV o WebM.`)
+        return
+      }
+
+      // 1. Pedir URL firmada al backend
+      const signRes = await fetch('/api/videos/sign-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      })
+      if (myToken !== videoReqTokenRef.current) return
+      if (!signRes.ok) {
+        const j = await signRes.json().catch(() => ({}))
+        setActionError(`No se pudo iniciar la subida: ${j.detail ?? j.error ?? `HTTP ${signRes.status}`}`)
+        return
+      }
+      const { path, signedUrl } = await signRes.json() as { path: string; token: string; signedUrl: string }
+
+      // 2. PUT directo del archivo al bucket — sin pasar por Vercel
+      const putRes = await fetch(signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type, 'x-upsert': 'false' },
+        body: file,
+      })
+      if (myToken !== videoReqTokenRef.current) return
+      if (!putRes.ok) {
+        setActionError(`Subida directa falló (HTTP ${putRes.status}). Reintenta o usa un vídeo más pequeño.`)
+        return
+      }
+
+      // 3. Registrar el asset en la BD
+      const regRes = await fetch('/api/videos/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, mime_type: file.type, channel, content_item_id: itemId }),
+      })
+      if (myToken !== videoReqTokenRef.current) return
+      if (!regRes.ok) {
+        const j = await regRes.json().catch(() => ({}))
+        setActionError(`No se pudo registrar el vídeo: ${j.detail ?? j.error ?? `HTTP ${regRes.status}`}`)
+        return
+      }
+      const data = await regRes.json() as { id: string; url: string }
+      // assignAsset desvincula la imagen/vídeo previo del item (si lo había)
+      // y re-vincula este. Mismo flujo que "Cambiar del banco".
+      await assignAsset(data.id, data.url)
+    } catch (e) {
+      if (myToken !== videoReqTokenRef.current) return
+      setActionError(e instanceof Error ? `Subida fallida: ${e.message}` : 'Subida fallida')
+    } finally {
+      if (myToken === videoReqTokenRef.current) setVideoUploading(false)
+    }
+  }, [channel, itemId, assignAsset])
 
   // ── Traducir imagen del item original (solo réplicas) ──────────────────
   // Genera una imagen idéntica a la del item origen pero con el texto
@@ -609,19 +705,35 @@ export function ImageDrivePanel({
           }}
           aria-label="Ampliar imagen"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={assignedImageUrl}
-            alt="Visual generado"
-            style={{
-              width: '100%',
-              maxHeight: 420,
-              minHeight: 200,
-              objectFit: 'contain',
-              display: 'block',
-              background: 'var(--surface-2)',
-            }}
-          />
+          {isVideoUrl(assignedImageUrl) ? (
+            <video
+              src={assignedImageUrl}
+              controls
+              preload="metadata"
+              style={{
+                width: '100%',
+                maxHeight: 420,
+                minHeight: 200,
+                objectFit: 'contain',
+                display: 'block',
+                background: 'var(--surface-2)',
+              }}
+            />
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={assignedImageUrl}
+              alt="Visual generado"
+              style={{
+                width: '100%',
+                maxHeight: 420,
+                minHeight: 200,
+                objectFit: 'contain',
+                display: 'block',
+                background: 'var(--surface-2)',
+              }}
+            />
+          )}
           {/* Hover overlay con icono ampliar */}
           <div
             className="absolute inset-0 flex items-center justify-center transition-opacity opacity-0 group-hover:opacity-100"
@@ -705,19 +817,36 @@ export function ImageDrivePanel({
             role="dialog"
             aria-label="Vista completa de la imagen"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={assignedImageUrl}
-              alt="Visual generado (tamaño completo)"
-              style={{
-                maxWidth: '100%',
-                maxHeight: '100%',
-                objectFit: 'contain',
-                borderRadius: 'var(--radius-md)',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-              }}
-              onClick={e => e.stopPropagation()}
-            />
+            {isVideoUrl(assignedImageUrl) ? (
+              <video
+                src={assignedImageUrl}
+                controls
+                autoPlay
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'contain',
+                  borderRadius: 'var(--radius-md)',
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                  background: '#000',
+                }}
+                onClick={e => e.stopPropagation()}
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={assignedImageUrl}
+                alt="Visual generado (tamaño completo)"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'contain',
+                  borderRadius: 'var(--radius-md)',
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                }}
+                onClick={e => e.stopPropagation()}
+              />
+            )}
             <button
               onClick={() => setLightboxOpen(false)}
               className="absolute top-4 right-4 flex items-center justify-center transition-colors"
@@ -780,17 +909,42 @@ export function ImageDrivePanel({
                 <button
                   className="btn-pill-secondary"
                   onClick={() => setConfirmRegen(true)}
-                  disabled={unassigning || translating}
+                  disabled={unassigning || translating || videoUploading}
                 >
                   <RefreshCw size={12} aria-hidden="true" /> Regenerar
                 </button>
                 <button
                   className="btn-pill-secondary"
                   onClick={() => setBankPickerOpen(true)}
-                  disabled={unassigning || translating}
+                  disabled={unassigning || translating || videoUploading}
                 >
                   <ImagePlus size={12} aria-hidden="true" /> Cambiar del banco
                 </button>
+                <label
+                  className="btn-pill-secondary"
+                  style={{
+                    cursor: (videoUploading || unassigning || translating) ? 'wait' : 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    opacity: (unassigning || translating) ? 0.5 : 1,
+                  }}
+                  title="Sustituye el visual por un vídeo (MP4/MOV/WebM hasta 50 MB)"
+                >
+                  {videoUploading
+                    ? <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                    : <Film size={12} aria-hidden="true" />}
+                  {videoUploading ? 'Subiendo…' : 'Subir vídeo'}
+                  <input
+                    type="file"
+                    accept="video/mp4,video/quicktime,video/webm"
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (f) handleVideoUpload(f)
+                      e.target.value = ''
+                    }}
+                    disabled={videoUploading || unassigning || translating}
+                    style={{ display: 'none' }}
+                  />
+                </label>
                 {replicatedFrom && !translateConfirm && (
                   <button
                     className="btn-pill-secondary"
@@ -840,7 +994,7 @@ export function ImageDrivePanel({
             }}
           >
             {unassigning ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <X size={12} aria-hidden="true" />}
-            Quitar imagen
+            {isVideoUrl(assignedImageUrl) ? 'Quitar vídeo' : 'Quitar imagen'}
           </button>
         </div>
 
@@ -905,6 +1059,27 @@ export function ImageDrivePanel({
           <ImagePlus size={13} aria-hidden="true" />
           Elegir del banco
         </button>
+        <label
+          className="btn-pill-secondary"
+          style={{ cursor: videoUploading ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          title="Sube un vídeo MP4/MOV/WebM hasta 50 MB. Se asignará a este item y se publicará junto al copy en Postiz."
+        >
+          {videoUploading
+            ? <Loader2 size={13} className="animate-spin" aria-hidden="true" />
+            : <Film size={13} aria-hidden="true" />}
+          {videoUploading ? 'Subiendo vídeo…' : 'Subir vídeo'}
+          <input
+            type="file"
+            accept="video/mp4,video/quicktime,video/webm"
+            onChange={e => {
+              const f = e.target.files?.[0]
+              if (f) handleVideoUpload(f)
+              e.target.value = ''
+            }}
+            disabled={videoUploading}
+            style={{ display: 'none' }}
+          />
+        </label>
         {replicatedFrom && !translateConfirm && (
           <button
             className="btn-pill-secondary"

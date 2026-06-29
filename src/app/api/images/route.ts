@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   let query = admin
     .from('content_assets')
-    .select('id, storage_path, prompt, approved, created_at, aspect_ratio, width, height, created_by, content_item_id, carousel_id, position, channel, folder_id')
+    .select('id, storage_path, prompt, approved, created_at, aspect_ratio, width, height, created_by, content_item_id, carousel_id, position, channel, folder_id, asset_type, mime_type')
     .order('created_at', { ascending: false })
     .limit(limit)
 
@@ -64,6 +64,8 @@ export async function GET(req: NextRequest) {
     position: number | null
     channel: string | null
     folder_id: string | null
+    asset_type: string | null
+    mime_type: string | null
   }>
 
   const assets = rows.map(a => ({

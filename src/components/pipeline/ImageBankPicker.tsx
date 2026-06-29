@@ -470,12 +470,21 @@ function ImageThumb({
         aspectRatio: '1 / 1',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={asset.url}
-          alt={asset.prompt ?? 'Imagen'}
-          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-        />
+        {asset.asset_type === 'video' ? (
+          <video
+            src={asset.url}
+            preload="metadata"
+            muted
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', background: '#000' }}
+          />
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={asset.url}
+            alt={asset.prompt ?? 'Imagen'}
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+          />
+        )}
         {picking && (
           <div style={{
             position: 'absolute', inset: 0,
