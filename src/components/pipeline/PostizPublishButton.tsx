@@ -255,13 +255,22 @@ function PublishModal({ open, item, imageUrl, imageUrls, onClose, onPublished }:
         >
           {item.content?.trim() || <span style={{ color: 'var(--ink-3)' }}>— sin contenido —</span>}
         </div>
-        {allImageUrls.length > 0 && (
-          <p style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6 }}>
-            Se adjuntará{allImageUrls.length === 1
-              ? 'á 1 imagen'
-              : `n ${allImageUrls.length} imágenes (carrusel)`}.
-          </p>
-        )}
+        {allImageUrls.length > 0 && (() => {
+          // Detección por extensión (las URLs son del bucket Supabase).
+          const isVideo = (u: string) => /\.(mp4|mov|webm)(\?|$)/i.test(u)
+          const hasVideo = allImageUrls.some(isVideo)
+          const allVideo = allImageUrls.every(isVideo)
+          const label = allImageUrls.length === 1
+            ? (allVideo ? 'á 1 vídeo' : 'á 1 imagen')
+            : hasVideo
+              ? `n ${allImageUrls.length} archivos (incluye vídeo)`
+              : `n ${allImageUrls.length} imágenes (carrusel)`
+          return (
+            <p style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6 }}>
+              Se adjuntar{label}.
+            </p>
+          )
+        })()}
       </Section>
 
       {/* Canales */}

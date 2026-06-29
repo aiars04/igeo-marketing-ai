@@ -363,11 +363,18 @@ export function ImageDrivePanel({
     setActionError(null)
     setVideoUploading(true)
     try {
-      // Validación temprana cliente: MIME y tamaño (defensiva, el backend
-      // también valida).
+      // Validación temprana cliente: MIME y tamaño. Sin el chequeo de tamaño,
+      // un vídeo de 200 MB iba a empezar a subir, gastar tiempo y fallar al
+      // final con un error opaco del bucket. Mejor cortar antes.
       const ALLOWED = new Set(['video/mp4', 'video/quicktime', 'video/webm'])
       if (!ALLOWED.has(file.type)) {
         setActionError(`Formato no soportado (${file.type || 'desconocido'}). Usa MP4, MOV o WebM.`)
+        return
+      }
+      const MAX_BYTES = 50 * 1024 * 1024
+      if (file.size > MAX_BYTES) {
+        const mb = (file.size / (1024 * 1024)).toFixed(1)
+        setActionError(`El vídeo pesa ${mb} MB. El límite es 50 MB; reduce la duración o la resolución.`)
         return
       }
 

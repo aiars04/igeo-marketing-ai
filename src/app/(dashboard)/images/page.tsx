@@ -1371,12 +1371,21 @@ export default function ImagesPage() {
                 maxHeight: 360,
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={detailImage.url}
-                alt={detailImage.prompt ?? 'Imagen'}
-                style={{ maxWidth: '100%', maxHeight: 360, objectFit: 'contain', display: 'block' }}
-              />
+              {isVideoAsset(detailImage) ? (
+                <video
+                  src={detailImage.url}
+                  controls
+                  preload="metadata"
+                  style={{ maxWidth: '100%', maxHeight: 360, objectFit: 'contain', display: 'block', background: '#000' }}
+                />
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={detailImage.url}
+                  alt={detailImage.prompt ?? 'Imagen'}
+                  style={{ maxWidth: '100%', maxHeight: 360, objectFit: 'contain', display: 'block' }}
+                />
+              )}
             </div>
 
             <div>

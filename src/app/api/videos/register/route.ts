@@ -45,8 +45,10 @@ export async function POST(req: NextRequest) {
 
   // Anti-suplantación: el path firmado SIEMPRE empieza por el user.id.
   // Un usuario malicioso no puede registrar archivos de otro pasando un path
-  // ajeno — aquí lo rechazamos.
-  if (!path || !path.startsWith(`${user.id}/`)) {
+  // ajeno — aquí lo rechazamos. Defensa en profundidad: además rechazamos
+  // paths con `..` o `//` que en teoría podrían usarse para apuntar fuera
+  // del directorio del usuario (Supabase ya normaliza, pero blindamos).
+  if (!path || !path.startsWith(`${user.id}/`) || path.includes('..') || path.includes('//')) {
     return NextResponse.json({ error: 'invalid_path' }, { status: 400 })
   }
   if (!ALLOWED_MIME.has(mime)) {
@@ -54,11 +56,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Verificamos que el archivo realmente exista en el bucket. Sin esto, un
-  // cliente malicioso podría registrar paths fantasma. `list` con el prefijo
-  // del directorio del usuario devuelve sus archivos.
+  // cliente malicioso podría registrar paths fantasma. NO usamos `search`
+  // porque es ILIKE/substring y con limit:1 podría devolver un archivo
+  // distinto cuyo nombre contenga al nuestro (orden no determinista),
+  // dando un 404 espurio justo después del PUT exitoso.
   const dir = path.substring(0, path.lastIndexOf('/'))
   const name = path.substring(path.lastIndexOf('/') + 1)
-  const { data: files } = await admin.storage.from(BUCKET).list(dir, { search: name, limit: 1 })
+  const { data: files } = await admin.storage.from(BUCKET).list(dir, { limit: 1000 })
   const exists = !!files?.find(f => f.name === name)
   if (!exists) {
     return NextResponse.json({ error: 'file_not_found_in_storage' }, { status: 404 })

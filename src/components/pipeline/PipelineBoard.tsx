@@ -748,7 +748,7 @@ function ContentDetailModal({
         />
       )}
 
-      {/* ── Thumbnail imagen asignada (solo en stages sin ImageDrivePanel) ── */}
+      {/* ── Thumbnail asignado (solo en stages sin ImageDrivePanel) ── */}
       {imageUrl && (item.stage === 'ideas' || item.stage === 'copy') && (
         <div
           style={{
@@ -763,12 +763,21 @@ function ContentDetailModal({
             maxHeight: 240,
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageUrl}
-            alt={`Imagen asignada a ${item.title}`}
-            style={{ maxWidth: '100%', maxHeight: 240, objectFit: 'contain', display: 'block' }}
-          />
+          {/\.(mp4|mov|webm)(\?|$)/i.test(imageUrl) ? (
+            <video
+              src={imageUrl}
+              controls
+              preload="metadata"
+              style={{ maxWidth: '100%', maxHeight: 240, objectFit: 'contain', display: 'block', background: '#000' }}
+            />
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={imageUrl}
+              alt={`Imagen asignada a ${item.title}`}
+              style={{ maxWidth: '100%', maxHeight: 240, objectFit: 'contain', display: 'block' }}
+            />
+          )}
         </div>
       )}
 
