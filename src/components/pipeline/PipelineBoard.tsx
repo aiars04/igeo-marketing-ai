@@ -1635,12 +1635,162 @@ function Card({
 // COLUMN — cabecera grande, fondo diferenciado, gap 16px
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * GroupCard — Renderiza un grupo de items que comparten root (item original
+ * + sus réplicas a otros mercados). Colapsado: solo se ve el líder con un
+ * badge de N réplicas; expandido: aparecen todas las cards inline.
+ *
+ * El líder se elige así: si hay un item con replicated_from === null (el
+ * original), ese; si no, el más antiguo (created_at ASC).
+ */
+function GroupCard({
+  groupItems, hasImageMap, onMove, onApprove, onReject, onSelectItem, onGenerateImage, profilesById,
+}: {
+  groupItems: ContentItem[]
+  hasImageMap?: Record<string, { id: string; url: string }>
+  onMove: (id: string, s: Stage) => void
+  onApprove: (id: string, s: Stage) => void
+  onReject: (id: string) => void
+  onSelectItem: (item: ContentItem) => void
+  onGenerateImage?: (itemId: string, title: string, channel: Channel) => Promise<void>
+  profilesById?: Record<string, { full_name: string | null; email: string }>
+}) {
+  const [expanded, setExpanded] = useState(false)
+  // Líder: el original (replicated_from null) si está en este stage, sino el
+  // más antiguo del grupo. Asegura un orden estable independiente del fetch.
+  const sorted = [...groupItems].sort((a, b) => {
+    const aOrig = a.replicated_from == null ? 0 : 1
+    const bOrig = b.replicated_from == null ? 0 : 1
+    if (aOrig !== bOrig) return aOrig - bOrig
+    return (a.created_at ?? '').localeCompare(b.created_at ?? '')
+  })
+  const leader = sorted[0]
+  const others = sorted.slice(1)
+  const marketLabels = sorted.map(i => MARKET_LABELS[i.market] ?? i.market)
+  const total = sorted.length
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        // Reservar el espacio que ocupan las capas del stack hint cuando
+        // está colapsado (las capas se desplazan +6px abajo-derecha). Sin
+        // este padding, las capas se desbordarían fuera del wrapper e
+        // invadirían visualmente la columna adyacente o se recortarían.
+        paddingRight: !expanded ? 6 : 0,
+        paddingBottom: !expanded ? 6 : 0,
+      }}
+    >
+      {/* Stack hint — 2 capas detrás del líder cuando colapsado. Los offsets
+          se quedan DENTRO del wrapper gracias al padding de arriba. */}
+      {!expanded && (
+        <>
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top: 6, left: 6, right: 0, bottom: 0,
+              background: 'var(--surface-2)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              zIndex: 0,
+            }}
+          />
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top: 3, left: 3, right: 3, bottom: 3,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              zIndex: 1,
+            }}
+          />
+        </>
+      )}
+      <div style={{ position: 'relative', zIndex: 2 }}>
+        <Card
+          item={leader}
+          hasImage={Boolean(hasImageMap?.[leader.id])}
+          onMove={onMove}
+          onApprove={onApprove}
+          onReject={onReject}
+          onSelect={onSelectItem}
+          onGenerateImage={onGenerateImage}
+          profilesById={profilesById}
+        />
+        {/* Banda de réplicas: badge + chips de mercados + botón expandir */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setExpanded(v => !v) }}
+          aria-expanded={expanded}
+          aria-label={expanded ? `Colapsar grupo de ${total} réplicas` : `Expandir grupo de ${total} réplicas`}
+          title={expanded ? 'Colapsar réplicas' : `Ver las ${total} réplicas en este stage`}
+          className="w-full flex items-center gap-2"
+          style={{
+            marginTop: 4,
+            padding: '6px 10px',
+            background: 'var(--accent-soft)',
+            border: '1px solid var(--accent)',
+            borderRadius: 'var(--radius-sm)',
+            cursor: 'pointer',
+            fontSize: 11, fontWeight: 600,
+            color: 'var(--accent-2)',
+          }}
+        >
+          <Layers size={11} aria-hidden="true" />
+          <span style={{ flexShrink: 0 }}>+{others.length} réplica{others.length === 1 ? '' : 's'}</span>
+          <span
+            style={{
+              flex: 1, minWidth: 0,
+              fontSize: 10, fontWeight: 500, color: 'var(--ink-3)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              textAlign: 'left',
+            }}
+          >
+            {marketLabels.join(' · ')}
+          </span>
+          <ChevronRight
+            size={11}
+            aria-hidden="true"
+            style={{
+              transition: 'transform 0.15s',
+              transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+              flexShrink: 0,
+            }}
+          />
+        </button>
+      </div>
+      {/* Cards expandidas — las otras réplicas (no el líder, que ya está arriba) */}
+      {expanded && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8, paddingLeft: 12, borderLeft: '2px solid var(--accent)' }}>
+          {others.map(item => (
+            <Card
+              key={item.id}
+              item={item}
+              hasImage={Boolean(hasImageMap?.[item.id])}
+              onMove={onMove}
+              onApprove={onApprove}
+              onReject={onReject}
+              onSelect={onSelectItem}
+              onGenerateImage={onGenerateImage}
+              profilesById={profilesById}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Column({
-  stage, items, filterChannels, onAdd, onMove, onApprove, onReject, onSelectItem, index, itemImageMap, onGenerateImage, profilesById,
+  stage, items, filterChannels, groupReplicas, onAdd, onMove, onApprove, onReject, onSelectItem, index, itemImageMap, onGenerateImage, profilesById,
 }: {
   stage: Stage
   items: ContentItem[]
   filterChannels: Channel[]
+  groupReplicas: boolean
   onAdd: (s: Stage, data: { title: string; channel: Channel; contentTypeId: string | null }) => void
   onMove: (id: string, s: Stage) => void
   onApprove: (id: string, s: Stage) => void
@@ -1658,6 +1808,30 @@ function Column({
   const filtered = filterChannels.length === 0
     ? items
     : items.filter(i => filterChannels.includes(i.channel as Channel))
+
+  // Agrupar por "root id" (replicated_from || id) dentro del MISMO stage.
+  // Cuando hay ≥2 items del mismo root en esta columna, se renderizan como
+  // un GroupCard colapsable. Si hay 1 solo, va como Card normal. Si el toggle
+  // groupReplicas está OFF, el orden actual se respeta sin agrupar.
+  // El orden de las cards se basa en la posición de la PRIMERA aparición de
+  // cada root en `filtered` — evita que un grupo "salte" a otra posición.
+  const renderUnits: Array<{ kind: 'single'; item: ContentItem } | { kind: 'group'; items: ContentItem[] }> = []
+  if (!groupReplicas) {
+    for (const i of filtered) renderUnits.push({ kind: 'single', item: i })
+  } else {
+    const groups = new Map<string, ContentItem[]>()
+    const order: string[] = []
+    for (const i of filtered) {
+      const rootId = i.replicated_from ?? i.id
+      if (!groups.has(rootId)) { groups.set(rootId, []); order.push(rootId) }
+      groups.get(rootId)!.push(i)
+    }
+    for (const rootId of order) {
+      const arr = groups.get(rootId)!
+      if (arr.length >= 2) renderUnits.push({ kind: 'group', items: arr })
+      else renderUnits.push({ kind: 'single', item: arr[0] })
+    }
+  }
 
   return (
     <section
@@ -1740,19 +1914,38 @@ function Column({
 
       {/* ── Stack de cards — scroll vertical real (grid 1fr + overflow-y-auto) ── */}
       <div className="pipeline-column-stack">
-        {filtered.map(item => (
-          <Card
-            key={item.id}
-            item={item}
-            hasImage={Boolean(itemImageMap?.[item.id])}
-            onMove={onMove}
-            onApprove={onApprove}
-            onReject={onReject}
-            onSelect={onSelectItem}
-            onGenerateImage={onGenerateImage}
-            profilesById={profilesById}
-          />
-        ))}
+        {renderUnits.map(unit => {
+          if (unit.kind === 'single') {
+            return (
+              <Card
+                key={unit.item.id}
+                item={unit.item}
+                hasImage={Boolean(itemImageMap?.[unit.item.id])}
+                onMove={onMove}
+                onApprove={onApprove}
+                onReject={onReject}
+                onSelect={onSelectItem}
+                onGenerateImage={onGenerateImage}
+                profilesById={profilesById}
+              />
+            )
+          }
+          // Grupo: clave estable por el root id (replicated_from o id del primero sin padre).
+          const rootId = unit.items[0].replicated_from ?? unit.items[0].id
+          return (
+            <GroupCard
+              key={`group-${rootId}`}
+              groupItems={unit.items}
+              hasImageMap={itemImageMap}
+              onMove={onMove}
+              onApprove={onApprove}
+              onReject={onReject}
+              onSelectItem={onSelectItem}
+              onGenerateImage={onGenerateImage}
+              profilesById={profilesById}
+            />
+          )
+        })}
 
         {cfg.automatic ? (
           <div
@@ -1797,8 +1990,31 @@ function Column({
 // BOARD — scroll horizontal funcional, gap 16px entre columnas
 // ═══════════════════════════════════════════════════════════════════════════
 
+const GROUP_REPLICAS_LS_KEY = 'pipeline.groupReplicas.v1'
+
 export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, onReject, onItemUpdated, itemImageMap, onImageAssigned, onImageUnassigned, profilesById }: BoardProps) {
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
+  // Toggle de agrupación de réplicas — persistido por usuario (LocalStorage).
+  // Default true: el usuario que ya sufre la aglomeración del original + N
+  // réplicas las ve agrupadas de entrada. Si lo prefiere desactivado, lo
+  // guardamos en localStorage para que se respete entre sesiones.
+  const [groupReplicas, setGroupReplicas] = useState<boolean>(true)
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(GROUP_REPLICAS_LS_KEY)
+      if (stored === '0') {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setGroupReplicas(false)
+      }
+    } catch {}
+  }, [])
+  const toggleGroupReplicas = useCallback(() => {
+    setGroupReplicas(prev => {
+      const next = !prev
+      try { window.localStorage.setItem(GROUP_REPLICAS_LS_KEY, next ? '1' : '0') } catch {}
+      return next
+    })
+  }, [])
 
   // Sincroniza selectedItem con la última versión cuando items se actualiza
   useEffect(() => {
@@ -1842,6 +2058,34 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
 
   return (
     <>
+      {/* Toggle compacto para agrupar/desagrupar réplicas. Se renderiza
+          encima del board como pill discreta. La preferencia se guarda en
+          localStorage. */}
+      <div
+        className="flex items-center gap-2 shrink-0"
+        style={{ padding: '0 28px 8px', marginTop: -4 }}
+      >
+        <button
+          type="button"
+          onClick={toggleGroupReplicas}
+          title={groupReplicas
+            ? 'Las réplicas a otros mercados se agrupan en una sola tarjeta apilada'
+            : 'Las réplicas a otros mercados se muestran como tarjetas independientes'}
+          aria-pressed={groupReplicas}
+          style={{
+            height: 26, padding: '0 10px', fontSize: 11, fontWeight: 600,
+            borderRadius: 'var(--radius-pill)',
+            border: `1px solid ${groupReplicas ? 'var(--accent)' : 'var(--border)'}`,
+            background: groupReplicas ? 'var(--accent-soft)' : 'var(--surface-2)',
+            color: groupReplicas ? 'var(--accent-2)' : 'var(--ink-2)',
+            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          <Layers size={11} aria-hidden="true" />
+          {groupReplicas ? 'Réplicas agrupadas' : 'Réplicas separadas'}
+        </button>
+      </div>
+
       <div className="pipeline-board">
         {STAGES.map((stage, idx) => (
           <Column
@@ -1849,6 +2093,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
             stage={stage}
             items={byStage[stage]}
             filterChannels={filterChannels}
+            groupReplicas={groupReplicas}
             onAdd={onAdd}
             onMove={onMove}
             onApprove={onApprove}
