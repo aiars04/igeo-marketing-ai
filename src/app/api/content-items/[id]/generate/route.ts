@@ -18,9 +18,12 @@ const MARKET_LANG: Record<Market, string> = {
   mexico:   'español (México, voseo/tuteo neutro mexicano)',
 }
 
-// Auto-router: canales cortos → Flash; canales largos → Pro
-const FAST_CHANNELS: Channel[] = ['linkedin', 'instagram', 'x', 'facebook', 'email']
-const PRO_CHANNELS: Channel[]  = ['blog', 'newsletter']
+// Auto-router: canales cortos → Flash; canales largos → Pro.
+// Email vive aquí en LONG aunque visualmente sea más corto que un blog: una
+// pieza típica de email (asunto + preheader + cuerpo + CTA) supera holgadamente
+// los 1500 tokens del cap antiguo (bug 29-jun: emails truncados a media frase).
+const FAST_CHANNELS: Channel[] = ['linkedin', 'instagram', 'x', 'facebook']
+const PRO_CHANNELS: Channel[]  = ['blog', 'newsletter', 'email']
 
 function modelForChannel(channel: Channel): string {
   if (PRO_CHANNELS.includes(channel)) return 'gemini-2.5-pro'
@@ -218,7 +221,11 @@ ESTILO: ${ct.style}`
       contents: [{ role: 'user', parts: [{ text: userPromptParts }] }],
       config: {
         systemInstruction: systemPrompt,
-        maxOutputTokens: PRO_CHANNELS.includes(item.channel as Channel) ? 4000 : 1500,
+        // 8000 para canales LONG (blog/newsletter/email) — un email completo
+        // con asunto + preheader + cuerpo + CTA, o un brief que pida "X
+        // palabras", podía truncarse con 4000. Gemini cobra solo lo generado,
+        // así que el cap alto no aumenta coste salvo cuando se usa de verdad.
+        maxOutputTokens: PRO_CHANNELS.includes(item.channel as Channel) ? 8000 : 1500,
       },
     })
 

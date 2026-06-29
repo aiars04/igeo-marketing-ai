@@ -51,8 +51,9 @@ const MARKET_BLOCK: Record<Market, string> = {
   mexico:   'market_mexico',
 }
 
-const FAST_CHANNELS: Channel[] = ['linkedin', 'instagram', 'x', 'facebook', 'email']
-const PRO_CHANNELS:  Channel[] = ['blog', 'newsletter']
+// Mismas listas que /generate: email es LONG (bug 29-jun emails truncados).
+const FAST_CHANNELS: Channel[] = ['linkedin', 'instagram', 'x', 'facebook']
+const PRO_CHANNELS:  Channel[] = ['blog', 'newsletter', 'email']
 
 function modelForChannel(channel: Channel): string {
   if (PRO_CHANNELS.includes(channel))  return 'gemini-2.5-pro'
@@ -265,7 +266,9 @@ ESTILO: ${ct.style}`
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         config: {
           systemInstruction: systemPrompt,
-          maxOutputTokens: PRO_CHANNELS.includes(source.channel as Channel) ? 4000 : 1500,
+          // 8000 para LONG (consistente con /generate — sin esto, emails y
+          // newsletters largos quedaban truncados a media frase).
+          maxOutputTokens: PRO_CHANNELS.includes(source.channel as Channel) ? 8000 : 1500,
         },
       })
       const adaptedText = (res.text ?? '').trim()
