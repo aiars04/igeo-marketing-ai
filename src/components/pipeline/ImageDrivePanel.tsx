@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Sparkles, Loader2, RefreshCw, X, Check, ImagePlus, Layers, Grid3x3, Wand2, AlertCircle,
   Maximize2, Download, Languages, Upload,
@@ -77,6 +77,10 @@ export function ImageDrivePanel({
   const [baseImage, setBaseImage] = useState<{ url: string; id: string } | null>(null)
   const [baseImageUploading, setBaseImageUploading] = useState(false)
   const [baseImageError, setBaseImageError] = useState<string | null>(null)
+  // Token de generación: si el usuario cancela/reset mientras el upload está
+  // en vuelo, incrementamos el token y descartamos respuestas viejas (sin
+  // este guard, la respuesta vieja reasignaría baseImage tras el clear).
+  const baseImageReqTokenRef = useRef(0)
   // Cuando el usuario cambia el ratio GLOBAL, propagarlo a todos los slots
   // de curated. Sin esto, el ratio global y los slots se desincronizan y se
   // generan imágenes en ratios que el usuario no eligió conscientemente.
@@ -284,6 +288,11 @@ export function ImageDrivePanel({
   // 'content-assets' y devuelve url pública. Esa URL la pasamos al endpoint
   // /api/images/generate como baseImageUrl para que Nano Banana la edite.
   const handleBaseImageUpload = useCallback(async (file: File) => {
+    // Token único por petición. Si el usuario cancela/reset durante el
+    // upload, baseImageReqTokenRef.current cambia; al volver la respuesta,
+    // la descartamos.
+    baseImageReqTokenRef.current += 1
+    const myToken = baseImageReqTokenRef.current
     setBaseImageError(null)
     setBaseImageUploading(true)
     try {
@@ -291,23 +300,29 @@ export function ImageDrivePanel({
       fd.append('file', file)
       fd.append('channel', channel)
       const res = await fetch('/api/images/upload', { method: 'POST', body: fd })
+      if (myToken !== baseImageReqTokenRef.current) return  // cancelado
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
         setBaseImageError(`No se pudo subir la foto: ${j.error ?? `HTTP ${res.status}`}`)
         return
       }
       const data = await res.json() as { id: string; url: string }
+      if (myToken !== baseImageReqTokenRef.current) return  // cancelado entre llegada y parse
       setBaseImage({ id: data.id, url: data.url })
     } catch (e) {
+      if (myToken !== baseImageReqTokenRef.current) return
       setBaseImageError(e instanceof Error ? `Subida fallida: ${e.message}` : 'Subida fallida')
     } finally {
-      setBaseImageUploading(false)
+      if (myToken === baseImageReqTokenRef.current) setBaseImageUploading(false)
     }
   }, [channel])
 
   const clearBaseImage = useCallback(() => {
+    // Invalida el upload en curso (si lo hay) incrementando el token.
+    baseImageReqTokenRef.current += 1
     setBaseImage(null)
     setBaseImageError(null)
+    setBaseImageUploading(false)
   }, [])
 
   // ── Traducir imagen del item original (solo réplicas) ──────────────────
@@ -413,10 +428,17 @@ export function ImageDrivePanel({
           }
           const j = await res.json().catch(() => ({})) as { error?: string; detail?: string }
           lastError = j.error ?? `HTTP ${res.status}`
+          // Errores específicos de la foto base NO son transitorios aunque
+          // su status sea 502 o el mensaje contenga 'unavailable'. Sin este
+          // short-circuit, el bucle reintentaría 5 veces inútilmente y al
+          // final mostraría 'Nano Banana saturado' en vez del `detail` real.
+          if (lastError.startsWith('base_image_')) {
+            setGenError(j.detail ?? 'No se pudo usar la foto base. Quítala o sube otra.')
+            return
+          }
           if (!isTransient(res.status, lastError)) {
-            // Error definitivo: si viene `detail` en español (caso base_image_*),
-            // mostrarlo tal cual; sino el mensaje genérico de saturación queda
-            // raro. Aborta el bucle de retry.
+            // Error definitivo no relacionado con la foto base: si viene
+            // `detail` en español, mostrarlo; sino el genérico.
             if (j.detail) {
               setGenError(j.detail)
               return
