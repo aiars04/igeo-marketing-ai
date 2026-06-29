@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import {
   X, Search, FolderOpen, Upload, Loader2, Check,
-  Sparkles, Image as ImageIcon, ChevronRight,
+  Sparkles, Image as ImageIcon, ChevronRight, FileText,
 } from 'lucide-react'
 import type { Channel } from '@/types/database'
 
@@ -12,7 +12,8 @@ interface ImageAsset {
   url:              string
   storage_path:     string
   prompt:           string | null
-  asset_type:       'generated' | 'upload' | string
+  asset_type:       'generated' | 'upload' | 'video' | 'document' | string
+  mime_type?:       string | null
   approved:         boolean
   channel:          Channel | 'uncategorized' | null
   folder_id:        string | null
@@ -109,27 +110,45 @@ export function ImageBankPicker({ open, onClose, channel, onSelected }: Props) {
     ? assets.filter(a => (a.prompt ?? '').toLowerCase().includes(search.trim().toLowerCase()))
     : assets
 
-  // ── Subir nueva imagen ────────────────────────────────────────────────────
+  // ── Subir nueva(s) imagen(es) / PDF ───────────────────────────────────────
+  // Acepta multi-seleccion: el input file tiene `multiple` y aqui los subimos
+  // en SERIE para no saturar el endpoint ni el bucket (paralelo no aporta
+  // ventaja real en multipart upload, y el orden de respuesta es importante
+  // para el position si el usuario quiere asignar varios al item).
   const handleUploadClick = () => fileInputRef.current?.click()
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
+    const files = Array.from(e.target.files ?? [])
     e.target.value = ''
-    if (!f) return
+    if (files.length === 0) return
     setUploadError(null)
     setUploading(true)
+    let lastCreated: ImageAsset | null = null
+    const errors: string[] = []
     try {
-      const formData = new FormData()
-      formData.append('file', f)
-      formData.append('channel', channel)
-      const res = await fetch('/api/images/upload', { method: 'POST', body: formData })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        setUploadError(`Error: ${j.error ?? res.statusText}`)
-        return
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i]
+        const formData = new FormData()
+        formData.append('file', f)
+        formData.append('channel', channel)
+        const res = await fetch('/api/images/upload', { method: 'POST', body: formData })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          errors.push(`${f.name}: ${j.error ?? res.statusText}`)
+          continue
+        }
+        lastCreated = await res.json() as ImageAsset
       }
-      const created = await res.json() as ImageAsset
-      // Auto-asignar la nueva al content_item: ya está subida; la pasamos al padre
-      onSelected(created.id, created.url)
+      if (errors.length > 0) {
+        setUploadError(errors.length === files.length
+          ? `Errores: ${errors[0]}`
+          : `${files.length - errors.length} subidas, ${errors.length} fallaron. Primer error: ${errors[0]}`,
+        )
+      }
+      // Si AL MENOS uno se subio, auto-asignamos el ULTIMO al item y cerramos
+      // el picker. Los demas quedan en el banco para asignacion manual.
+      if (lastCreated) {
+        onSelected(lastCreated.id, lastCreated.url)
+      }
     } finally {
       setUploading(false)
     }
@@ -263,7 +282,8 @@ export function ImageBankPicker({ open, onClose, channel, onSelected }: Props) {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            multiple
+            accept="image/png,image/jpeg,image/webp,application/pdf"
             onChange={onFileChange}
             style={{ display: 'none' }}
           />
@@ -477,6 +497,21 @@ function ImageThumb({
             muted
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', background: '#000' }}
           />
+        ) : asset.asset_type === 'document'
+              || asset.mime_type === 'application/pdf'
+              || /\.pdf(\?|$)/i.test(asset.url) ? (
+          <div
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: 6,
+              color: '#94a3b8',
+              padding: 16,
+            }}
+            title="Documento PDF (carrusel LinkedIn)"
+          >
+            <FileText size={36} aria-hidden="true" />
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }}>PDF</span>
+          </div>
         ) : (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img

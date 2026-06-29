@@ -258,12 +258,15 @@ function PublishModal({ open, item, imageUrl, imageUrls, onClose, onPublished }:
         {allImageUrls.length > 0 && (() => {
           // Detección por extensión (las URLs son del bucket Supabase).
           const isVideo = (u: string) => /\.(mp4|mov|webm)(\?|$)/i.test(u)
+          const isPdf   = (u: string) => /\.pdf(\?|$)/i.test(u)
           const hasVideo = allImageUrls.some(isVideo)
+          const hasPdf   = allImageUrls.some(isPdf)
           const allVideo = allImageUrls.every(isVideo)
+          const allPdf   = allImageUrls.every(isPdf)
           const label = allImageUrls.length === 1
-            ? (allVideo ? 'á 1 vídeo' : 'á 1 imagen')
-            : hasVideo
-              ? `n ${allImageUrls.length} archivos (incluye vídeo)`
+            ? (allVideo ? 'á 1 vídeo' : allPdf ? 'á 1 PDF' : 'á 1 imagen')
+            : hasVideo || hasPdf
+              ? `n ${allImageUrls.length} archivos${hasVideo ? ' (incluye vídeo)' : hasPdf ? ' (incluye PDF)' : ''}`
               : `n ${allImageUrls.length} imágenes (carrusel)`
           return (
             <p style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6 }}>

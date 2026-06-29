@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Sparkles, Loader2, RefreshCw, X, Check, ImagePlus, Layers, Grid3x3, Wand2, AlertCircle,
-  Maximize2, Download, Languages, Upload, Film,
+  Maximize2, Download, Languages, Upload, Film, FileText,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { ImageBankPicker } from '@/components/pipeline/ImageBankPicker'
@@ -61,6 +61,12 @@ function isVideoUrl(url: string | null | undefined): boolean {
   // y la URL pública ignora query strings.
   const path = url.split('?')[0].toLowerCase()
   return path.endsWith('.mp4') || path.endsWith('.mov') || path.endsWith('.webm')
+}
+
+/** Detecta PDFs por extensión (carruseles LinkedIn). */
+function isPdfUrl(url: string | null | undefined): boolean {
+  if (!url) return false
+  return url.split('?')[0].toLowerCase().endsWith('.pdf')
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -726,6 +732,24 @@ export function ImageDrivePanel({
                 background: 'var(--surface-2)',
               }}
             />
+          ) : isPdfUrl(assignedImageUrl) ? (
+            <div
+              style={{
+                width: '100%',
+                minHeight: 200,
+                maxHeight: 420,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: 8,
+                background: '#0f172a',
+                color: '#94a3b8',
+                padding: 24,
+              }}
+              title="Documento PDF (carrusel LinkedIn)"
+            >
+              <FileText size={48} aria-hidden="true" />
+              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em' }}>PDF</span>
+              <span style={{ fontSize: 11, color: '#64748b' }}>Pulsa para abrir en pestaña nueva</span>
+            </div>
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
@@ -1001,7 +1025,11 @@ export function ImageDrivePanel({
             }}
           >
             {unassigning ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <X size={12} aria-hidden="true" />}
-            {isVideoUrl(assignedImageUrl) ? 'Quitar vídeo' : 'Quitar imagen'}
+            {isVideoUrl(assignedImageUrl)
+              ? 'Quitar vídeo'
+              : isPdfUrl(assignedImageUrl)
+                ? 'Quitar PDF'
+                : 'Quitar imagen'}
           </button>
         </div>
 

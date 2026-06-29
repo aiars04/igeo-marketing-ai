@@ -4,7 +4,10 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
 
 const BUCKET = 'content-assets'
-const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp']
+// PDF se acepta para que Alvaro pueda adjuntar carruseles de LinkedIn (esa
+// red soporta PDF como "documento" que renderiza como carrusel slidable).
+// Imagen + PDF comparten el mismo endpoint para no duplicar logica.
+const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf']
 const MAX_BYTES = 10 * 1024 * 1024 // 10 MB
 
 export const runtime = 'nodejs'
@@ -45,8 +48,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'file_too_large_10mb_max' }, { status: 413 })
   }
 
-  // 3) Subir a Storage
-  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+  // 3) Subir a Storage. La extension preserva el tipo original para que
+  // isVideoUrl/isPdfUrl en frontend puedan detectarlo por URL.
+  const ext = file.type === 'image/png' ? 'png'
+    : file.type === 'image/webp' ? 'webp'
+    : file.type === 'application/pdf' ? 'pdf'
+    : 'jpg'
   const filename = `${user.id}/upload-${Date.now()}.${ext}`
   const buffer = Buffer.from(await file.arrayBuffer())
 
@@ -73,7 +80,9 @@ export async function POST(req: NextRequest) {
     folderId = folder?.id ?? null
   }
 
-  // 4) Insertar en content_assets
+  // 4) Insertar en content_assets — asset_type distingue PDFs de imagenes
+  // para que el frontend (galeria, banco, panel) los renderice diferente
+  // (icono de documento en vez de <img>).
   const insertRow = {
     storage_path: filename,
     prompt: null,
@@ -83,7 +92,7 @@ export async function POST(req: NextRequest) {
     width: null,
     height: null,
     mime_type: file.type,
-    asset_type: 'upload',
+    asset_type: file.type === 'application/pdf' ? 'document' : 'upload',
     channel: channelForRow,
     folder_id: folderId,
   }

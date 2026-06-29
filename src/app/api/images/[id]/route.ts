@@ -45,7 +45,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const { profile: me, admin } = auth
   const { id } = await ctx.params
 
-  let body: { approved?: boolean; folder_id?: string | null; content_item_id?: string | null }
+  let body: {
+    approved?: boolean
+    folder_id?: string | null
+    content_item_id?: string | null
+    position?: number   // para reordenar slides dentro de un carrusel
+  }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
 
   const { data: target } = await admin
@@ -100,6 +105,17 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     } else {
       return NextResponse.json({ error: 'invalid_content_item_id' }, { status: 400 })
     }
+  }
+
+  // Reordenar slide dentro de un carrusel: el cliente envia el nuevo
+  // `position` (entero >=0). Tope 9999 — necesitamos margen alto porque el
+  // cliente usa un valor sentinela (~9999) durante el patron 3-step de swap,
+  // y el UNIQUE INDEX (carousel_id, position) impide reasignar directamente.
+  if (Object.prototype.hasOwnProperty.call(body, 'position')) {
+    if (typeof body.position !== 'number' || !Number.isInteger(body.position) || body.position < 0 || body.position > 9999) {
+      return NextResponse.json({ error: 'invalid_position' }, { status: 400 })
+    }
+    patch.position = body.position
   }
 
   if (Object.keys(patch).length === 0) {

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import {
   Image as ImageIcon, Sparkles, Upload, Check, MoreHorizontal, Loader2, Trash2,
   Download, Copy, RefreshCw, Calendar as CalendarIcon, Maximize2, AlertCircle, Search, X,
-  ChevronLeft, ChevronRight, Layers, CheckSquare,
+  ChevronLeft, ChevronRight, Layers, CheckSquare, FileText,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { useToast, Toasts } from '@/components/ui/Toast'
@@ -37,6 +37,13 @@ function isVideoAsset(a: { asset_type?: string | null; url: string }): boolean {
   if (a.asset_type === 'video') return true
   const path = a.url.split('?')[0].toLowerCase()
   return path.endsWith('.mp4') || path.endsWith('.mov') || path.endsWith('.webm')
+}
+
+/** True si el asset es un documento PDF (carrusel LinkedIn). */
+function isPdfAsset(a: { asset_type?: string | null; mime_type?: string | null; url: string }): boolean {
+  if (a.asset_type === 'document' || a.mime_type === 'application/pdf') return true
+  const path = a.url.split('?')[0].toLowerCase()
+  return path.endsWith('.pdf')
 }
 
 interface PipelineItemLite {
@@ -540,6 +547,68 @@ export default function ImagesPage() {
     )
   }
 
+  // Reordenar el slide activo del carrusel intercambiando position con el
+  // vecino en `direction`.
+  //
+  // CLAVE: existe un UNIQUE INDEX en (carousel_id, position) (migración 005).
+  // Si hacemos 2 PATCH en paralelo asignando posB→a y posA→b, el primero
+  // que escriba choca con el position existente del otro y devuelve 500.
+  // Solución: 3 PATCH SECUENCIALES con un valor sentinela (9999) que el
+  // PATCH backend acepta — saca a del camino, mueve b a su nuevo position,
+  // mueve a al position final. Sin paralelismo, sin colisión de unique.
+  //
+  // Si cualquier paso falla, revertimos el state local al snapshot previo
+  // para no quedarnos con orden divergente local vs BD.
+  const handleReorderSlide = async (direction: 'left' | 'right') => {
+    if (!carouselDetail) return
+    const { assets, activeIdx } = carouselDetail
+    const targetIdx = direction === 'left' ? activeIdx - 1 : activeIdx + 1
+    if (targetIdx < 0 || targetIdx >= assets.length) return
+    const a = assets[activeIdx]
+    const b = assets[targetIdx]
+    const posA = a.position ?? activeIdx
+    const posB = b.position ?? targetIdx
+    const SENTINEL = 9999
+
+    // Snapshot para revert
+    const prevDetail = carouselDetail
+    const prevImages = images
+
+    // Optimistic local: reordenamos el array y movemos activeIdx al nuevo hueco
+    const swapped = [...assets]
+    swapped[activeIdx] = { ...b, position: posA }
+    swapped[targetIdx] = { ...a, position: posB }
+    setCarouselDetail({ ...carouselDetail, assets: swapped, activeIdx: targetIdx })
+    setImages(prev => prev.map(i => {
+      if (i.id === a.id) return { ...i, position: posB }
+      if (i.id === b.id) return { ...i, position: posA }
+      return i
+    }))
+
+    const patch = (id: string, position: number) => fetch(`/api/images/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ position }),
+    })
+
+    try {
+      // 1) a → SENTINEL (libera posA para que b lo pueda usar sin colisión)
+      let res = await patch(a.id, SENTINEL)
+      if (!res.ok) throw new Error('phase1')
+      // 2) b → posA (libera posB)
+      res = await patch(b.id, posA)
+      if (!res.ok) throw new Error('phase2')
+      // 3) a → posB (posición final)
+      res = await patch(a.id, posB)
+      if (!res.ok) throw new Error('phase3')
+    } catch {
+      // Revert: el patrón 3-step puede dejar `a` en SENTINEL si phase2 falla;
+      // restauramos snapshot local y avisamos para que el usuario refresque.
+      setCarouselDetail(prevDetail)
+      setImages(prevImages)
+      showToast('No se pudo reordenar. Reintenta o recarga la página.', 'error')
+    }
+  }
+
   const handleDeleteCarousel = async () => {
     if (!carouselDetail) return
     const ids = carouselDetail.assets.map(a => a.id)
@@ -973,6 +1042,15 @@ export default function ImagesPage() {
                       {isVideoAsset(img) ? (
                         <video src={img.url} preload="metadata" muted
                                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />
+                      ) : isPdfAsset(img) ? (
+                        <div style={{
+                          width: '100%', height: '100%',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                          gap: 6, background: '#0f172a', color: '#94a3b8',
+                        }}>
+                          <FileText size={36} aria-hidden="true" />
+                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }}>PDF</span>
+                        </div>
                       ) : (
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img src={img.url} alt={img.prompt ?? 'Imagen'} loading="lazy"
@@ -1378,6 +1456,19 @@ export default function ImagesPage() {
                   preload="metadata"
                   style={{ maxWidth: '100%', maxHeight: 360, objectFit: 'contain', display: 'block', background: '#000' }}
                 />
+              ) : isPdfAsset(detailImage) ? (
+                <object
+                  data={detailImage.url}
+                  type="application/pdf"
+                  aria-label={detailImage.prompt ?? 'PDF'}
+                  style={{ width: '100%', height: 360, display: 'block', background: '#000' }}
+                >
+                  <a href={detailImage.url} target="_blank" rel="noreferrer"
+                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 24, color: '#94a3b8' }}>
+                    <FileText size={48} aria-hidden="true" />
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>Abrir PDF en pestaña nueva</span>
+                  </a>
+                </object>
               ) : (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
@@ -1683,6 +1774,47 @@ export default function ImagesPage() {
                   )
                 })}
               </div>
+
+              {/* Botones de reorden del slide activo */}
+              {n > 1 && (
+                <div className="flex items-center gap-2" style={{ justifyContent: 'center' }}>
+                  <button
+                    onClick={() => handleReorderSlide('left')}
+                    disabled={carouselDetail.activeIdx === 0}
+                    title="Mover este slide a la izquierda"
+                    style={{
+                      height: 30, padding: '0 12px', fontSize: 11, fontWeight: 600,
+                      borderRadius: 'var(--radius-pill)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface-2)', color: 'var(--ink-2)',
+                      cursor: carouselDetail.activeIdx === 0 ? 'not-allowed' : 'pointer',
+                      opacity: carouselDetail.activeIdx === 0 ? 0.4 : 1,
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                    }}
+                  >
+                    <ChevronLeft size={12} aria-hidden="true" /> Mover a la izquierda
+                  </button>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', minWidth: 60, textAlign: 'center' }}>
+                    Slide {carouselDetail.activeIdx + 1} / {n}
+                  </span>
+                  <button
+                    onClick={() => handleReorderSlide('right')}
+                    disabled={carouselDetail.activeIdx === n - 1}
+                    title="Mover este slide a la derecha"
+                    style={{
+                      height: 30, padding: '0 12px', fontSize: 11, fontWeight: 600,
+                      borderRadius: 'var(--radius-pill)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface-2)', color: 'var(--ink-2)',
+                      cursor: carouselDetail.activeIdx === n - 1 ? 'not-allowed' : 'pointer',
+                      opacity: carouselDetail.activeIdx === n - 1 ? 0.4 : 1,
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                    }}
+                  >
+                    Mover a la derecha <ChevronRight size={12} aria-hidden="true" />
+                  </button>
+                </div>
+              )}
 
               {/* Prompt del slide activo */}
               <div>

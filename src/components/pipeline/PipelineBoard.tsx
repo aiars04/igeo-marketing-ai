@@ -6,7 +6,7 @@ import {
   Plus, Sparkles, MoreHorizontal, Calendar,
   Lightbulb, PenLine, Layers, Zap, BarChart2,
   CheckCircle2, CheckCheck, ChevronRight, ArrowRight, ArrowLeft, Trash2,
-  ImageIcon, RefreshCw, Loader2, X,
+  ImageIcon, RefreshCw, Loader2, X, FileText,
 } from 'lucide-react'
 import { STAGE_CONFIG, STAGES } from '@/lib/utils'
 import { ChannelBadge } from '@/components/ui/ChannelBadge'
@@ -770,6 +770,20 @@ function ContentDetailModal({
               preload="metadata"
               style={{ maxWidth: '100%', maxHeight: 240, objectFit: 'contain', display: 'block', background: '#000' }}
             />
+          ) : /\.pdf(\?|$)/i.test(imageUrl) ? (
+            <a
+              href={imageUrl} target="_blank" rel="noreferrer"
+              style={{
+                width: '100%', minHeight: 160, maxHeight: 240,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: 6, padding: 24, color: '#94a3b8', textDecoration: 'none',
+                background: '#0f172a',
+              }}
+              title="Abrir PDF en pestaña nueva"
+            >
+              <FileText size={36} aria-hidden="true" />
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}>PDF</span>
+            </a>
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
