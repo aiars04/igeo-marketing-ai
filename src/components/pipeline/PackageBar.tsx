@@ -124,13 +124,26 @@ export function PackageBar({
         const progress = pkg.stats.total > 0
           ? Math.round((pkg.stats.approved / pkg.stats.total) * 100)
           : 0
+        // Paquete vacío: existe pero ningún content_item tiene su package_id.
+        // Al hacer click NO filtramos el kanban (quedaría vacío sin contexto y
+        // el usuario piensa "no lleva a ningún post"). En su lugar abrimos el
+        // detail modal directamente, que muestra "Este paquete no tiene piezas
+        // asignadas" y deja claro el estado. Atenuamos también la opacidad
+        // para que se vea visualmente que es un estado especial.
+        const isEmpty = pkg.stats.total === 0
+        const handleClick = isEmpty
+          ? () => onOpenDetail(pkg)
+          : () => onSelect(selected ? null : pkg.id)
+        const tooltipText = isEmpty
+          ? `${pkg.title} — sin piezas todavía. Click para ver detalle.`
+          : `${pkg.title} — doble-click para ver detalle`
 
         return (
           <button
             key={pkg.id}
-            onClick={() => onSelect(selected ? null : pkg.id)}
+            onClick={handleClick}
             onDoubleClick={() => onOpenDetail(pkg)}
-            title={`${pkg.title} — doble-click para ver detalle`}
+            title={tooltipText}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
               height: 32, padding: '0 12px 0 10px',
@@ -139,6 +152,7 @@ export function PackageBar({
               borderRadius: 'var(--radius-pill)',
               cursor: 'pointer', flexShrink: 0,
               transition: 'all 0.12s',
+              opacity: isEmpty ? 0.62 : 1,
             }}
           >
             <span style={{ fontSize: 14 }}>{TYPE_ICON[pkg.package_type as PlaybookType] ?? '📦'}</span>
@@ -157,9 +171,9 @@ export function PackageBar({
                 background: statusCfg.bg, color: statusCfg.fg,
               }}
             >
-              {pkg.stats.approved}/{pkg.stats.total}
+              {isEmpty ? 'vacío' : `${pkg.stats.approved}/${pkg.stats.total}`}
             </span>
-            {progress === 100 && (
+            {!isEmpty && progress === 100 && (
               <span style={{ fontSize: 11, color: 'var(--green-2)' }}>✓</span>
             )}
           </button>
