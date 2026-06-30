@@ -79,8 +79,13 @@ interface BoardProps {
   onApprove:           (id: string, currentStage: Stage) => void
   onReject:            (id: string) => void
   onItemUpdated?:      (item: ContentItem) => void
-  itemImageMap?:       Record<string, { id: string; url: string }>
+  // Array por item para soportar carruseles (multi-imagen asignada al mismo item).
+  // El primer elemento es la "principal" (thumbnail, panel single), todos viajan
+  // como imageUrls[] a Postiz.
+  itemImageMap?:       Record<string, Array<{ id: string; url: string }>>
   onImageAssigned?:    (contentItemId: string, assetId: string, url: string) => void
+  /** Multi-asignación: carrusel armado desde el banco con bulk-assign. */
+  onImagesAssigned?:   (contentItemId: string, assets: Array<{ id: string; url: string }>) => void
   onImageUnassigned?:  (contentItemId: string) => void
   profilesById?:       Record<string, { full_name: string | null; email: string }>
 }
@@ -384,12 +389,15 @@ function stripMarkdown(text: string): string {
 }
 
 function ContentDetailModal({
-  item, imageUrl, imageId, onClose, onApprove, onReject, onMove, onDelete, onItemUpdated,
-  onImageAssigned, onImageUnassigned, profilesById,
+  item, imageUrl, imageId, imageUrls, onClose, onApprove, onReject, onMove, onDelete, onItemUpdated,
+  onImageAssigned, onImagesAssigned, onImageUnassigned, profilesById,
 }: {
   item:              ContentItem
   imageUrl:          string | null
   imageId:           string | null
+  /** Lista completa de medios asignados al item (carrusel). El primero
+   * coincide con imageUrl (la "principal"). Si solo hay una, es {imageUrl}. */
+  imageUrls?:        string[]
   onClose:           () => void
   onApprove:         (id: string, s: Stage) => void
   onReject:          (id: string) => void
@@ -397,6 +405,7 @@ function ContentDetailModal({
   onDelete:          (id: string) => void
   onItemUpdated?:    (item: ContentItem) => void
   onImageAssigned?:  (contentItemId: string, assetId: string, url: string) => void
+  onImagesAssigned?: (contentItemId: string, assets: Array<{ id: string; url: string }>) => void
   onImageUnassigned?: (contentItemId: string) => void
   profilesById?:     Record<string, { full_name: string | null; email: string }>
 }) {
@@ -1157,6 +1166,7 @@ function ContentDetailModal({
             assignedImageId={imageId}
             assignedImageUrl={imageUrl}
             onAssigned={(assetId, url) => { onImageAssigned?.(item.id, assetId, url) }}
+            onMultiAssigned={(assets) => { onImagesAssigned?.(item.id, assets) }}
             onUnassigned={() => { onImageUnassigned?.(item.id) }}
           />
         </div>
@@ -1278,10 +1288,13 @@ function ContentDetailModal({
 
             <div style={{ flex: 1 }} />
 
-            {/* Publicar en Postiz — solo visible si no se ha enviado ya y hay contenido */}
+            {/* Publicar en Postiz — solo visible si no se ha enviado ya y hay contenido.
+                imageUrls[] permite publicar carrusel cuando el item tiene varios assets
+                asignados (caso bulk-assign desde el banco). */}
             <PostizPublishButton
               item={item}
               imageUrl={imageUrl}
+              imageUrls={imageUrls}
               onPublished={(update) => {
                 onItemUpdated?.({ ...item, ...update } as ContentItem)
               }}
@@ -1670,7 +1683,7 @@ function GroupCard({
   groupItems, hasImageMap, onMove, onApprove, onReject, onSelectItem, onGenerateImage, profilesById,
 }: {
   groupItems: ContentItem[]
-  hasImageMap?: Record<string, { id: string; url: string }>
+  hasImageMap?: Record<string, Array<{ id: string; url: string }>>
   onMove: (id: string, s: Stage) => void
   onApprove: (id: string, s: Stage) => void
   onReject: (id: string) => void
@@ -1735,7 +1748,7 @@ function GroupCard({
       <div style={{ position: 'relative', zIndex: 2 }}>
         <Card
           item={leader}
-          hasImage={Boolean(hasImageMap?.[leader.id])}
+          hasImage={(hasImageMap?.[leader.id]?.length ?? 0) > 0}
           onMove={onMove}
           onApprove={onApprove}
           onReject={onReject}
@@ -1792,7 +1805,7 @@ function GroupCard({
             <Card
               key={item.id}
               item={item}
-              hasImage={Boolean(hasImageMap?.[item.id])}
+              hasImage={(hasImageMap?.[item.id]?.length ?? 0) > 0}
               onMove={onMove}
               onApprove={onApprove}
               onReject={onReject}
@@ -1820,7 +1833,7 @@ function Column({
   onReject: (id: string) => void
   onSelectItem: (item: ContentItem) => void
   index: number
-  itemImageMap?: Record<string, { id: string; url: string }>
+  itemImageMap?: Record<string, Array<{ id: string; url: string }>>
   onGenerateImage?: (itemId: string, title: string, channel: Channel) => Promise<void>
   profilesById?: Record<string, { full_name: string | null; email: string }>
 }) {
@@ -1943,7 +1956,7 @@ function Column({
               <Card
                 key={unit.item.id}
                 item={unit.item}
-                hasImage={Boolean(itemImageMap?.[unit.item.id])}
+                hasImage={(itemImageMap?.[unit.item.id]?.length ?? 0) > 0}
                 onMove={onMove}
                 onApprove={onApprove}
                 onReject={onReject}
@@ -2015,7 +2028,7 @@ function Column({
 
 const GROUP_REPLICAS_LS_KEY = 'pipeline.groupReplicas.v1'
 
-export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, onReject, onItemUpdated, itemImageMap, onImageAssigned, onImageUnassigned, profilesById }: BoardProps) {
+export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, onReject, onItemUpdated, itemImageMap, onImageAssigned, onImagesAssigned, onImageUnassigned, profilesById }: BoardProps) {
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
   // Toggle de agrupación de réplicas — persistido por usuario (LocalStorage).
   // Default true: el usuario que ya sufre la aglomeración del original + N
@@ -2133,8 +2146,9 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
       {selectedItem && (
         <ContentDetailModal
           item={selectedItem}
-          imageUrl={itemImageMap?.[selectedItem.id]?.url ?? null}
-          imageId={itemImageMap?.[selectedItem.id]?.id ?? null}
+          imageUrl={itemImageMap?.[selectedItem.id]?.[0]?.url ?? null}
+          imageId={itemImageMap?.[selectedItem.id]?.[0]?.id ?? null}
+          imageUrls={itemImageMap?.[selectedItem.id]?.map(a => a.url)}
           onClose={() => setSelectedItem(null)}
           onApprove={(id, s) => { onApprove(id, s) }}
           onReject={(id)     => { onReject(id) }}
@@ -2145,6 +2159,7 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
             onItemUpdated?.(updated)
           }}
           onImageAssigned={onImageAssigned}
+          onImagesAssigned={onImagesAssigned}
           onImageUnassigned={onImageUnassigned}
           profilesById={profilesById}
         />

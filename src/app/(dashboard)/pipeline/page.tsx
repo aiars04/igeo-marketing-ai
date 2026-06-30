@@ -60,7 +60,10 @@ function StatPill({
 export default function PipelinePage() {
   const [items, setItems] = useState<ContentItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [itemImageMap, setItemImageMap] = useState<Record<string, { id: string; url: string }>>({}) // content_item_id → {id, url}
+  // content_item_id → array de assets vinculados (orden: position asc, luego
+  // created_at asc para los que no tienen position). El primer asset se usa
+  // como "principal" en thumbnails, todos viajan a Postiz como carrusel.
+  const [itemImageMap, setItemImageMap] = useState<Record<string, Array<{ id: string; url: string }>>>({})
   const [filterOpen, setFilterOpen] = useState(false)
   const [filterChannels, setFilterChannels] = useState<Channel[]>([])
   const [filterMarkets, setFilterMarkets] = useState<Market[]>([])
@@ -88,14 +91,37 @@ export default function PipelinePage() {
         showToast(`Error cargando pipeline: HTTP ${iRes.status}`, 'error')
       }
       if (aRes.ok) {
-        const assets = await aRes.json() as Array<{ id: string; url: string; content_item_id: string | null }>
-        const map: Record<string, { id: string; url: string }> = {}
+        const assets = await aRes.json() as Array<{
+          id: string
+          url: string
+          content_item_id: string | null
+          position: number | null
+          created_at: string
+        }>
+        // Agrupar TODOS los assets por content_item_id y ordenarlos por
+        // position (carrusel) o created_at (uploads sueltos sin position).
+        // Antes solo guardabamos UN asset por item → imposible montar
+        // carruseles desde el banco (bug Alvaro 30-jun).
+        const map: Record<string, Array<{ id: string; url: string; pos: number | null; ts: string }>> = {}
         for (const a of assets) {
-          if (a.content_item_id && !map[a.content_item_id]) {
-            map[a.content_item_id] = { id: a.id, url: a.url }
-          }
+          if (!a.content_item_id) continue
+          const arr = map[a.content_item_id] ?? (map[a.content_item_id] = [])
+          arr.push({ id: a.id, url: a.url, pos: a.position, ts: a.created_at })
         }
-        setItemImageMap(map)
+        const sorted: Record<string, Array<{ id: string; url: string }>> = {}
+        for (const itemId of Object.keys(map)) {
+          sorted[itemId] = map[itemId]
+            .slice()
+            .sort((a, b) => {
+              // position asc; null al final ordenado por created_at asc
+              if (a.pos != null && b.pos != null) return a.pos - b.pos
+              if (a.pos != null) return -1
+              if (b.pos != null) return 1
+              return a.ts.localeCompare(b.ts)
+            })
+            .map(({ id, url }) => ({ id, url }))
+        }
+        setItemImageMap(sorted)
       }
     } finally {
       setLoading(false)
@@ -307,7 +333,19 @@ export default function PipelinePage() {
   }, [showToast])
 
   const handleImageAssigned = useCallback((contentItemId: string, assetId: string, url: string) => {
-    setItemImageMap(prev => ({ ...prev, [contentItemId]: { id: assetId, url } }))
+    // Reemplaza TODO el array por solo este asset. assignAsset del frontend
+    // ya desvincula los anteriores antes de re-vincular, así que en BD
+    // queda solo este. Refleja ese estado.
+    setItemImageMap(prev => ({ ...prev, [contentItemId]: [{ id: assetId, url }] }))
+  }, [])
+
+  // Multi-asignación (bulk-assign desde el banco). El backend ya reasigna
+  // el carousel_id y positions; aquí solo reflejamos el nuevo array.
+  const handleImagesAssigned = useCallback((
+    contentItemId: string,
+    assets: Array<{ id: string; url: string }>,
+  ) => {
+    setItemImageMap(prev => ({ ...prev, [contentItemId]: assets }))
   }, [])
 
   const handleImageUnassigned = useCallback((contentItemId: string) => {
@@ -554,6 +592,7 @@ export default function PipelinePage() {
             onItemUpdated={(updated) => setItems(prev => prev.map(i => i.id === updated.id ? updated : i))}
             itemImageMap={itemImageMap}
             onImageAssigned={handleImageAssigned}
+            onImagesAssigned={handleImagesAssigned}
             onImageUnassigned={handleImageUnassigned}
             profilesById={profilesById}
           />

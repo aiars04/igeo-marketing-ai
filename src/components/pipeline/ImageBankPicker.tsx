@@ -38,6 +38,10 @@ interface Props {
   onClose:     () => void
   channel:     Channel
   onSelected:  (assetId: string, url: string) => void
+  /** Opcional: si el caller soporta multi-asignación (carrusel), recibe el
+   *  array de assets en orden de click. Si NO se pasa, el modo selección
+   *  múltiple queda oculto y el picker se comporta single-pick como antes. */
+  onMultiSelected?: (assets: Array<{ id: string; url: string }>) => Promise<void> | void
 }
 
 const FILTER_OPTIONS = [
@@ -57,7 +61,13 @@ type FilterMode = typeof FILTER_OPTIONS[number]['id']
  * NO hace el PATCH de asignación: el padre (ImageDrivePanel) ya tiene
  * assignAsset() implementado. Aquí solo notifica con onSelected(id, url).
  */
-export function ImageBankPicker({ open, onClose, channel, onSelected }: Props) {
+export function ImageBankPicker({ open, onClose, channel, onSelected, onMultiSelected }: Props) {
+  // Modo selección múltiple — activado por toggle. Guarda el ORDEN de click
+  // para usarlo como position 0..N-1 del carrusel resultante.
+  const [multiMode, setMultiMode] = useState(false)
+  const [multiSelected, setMultiSelected] = useState<Array<{ id: string; url: string }>>([])
+  const [multiAssigning, setMultiAssigning] = useState(false)
+  const supportsMulti = !!onMultiSelected
   const [folders, setFolders]         = useState<ImageFolder[]>([])
   const [assets, setAssets]           = useState<ImageAsset[]>([])
   const [loading, setLoading]         = useState(true)
@@ -156,9 +166,29 @@ export function ImageBankPicker({ open, onClose, channel, onSelected }: Props) {
 
   // ── Selección ─────────────────────────────────────────────────────────────
   const handlePick = async (asset: ImageAsset) => {
+    if (multiMode) {
+      // En modo múltiple toggle (add si no está, remove si ya estaba).
+      // El ORDEN de click se preserva para usarlo como position del carrusel.
+      setMultiSelected(prev => {
+        const idx = prev.findIndex(a => a.id === asset.id)
+        if (idx >= 0) return prev.filter((_, i) => i !== idx)
+        return [...prev, { id: asset.id, url: asset.url }]
+      })
+      return
+    }
     setPicking(asset.id)
     try { onSelected(asset.id, asset.url) }
     finally { setPicking(null) }
+  }
+
+  const handleConfirmMulti = async () => {
+    if (!onMultiSelected || multiSelected.length === 0) return
+    setMultiAssigning(true)
+    try {
+      await onMultiSelected(multiSelected)
+    } finally {
+      setMultiAssigning(false)
+    }
   }
 
   // ── ESC cierra ────────────────────────────────────────────────────────────
@@ -313,6 +343,36 @@ export function ImageBankPicker({ open, onClose, channel, onSelected }: Props) {
               style={{ height: 34, paddingLeft: 30, fontSize: 12.5 }}
             />
           </div>
+
+          {/* Toggle modo selección múltiple — solo si el caller lo soporta
+              (onMultiSelected). Permite marcar N imágenes en orden de click
+              para asignarlas como carrusel al item. */}
+          {supportsMulti && (
+            <button
+              type="button"
+              onClick={() => {
+                setMultiMode(prev => {
+                  const next = !prev
+                  if (!next) setMultiSelected([]) // al salir, limpiar
+                  return next
+                })
+              }}
+              disabled={uploading || multiAssigning}
+              style={{
+                height: 34, padding: '0 12px', fontSize: 12, fontWeight: 600,
+                borderRadius: 'var(--radius-pill)',
+                border: `1px solid ${multiMode ? 'var(--accent)' : 'var(--border)'}`,
+                background: multiMode ? 'var(--accent-soft)' : 'var(--surface-2)',
+                color: multiMode ? 'var(--accent-2)' : 'var(--ink-2)',
+                cursor: 'pointer', flexShrink: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+              }}
+              title="Selecciona varias imágenes en orden de click para crear un carrusel"
+            >
+              <Check size={13} aria-hidden="true" />
+              {multiMode ? `${multiSelected.length} seleccionada${multiSelected.length === 1 ? '' : 's'}` : 'Selección múltiple'}
+            </button>
+          )}
         </div>
 
         {uploadError && (
@@ -396,18 +456,74 @@ export function ImageBankPicker({ open, onClose, channel, onSelected }: Props) {
                 gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
                 gap: 12,
               }}>
-                {filtered.map(a => (
-                  <ImageThumb
-                    key={a.id}
-                    asset={a}
-                    picking={picking === a.id}
-                    onClick={() => handlePick(a)}
-                  />
-                ))}
+                {filtered.map(a => {
+                  const orderIdx = multiMode
+                    ? multiSelected.findIndex(s => s.id === a.id)
+                    : -1
+                  return (
+                    <ImageThumb
+                      key={a.id}
+                      asset={a}
+                      picking={picking === a.id}
+                      onClick={() => handlePick(a)}
+                      multiOrder={orderIdx >= 0 ? orderIdx + 1 : undefined}
+                    />
+                  )
+                })}
               </div>
             )}
           </div>
         </div>
+
+        {/* Barra inferior fija con acción "Asignar N seleccionadas" — solo
+            visible cuando el modo múltiple está activo con >=1 seleccionada. */}
+        {multiMode && multiSelected.length > 0 && (
+          <div
+            style={{
+              padding: '12px 24px',
+              borderTop: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', gap: 12,
+              flexShrink: 0,
+              background: 'var(--surface-2)',
+            }}
+          >
+            <span style={{ fontSize: 12, color: 'var(--ink-2)', fontWeight: 600 }}>
+              {multiSelected.length} seleccionada{multiSelected.length === 1 ? '' : 's'}
+              {' · '}
+              <span style={{ color: 'var(--ink-3)', fontWeight: 500 }}>
+                {multiSelected.length === 1
+                  ? 'Se asignará como imagen única'
+                  : `Se asignarán como carrusel (orden 1-${multiSelected.length})`}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setMultiSelected([])}
+              disabled={multiAssigning}
+              style={{
+                height: 34, padding: '0 12px', fontSize: 12, fontWeight: 500,
+                borderRadius: 'var(--radius-pill)',
+                border: '1px solid var(--border)',
+                background: 'var(--surface)', color: 'var(--ink-2)',
+                cursor: 'pointer',
+                marginLeft: 'auto',
+              }}
+            >
+              Limpiar
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmMulti}
+              disabled={multiAssigning}
+              className="btn-cta"
+              style={{ height: 34 }}
+            >
+              {multiAssigning
+                ? <><Loader2 size={13} className="animate-spin" /> Asignando…</>
+                : <><Check size={13} aria-hidden="true" /> Asignar {multiSelected.length}</>}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -452,12 +568,16 @@ function FolderItem({
 }
 
 function ImageThumb({
-  asset, picking, onClick,
+  asset, picking, onClick, multiOrder,
 }: {
   asset: ImageAsset
   picking: boolean
   onClick: () => void
+  /** Si está seleccionado en modo múltiple, el índice 1-based para mostrar
+   *  como badge sobreimpreso. undefined = no seleccionado. */
+  multiOrder?: number
 }) {
+  const isMulti = typeof multiOrder === 'number'
   return (
     <button
       type="button"
@@ -467,23 +587,44 @@ function ImageThumb({
         position: 'relative',
         padding: 0,
         background: 'var(--surface-2)',
-        border: '1px solid var(--border)',
+        border: isMulti ? '2px solid var(--accent)' : '1px solid var(--border)',
         borderRadius: 'var(--radius-md)',
         overflow: 'hidden',
         cursor: picking ? 'wait' : 'pointer',
         transition: 'transform 0.12s, border-color 0.12s, box-shadow 0.12s',
+        boxShadow: isMulti ? '0 0 0 3px var(--accent-soft)' : undefined,
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.borderColor = 'var(--accent)'
+        if (!isMulti) e.currentTarget.style.borderColor = 'var(--accent)'
         e.currentTarget.style.transform = 'translateY(-2px)'
-        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.10)'
+        e.currentTarget.style.boxShadow = isMulti
+          ? '0 0 0 3px var(--accent-soft), 0 8px 20px rgba(0,0,0,0.10)'
+          : '0 8px 20px rgba(0,0,0,0.10)'
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.borderColor = 'var(--border)'
+        if (!isMulti) e.currentTarget.style.borderColor = 'var(--border)'
         e.currentTarget.style.transform = 'translateY(0)'
-        e.currentTarget.style.boxShadow = 'none'
+        e.currentTarget.style.boxShadow = isMulti ? '0 0 0 3px var(--accent-soft)' : 'none'
       }}
     >
+      {isMulti && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute', top: 8, left: 8,
+            width: 28, height: 28,
+            borderRadius: '50%',
+            background: 'var(--accent)',
+            color: '#fff',
+            fontSize: 13, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          }}
+        >
+          {multiOrder}
+        </div>
+      )}
       <div style={{
         position: 'relative',
         background: '#0f172a',

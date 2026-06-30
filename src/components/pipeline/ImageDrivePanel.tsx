@@ -31,6 +31,9 @@ interface Props {
   assignedImageId:  string | null
   assignedImageUrl: string | null
   onAssigned:       (assetId: string, url: string) => void
+  /** Callback para multi-asignación (carrusel desde el banco). Si el parent
+   *  no lo provee, el modo selección múltiple queda oculto. */
+  onMultiAssigned?: (assets: Array<{ id: string; url: string }>) => void
   onUnassigned:     () => void
 }
 
@@ -72,7 +75,7 @@ function isPdfUrl(url: string | null | undefined): boolean {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function ImageDrivePanel({
-  itemId, itemTitle, channel, contentTypeId, replicatedFrom, assignedImageId, assignedImageUrl, onAssigned, onUnassigned,
+  itemId, itemTitle, channel, contentTypeId, replicatedFrom, assignedImageId, assignedImageUrl, onAssigned, onMultiAssigned, onUnassigned,
 }: Props) {
   // Inline panel state
   const [unassigning, setUnassigning] = useState(false)
@@ -284,6 +287,39 @@ export function ImageDrivePanel({
     await assignAsset(assetId, url)
     setBankPickerOpen(false)
   }, [assignAsset])
+
+  // Picker del banco modo MÚLTIPLE: bulk-assign al item como carrusel.
+  // El endpoint genera un carousel_id común y posiciona los assets 0..N-1
+  // en el orden recibido. Luego notificamos al parent con el array completo
+  // para que actualice el itemImageMap.
+  const handleBankMultiSelected = useCallback(async (selectedAssets: Array<{ id: string; url: string }>) => {
+    if (selectedAssets.length === 0) return
+    setActionError(null)
+    try {
+      const res = await fetch('/api/images/bulk-assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedAssets.map(a => a.id),
+          content_item_id: itemId,
+        }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setActionError(`No se pudieron asignar las imágenes: ${j.detail ?? j.error ?? `HTTP ${res.status}`}`)
+        return
+      }
+      // Notificar al parent con todos los assets en orden de click. Si el
+      // parent no provee onMultiAssigned, fallback a onAssigned con el primero
+      // para no romper compat (el state quedaría con 1 imagen visible pero
+      // las demás están en BD).
+      if (onMultiAssigned) onMultiAssigned(selectedAssets)
+      else onAssigned(selectedAssets[0].id, selectedAssets[0].url)
+      setBankPickerOpen(false)
+    } catch (e) {
+      setActionError(e instanceof Error ? `Asignación fallida: ${e.message}` : 'Asignación fallida')
+    }
+  }, [itemId, onAssigned, onMultiAssigned])
 
   // ── Quitar imagen asignada ───────────────────────────────────────────────
   const handleUnassign = useCallback(async () => {
@@ -1070,6 +1106,7 @@ export function ImageDrivePanel({
           onClose={() => setBankPickerOpen(false)}
           channel={channel}
           onSelected={handleBankSelected}
+          onMultiSelected={handleBankMultiSelected}
         />
       </div>
     )
@@ -1193,6 +1230,7 @@ export function ImageDrivePanel({
         onClose={() => setBankPickerOpen(false)}
         channel={channel}
         onSelected={handleBankSelected}
+        onMultiSelected={handleBankMultiSelected}
       />
     </div>
   )
