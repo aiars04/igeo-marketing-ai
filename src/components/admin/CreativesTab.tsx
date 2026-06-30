@@ -474,19 +474,30 @@ function TemplateModal({
   const [assetRole, setAssetRole] = useState(initial?.asset_role ?? 'banner')
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [selectedCtIds, setSelectedCtIds] = useState<string[]>(initial?.content_type_ids ?? [])
-  const [file, setFile] = useState<File | null>(null)
-  const [filePreview, setFilePreview] = useState<string | null>(initial?.signed_url ?? null)
-  const [dimensions, setDimensions] = useState<{ w: number; h: number } | null>(
-    initial?.width && initial?.height ? { w: initial.width, h: initial.height } : null,
+  // En CREATE: lista de archivos (1..N). Cada archivo se sube como una
+  // plantilla independiente que comparte name (con sufijo de slide),
+  // channel, market, asset_role y content_type_ids. Permite a Ramon
+  // crear de un tirón las N plantillas de un carrusel sin tener que
+  // repetir el formulario una vez por slide.
+  //
+  // En EDIT: una sola plantilla (no se puede cambiar el archivo en edit).
+  const [files, setFiles] = useState<File[]>([])
+  const [filePreviews, setFilePreviews] = useState<string[]>(
+    initial?.signed_url ? [initial.signed_url] : [],
+  )
+  // Dimensiones por archivo (paralelo a files). En edit es la del original.
+  const [dimensionsList, setDimensionsList] = useState<Array<{ w: number; h: number } | null>>(
+    initial?.width && initial?.height ? [{ w: initial.width, h: initial.height }] : [],
   )
   const [saving, setSaving] = useState(false)
+  const [saveProgress, setSaveProgress] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  // URL del blob de previsualización (para revocarlo y no fugar memoria).
-  const objectUrlRef = useRef<string | null>(null)
-  // Revocar el object URL al desmontar el modal.
+  // URLs de blob preview por archivo — se revocan al desmontar / reset.
+  const objectUrlsRef = useRef<string[]>([])
   useEffect(() => () => {
-    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
+    objectUrlsRef.current.forEach(u => URL.revokeObjectURL(u))
+    objectUrlsRef.current = []
   }, [])
 
   // Reset al abrir/cambiar de target
@@ -500,11 +511,15 @@ function TemplateModal({
     setAssetRole(initial?.asset_role ?? 'banner')
     setNotes(initial?.notes ?? '')
     setSelectedCtIds(initial?.content_type_ids ?? [])
-    setFile(null)
-    setFilePreview(initial?.signed_url ?? null)
-    setDimensions(initial?.width && initial?.height ? { w: initial.width, h: initial.height } : null)
+    // Reset multi-file state: revocamos blob URLs anteriores (no fuga memoria).
+    objectUrlsRef.current.forEach(u => URL.revokeObjectURL(u))
+    objectUrlsRef.current = []
+    setFiles([])
+    setFilePreviews(initial?.signed_url ? [initial.signed_url] : [])
+    setDimensionsList(initial?.width && initial?.height ? [{ w: initial.width, h: initial.height }] : [])
     setError(null)
     setSaving(false)
+    setSaveProgress(null)
   }, [initial, open])
 
   // Filtra content_types por el canal seleccionado
@@ -522,101 +537,164 @@ function TemplateModal({
     )
   }, [open, channel, filteredCTs])
 
-  const handleFileChange = (f: File | null) => {
+  // Aceptamos múltiples archivos: pisa o concatena? En CREATE concatenamos
+  // hasta que el usuario los confirma. Si quiere reemplazar TODO, hay un
+  // botón "Limpiar" en la UI. En EDIT seguimos single-file (no aplica multi).
+  const handleFilesChange = (incoming: FileList | File[]) => {
     setError(null)
-    // Revocar el blob anterior (si lo había) antes de crear/limpiar — evita
-    // fuga de memoria al cambiar de archivo varias veces.
-    if (objectUrlRef.current) { URL.revokeObjectURL(objectUrlRef.current); objectUrlRef.current = null }
-    if (!f) {
-      setFile(null); setFilePreview(initial?.signed_url ?? null); setDimensions(null)
+    const arr = Array.from(incoming)
+    if (arr.length === 0) return
+    // Filtrar por tamaño y mime válido
+    const tooBig = arr.filter(f => f.size > MAX_BYTES)
+    if (tooBig.length > 0) {
+      setError(`"${tooBig[0].name}" supera 10 MB. Sube archivos más ligeros.`)
       return
     }
-    if (f.size > MAX_BYTES) {
-      setError('El archivo supera 10 MB')
-      return
+    // Crear blob URLs nuevos
+    const newPreviews: string[] = []
+    const newUrls: string[] = []
+    for (const f of arr) {
+      const url = URL.createObjectURL(f)
+      newPreviews.push(url)
+      newUrls.push(url)
     }
-    setFile(f)
-    const url = URL.createObjectURL(f)
-    objectUrlRef.current = url
-    setFilePreview(url)
-    // Detectar dimensiones (no aplica a SVG)
-    if (f.type !== 'image/svg+xml') {
+    objectUrlsRef.current.push(...newUrls)
+    setFiles(prev => [...prev, ...arr])
+    setFilePreviews(prev => [...prev, ...newPreviews])
+    // Probe de dimensiones de cada archivo en paralelo (SVG queda como null).
+    setDimensionsList(prev => [...prev, ...arr.map(() => null)])
+    arr.forEach((f, i) => {
+      if (f.type === 'image/svg+xml') return
       const img = new window.Image()
       img.onload = () => {
-        setDimensions({ w: img.naturalWidth, h: img.naturalHeight })
+        setDimensionsList(prev => {
+          const idx = prev.length - arr.length + i
+          if (idx < 0 || idx >= prev.length) return prev
+          const next = prev.slice()
+          next[idx] = { w: img.naturalWidth, h: img.naturalHeight }
+          return next
+        })
       }
-      img.src = url
-    } else {
-      setDimensions(null)
+      img.src = newPreviews[i]
+    })
+  }
+
+  // Quitar un archivo de la pila (solo en CREATE).
+  const removeFileAt = (idx: number) => {
+    const urlToRevoke = filePreviews[idx]
+    if (urlToRevoke && objectUrlsRef.current.includes(urlToRevoke)) {
+      URL.revokeObjectURL(urlToRevoke)
+      objectUrlsRef.current = objectUrlsRef.current.filter(u => u !== urlToRevoke)
     }
+    setFiles(prev => prev.filter((_, i) => i !== idx))
+    setFilePreviews(prev => prev.filter((_, i) => i !== idx))
+    setDimensionsList(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  const clearAllFiles = () => {
+    objectUrlsRef.current.forEach(u => URL.revokeObjectURL(u))
+    objectUrlsRef.current = []
+    setFiles([])
+    setFilePreviews(initial?.signed_url ? [initial.signed_url] : [])
+    setDimensionsList(initial?.width && initial?.height ? [{ w: initial.width, h: initial.height }] : [])
   }
 
   const toggleCt = (id: string) => {
     setSelectedCtIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 
-  const canSubmit = name.trim().length >= 2 && (isEdit || !!file) && !saving
+  const canSubmit = name.trim().length >= 2 && (isEdit || files.length > 0) && !saving
 
   const handleSubmit = async () => {
     setError(null)
     setSaving(true)
     try {
       if (!isEdit) {
-        // CREATE: flujo de subida directa para salvar el límite de body de
-        // Vercel (~4.5MB). Bug Ramon 30-jun: imágenes 13504×5625 ~7MB+
-        // fallaban con HTTP 413 antes de llegar al endpoint multipart.
+        // CREATE: loop por cada archivo subido. Cada uno crea una plantilla
+        // independiente con el MISMO nombre (con sufijo "- i/N" si hay >1),
+        // canal, mercado, asset_role, notes y content_type_ids. Permite a
+        // Ramon crear las N plantillas de un carrusel sin repetir el form.
         //
+        // Por archivo:
         //   1) POST /sign-upload   → URL firmada de Supabase Storage
         //   2) PUT directo al bucket  (browser → Supabase, sin pasar por Vercel)
         //   3) POST /register      → crea row + pivot content_types
-        if (!file) { setError('Sube un archivo'); return }
+        if (files.length === 0) { setError('Sube al menos un archivo'); return }
+        const total = files.length
 
-        // 1. Pedir signed URL
-        const signRes = await fetch('/api/creative-templates/sign-upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contentType: file.type, channel }),
-        })
-        if (!signRes.ok) {
-          const j = await signRes.json().catch(() => ({}))
-          throw new Error(j.detail ?? j.error ?? `sign HTTP ${signRes.status}`)
-        }
-        const { path, signedUrl } = await signRes.json() as { path: string; token: string; signedUrl: string }
+        const createdList: CreativeTemplateWithRefs[] = []
+        const errors: string[] = []
+        for (let i = 0; i < total; i++) {
+          const f = files[i]
+          const dims = dimensionsList[i]
+          const slideSuffix = total > 1 ? ` - ${i + 1}/${total}` : ''
+          const slideName = `${name.trim()}${slideSuffix}`
+          setSaveProgress(total > 1 ? `Subiendo ${i + 1}/${total}…` : null)
+          try {
+            // 1. Pedir signed URL
+            const signRes = await fetch('/api/creative-templates/sign-upload', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contentType: f.type, channel }),
+            })
+            if (!signRes.ok) {
+              const j = await signRes.json().catch(() => ({}))
+              throw new Error(j.detail ?? j.error ?? `sign HTTP ${signRes.status}`)
+            }
+            const { path, signedUrl } = await signRes.json() as { path: string; token: string; signedUrl: string }
 
-        // 2. PUT directo al bucket — sin pasar por Vercel
-        const putRes = await fetch(signedUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': file.type, 'x-upsert': 'false' },
-          body: file,
-        })
-        if (!putRes.ok) {
-          throw new Error(`Subida directa falló (HTTP ${putRes.status}). Reintenta o usa un archivo más pequeño.`)
-        }
+            // 2. PUT directo al bucket
+            const putRes = await fetch(signedUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': f.type, 'x-upsert': 'false' },
+              body: f,
+            })
+            if (!putRes.ok) {
+              throw new Error(`PUT HTTP ${putRes.status}`)
+            }
 
-        // 3. Registrar la plantilla con los metadatos
-        const regRes = await fetch('/api/creative-templates/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            path,
-            mime_type: file.type,
-            name: name.trim(),
-            channel,
-            description: description.trim() || undefined,
-            market: market || undefined,
-            asset_role: assetRole.trim() || 'banner',
-            notes: notes.trim() || undefined,
-            width: dimensions?.w,
-            height: dimensions?.h,
-            content_type_ids: selectedCtIds,
-          }),
-        })
-        if (!regRes.ok) {
-          const j = await regRes.json().catch(() => ({}))
-          throw new Error(j.detail ?? j.error ?? `register HTTP ${regRes.status}`)
+            // 3. Registrar
+            const regRes = await fetch('/api/creative-templates/register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                path,
+                mime_type: f.type,
+                name: slideName,
+                channel,
+                description: description.trim() || undefined,
+                market: market || undefined,
+                asset_role: assetRole.trim() || 'banner',
+                notes: notes.trim() || undefined,
+                width: dims?.w,
+                height: dims?.h,
+                content_type_ids: selectedCtIds,
+              }),
+            })
+            if (!regRes.ok) {
+              const j = await regRes.json().catch(() => ({}))
+              throw new Error(j.detail ?? j.error ?? `register HTTP ${regRes.status}`)
+            }
+            const created = await regRes.json() as CreativeTemplateWithRefs
+            createdList.push(created)
+          } catch (e) {
+            errors.push(`Slide ${i + 1}: ${e instanceof Error ? e.message : 'error'}`)
+          }
         }
-        const created = await regRes.json() as CreativeTemplateWithRefs
-        onSaved(created)
+        setSaveProgress(null)
+
+        if (createdList.length === 0) {
+          throw new Error(errors.join(' · ') || 'Sin plantillas creadas')
+        }
+        // Notificar al parent — el callback acepta UNA plantilla por llamada,
+        // así que las pasamos en orden de creación.
+        for (const c of createdList) onSaved(c)
+        if (errors.length > 0) {
+          setError(`${createdList.length}/${total} plantillas creadas. Fallos: ${errors.slice(0, 2).join(' · ')}`)
+          // No cerramos el modal si hay errores parciales — el usuario decide
+          // si reintentar los faltantes manualmente.
+          return
+        }
         onClose()
       } else {
         // EDIT: JSON con metadatos
@@ -680,67 +758,191 @@ function TemplateModal({
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 flex flex-col" style={{ padding: 24, gap: 16 }}>
-          {/* Archivo (solo en create) */}
+          {/* Archivo(s) — solo en create. Acepta varios para crear N plantillas
+              de una sola pasada (ej. 4 slides de un carrusel LinkedIn). */}
           {!isEdit && (
             <div>
-              <label className="section-label block mb-1.5">Imagen *</label>
+              <label className="section-label block mb-1.5">
+                Imagen(es) * {files.length > 1 && <span style={{ color: 'var(--ink-3)', fontWeight: 500 }}>· {files.length} slides</span>}
+              </label>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept={ACCEPTED_MIME}
+                multiple
                 style={{ display: 'none' }}
-                onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
-              />
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); handleFileChange(e.dataTransfer.files?.[0] ?? null) }}
-                style={{
-                  cursor: 'pointer',
-                  border: '2px dashed var(--border)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: 20,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'var(--surface-2)',
-                  minHeight: 160,
+                onChange={(e) => {
+                  if (e.target.files) handleFilesChange(e.target.files)
+                  e.target.value = ''
                 }}
-              >
-                {filePreview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={filePreview}
-                    alt="Preview"
-                    style={{ maxWidth: '100%', maxHeight: 220, objectFit: 'contain' }}
-                  />
-                ) : (
+              />
+              {files.length === 0 ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    if (e.dataTransfer.files) handleFilesChange(e.dataTransfer.files)
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    border: '2px dashed var(--border)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: 20,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'var(--surface-2)',
+                    minHeight: 160,
+                  }}
+                >
                   <div className="text-center" style={{ color: 'var(--ink-3)' }}>
                     <Upload size={24} aria-hidden="true" style={{ margin: '0 auto 8px' }} />
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-2)', margin: 0 }}>
-                      Arrastra una imagen o haz clic
+                      Arrastra imagen(es) o haz clic
                     </p>
                     <p style={{ fontSize: 11, margin: '4px 0 0' }}>
-                      PNG · JPG · WebP · GIF · SVG · máx. 10 MB
+                      PNG · JPG · WebP · GIF · SVG · máx. 10 MB cada una
+                    </p>
+                    <p style={{ fontSize: 10, margin: '6px 0 0', color: 'var(--ink-3)' }}>
+                      Sube varias a la vez para crear N plantillas (ej. carrusel)
                     </p>
                   </div>
-                )}
-              </div>
-              {dimensions && (
-                <p style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6 }}>
-                  Dimensiones detectadas: <strong>{dimensions.w}×{dimensions.h}</strong>
-                </p>
+                </div>
+              ) : (
+                // Grid de thumbnails de las imágenes cargadas. Cada uno con
+                // su número de slide y botón × para quitarlo.
+                <div>
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      if (e.dataTransfer.files) handleFilesChange(e.dataTransfer.files)
+                    }}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                      gap: 10,
+                      padding: 12,
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--surface-2)',
+                    }}
+                  >
+                    {filePreviews.map((src, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          position: 'relative',
+                          aspectRatio: '1 / 1',
+                          background: 'var(--surface)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 'var(--radius-sm)',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={src}
+                          alt={`Slide ${idx + 1}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        />
+                        {/* Badge nº de slide */}
+                        <span
+                          style={{
+                            position: 'absolute', top: 4, left: 4,
+                            width: 22, height: 22,
+                            background: 'var(--accent)', color: '#fff',
+                            fontSize: 11, fontWeight: 700,
+                            borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                          aria-hidden="true"
+                        >
+                          {idx + 1}
+                        </span>
+                        {/* Botón quitar */}
+                        <button
+                          type="button"
+                          onClick={() => removeFileAt(idx)}
+                          aria-label={`Quitar slide ${idx + 1}`}
+                          style={{
+                            position: 'absolute', top: 4, right: 4,
+                            width: 22, height: 22,
+                            background: 'rgba(0,0,0,0.6)', color: '#fff',
+                            border: 'none', borderRadius: '50%',
+                            cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                        >
+                          <X size={11} aria-hidden="true" />
+                        </button>
+                        {/* Dimensiones del slide */}
+                        {dimensionsList[idx] && (
+                          <span
+                            style={{
+                              position: 'absolute', bottom: 4, left: 4, right: 4,
+                              background: 'rgba(0,0,0,0.6)', color: '#fff',
+                              fontSize: 9, fontWeight: 600,
+                              padding: '2px 6px', borderRadius: 4,
+                              textAlign: 'center',
+                            }}
+                          >
+                            {dimensionsList[idx]!.w}×{dimensionsList[idx]!.h}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    {/* Tile para añadir más */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        aspectRatio: '1 / 1',
+                        background: 'transparent',
+                        border: '2px dashed var(--border)',
+                        borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        gap: 4,
+                        color: 'var(--ink-3)',
+                      }}
+                    >
+                      <Upload size={18} aria-hidden="true" />
+                      <span style={{ fontSize: 10, fontWeight: 600 }}>Añadir más</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between" style={{ marginTop: 6 }}>
+                    <p style={{ fontSize: 11, color: 'var(--ink-3)', margin: 0 }}>
+                      {files.length === 1
+                        ? 'Se creará 1 plantilla'
+                        : `Se crearán ${files.length} plantillas con el sufijo "- 1/${files.length}", "- 2/${files.length}"…`}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={clearAllFiles}
+                      style={{
+                        fontSize: 11, fontWeight: 500,
+                        color: 'var(--ink-3)',
+                        background: 'transparent', border: 'none',
+                        cursor: 'pointer', padding: '0 4px',
+                      }}
+                    >
+                      Limpiar todo
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           )}
 
           {/* En edición, preview compacto del archivo existente */}
-          {isEdit && filePreview && (
+          {isEdit && filePreviews[0] && (
             <div style={{
               background: 'var(--surface-2)', border: '1px solid var(--border)',
               borderRadius: 'var(--radius-md)', padding: 8,
               display: 'flex', alignItems: 'center', gap: 10,
             }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={filePreview} alt={name} style={{ width: 80, height: 60, objectFit: 'contain', background: 'var(--surface)', borderRadius: 4 }} />
+              <img src={filePreviews[0]} alt={name} style={{ width: 80, height: 60, objectFit: 'contain', background: 'var(--surface)', borderRadius: 4 }} />
               <p style={{ fontSize: 11, color: 'var(--ink-3)', margin: 0 }}>
                 Para cambiar el archivo, elimina y vuelve a crearla.
               </p>
@@ -886,8 +1088,12 @@ function TemplateModal({
           </button>
           <button className="btn-cta flex-1" disabled={!canSubmit} onClick={handleSubmit}>
             {saving
-              ? <><Loader2 size={13} className="animate-spin" aria-hidden="true" /> Guardando…</>
-              : isEdit ? 'Guardar cambios' : 'Subir plantilla'}
+              ? <><Loader2 size={13} className="animate-spin" aria-hidden="true" /> {saveProgress ?? 'Guardando…'}</>
+              : isEdit
+                ? 'Guardar cambios'
+                : files.length > 1
+                  ? `Subir ${files.length} plantillas`
+                  : 'Subir plantilla'}
           </button>
         </div>
       </div>
