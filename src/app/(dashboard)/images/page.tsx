@@ -1201,9 +1201,19 @@ export default function ImagesPage() {
                     style={{ zIndex: 2 }}
                   >
                     <div className="aspect-square overflow-hidden" style={{ background: 'var(--surface-2)' }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={cov.url} alt={cov.prompt ?? 'Carrusel'} loading="lazy"
-                           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      {isVideoAsset(cov) ? (
+                        <video src={cov.url} muted playsInline preload="metadata"
+                               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      ) : isPdfAsset(cov) ? (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 12, gap: 6, flexDirection: 'column' }}>
+                          <span style={{ fontSize: 24 }}>📄</span>
+                          <span>PDF</span>
+                        </div>
+                      ) : (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={cov.url} alt={cov.prompt ?? 'Carrusel'} loading="lazy"
+                             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      )}
                     </div>
                     {selectionMode && (
                       <div
@@ -1787,8 +1797,15 @@ export default function ImagesPage() {
                       }}
                       aria-label={`Slide ${idx + 1}`}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={a.url} alt={`Slide ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {isVideoAsset(a) ? (
+                        <video src={a.url} muted playsInline preload="metadata"
+                               style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : isPdfAsset(a) ? (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 11 }}>📄 PDF</div>
+                      ) : (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={a.url} alt={`Slide ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      )}
                     </button>
                   )
                 })}

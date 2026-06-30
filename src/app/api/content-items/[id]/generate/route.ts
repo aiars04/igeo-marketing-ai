@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { buildMarketRulesPrompt, detectForbiddenTerms } from '@/lib/market-rules'
 import { buildFormatSpecPromptBlock } from '@/lib/content-type-format-spec'
 import { matchTemplatesForItem } from '@/lib/creative-templates-match'
+import { checkRateLimit } from '@/lib/rate-limit'
 import type { ContentItem, ContentType, BrandContext, Profile, Channel, Market } from '@/types/database'
 
 const MARKET_LANG: Record<Market, string> = {
@@ -55,6 +56,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     .from('profiles').select('id, role, active').eq('id', user.id)
     .single<Pick<Profile, 'id' | 'role' | 'active'>>()
   if (!profile || !profile.active) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  // Rate-limit: 10 generaciones por minuto por usuario. Cada llamada invoca
+  // Gemini Pro/Flash + matching de plantillas (lectura BD) — costoso si un
+  // user martillea regenerar.
+  const rl = checkRateLimit(`ci-generate:${user.id}`, 10, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', resetInMs: rl.resetInMs },
+      { status: 429, headers: { 'Retry-After': Math.ceil(rl.resetInMs / 1000).toString() } },
+    )
+  }
 
   const { id } = await ctx.params
 

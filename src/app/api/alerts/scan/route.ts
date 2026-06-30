@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit'
 import type {
   Alert, AlertLevel, AlertType, ContentItem, Profile,
 } from '@/types/database'
@@ -58,6 +59,20 @@ export async function POST() {
     .single<Pick<Profile, 'id' | 'role' | 'active'>>()
   if (!profile || !profile.active) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  // Scan recorre todos los items y hace upserts masivos en alerts — operación
+  // pesada que no debe ejecutarla cualquier usuario activo.
+  if (profile.role !== 'admin' && profile.role !== 'manager') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+  // Rate-limit: 3 scans/min por usuario. El cron diario es el camino normal;
+  // el endpoint manual es solo para diagnóstico/forzar refresco.
+  const rl = checkRateLimit(`alerts-scan:${user.id}`, 3, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', resetInMs: rl.resetInMs },
+      { status: 429, headers: { 'Retry-After': Math.ceil(rl.resetInMs / 1000).toString() } },
+    )
   }
 
   // 1) Cargar items relevantes: con scheduled_at no nulo, no publicados aún

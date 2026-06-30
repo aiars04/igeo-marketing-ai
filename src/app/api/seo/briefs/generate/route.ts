@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { genai } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { buildMarketRulesPrompt } from '@/lib/market-rules'
+import { checkRateLimit } from '@/lib/rate-limit'
 import type {
   Profile, Market, Channel,
   SeoBrief, SeoIntent,
@@ -71,6 +72,14 @@ export async function POST(req: NextRequest) {
   // Generación con Gemini consume cuota API → solo admin/manager
   if (profile.role !== 'admin' && profile.role !== 'manager') {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+
+  const rl = checkRateLimit(`seo-brief:${user.id}`, 5, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', resetInMs: rl.resetInMs },
+      { status: 429, headers: { 'Retry-After': Math.ceil(rl.resetInMs / 1000).toString() } },
+    )
   }
 
   let body: {

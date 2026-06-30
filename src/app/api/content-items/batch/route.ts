@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { ALL_MARKETS, MARKET_CONFIG } from '@/lib/utils'
+import { checkRateLimit } from '@/lib/rate-limit'
 import type { ContentItem, Profile, Channel, Market } from '@/types/database'
 
 const CHANNELS: Channel[] = ['linkedin', 'instagram', 'facebook', 'x', 'blog', 'email', 'newsletter']
@@ -56,6 +57,21 @@ export async function POST(req: NextRequest) {
   const auth = await requireActor()
   if ('response' in auth) return auth.response
   const { profile: me, admin } = auth
+
+  // Crear N items en bloque (hasta 50 inserts + chequeo de duplicados) — solo
+  // admin/manager. Sin este gate cualquier active user podía generar matrices
+  // gigantes accidentalmente o saturar el pipeline.
+  if (me.role !== 'admin' && me.role !== 'manager') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+  // Rate-limit: 3 batches/min — el caso real es 1 cada varios minutos.
+  const rl = checkRateLimit(`ci-batch:${me.id}`, 3, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', resetInMs: rl.resetInMs },
+      { status: 429, headers: { 'Retry-After': Math.ceil(rl.resetInMs / 1000).toString() } },
+    )
+  }
 
   let body: {
     prompt?: string

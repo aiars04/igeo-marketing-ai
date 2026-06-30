@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { genai } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { buildMarketRulesPrompt } from '@/lib/market-rules'
+import { checkRateLimit } from '@/lib/rate-limit'
 import type {
   Profile, Market, Channel, ContentItem,
 } from '@/types/database'
@@ -87,6 +88,15 @@ export async function POST(req: NextRequest) {
   // Gemini Pro (modelo costoso) → solo admin/manager
   if (profile.role !== 'admin' && profile.role !== 'manager') {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+
+  // Gemini Pro + lectura masiva BD — limitar a 3/min por usuario
+  const rl = checkRateLimit(`seo-gap:${user.id}`, 3, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', resetInMs: rl.resetInMs },
+      { status: 429, headers: { 'Retry-After': Math.ceil(rl.resetInMs / 1000).toString() } },
+    )
   }
 
   let body: { market?: Market; channel?: Channel }

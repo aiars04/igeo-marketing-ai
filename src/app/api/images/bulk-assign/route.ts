@@ -50,8 +50,13 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(body.ids) || body.ids.length === 0) {
     return NextResponse.json({ error: 'ids_required' }, { status: 400 })
   }
+  // Validamos formato UUID v4 antes de interpolar en el `.not(...in...)` de
+  // Fase 0. Sin esto, el filtro `.in('id', ids)` posterior bloquea ids
+  // arbitrarios por exact-match en BD — pero confiar en eso es frágil. UUID
+  // regex aquí hace la garantía local al input.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const ids = Array.from(new Set(
-    body.ids.filter((x): x is string => typeof x === 'string' && x.length > 0),
+    body.ids.filter((x): x is string => typeof x === 'string' && UUID_RE.test(x)),
   )).slice(0, MAX_BATCH)
   if (ids.length === 0) {
     return NextResponse.json({ error: 'no_valid_ids' }, { status: 400 })

@@ -354,6 +354,20 @@ export function ImageDrivePanel({
     baseImageReqTokenRef.current += 1
     const myToken = baseImageReqTokenRef.current
     setBaseImageError(null)
+    // Validación temprana cliente: MIME y tamaño. Sin esto un archivo de
+    // 100 MB iniciaba el upload, gastaba tiempo y fallaba opaco al hit el
+    // límite serverless (~4.5 MB) o el bucket. Mejor cortar aquí.
+    const ALLOWED_IMG = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'])
+    if (!ALLOWED_IMG.has(file.type)) {
+      setBaseImageError(`Formato no soportado (${file.type || 'desconocido'}). Usa JPG, PNG, WEBP o GIF.`)
+      return
+    }
+    const MAX_IMG_BYTES = 10 * 1024 * 1024
+    if (file.size > MAX_IMG_BYTES) {
+      const mb = (file.size / (1024 * 1024)).toFixed(1)
+      setBaseImageError(`La imagen pesa ${mb} MB. El límite es 10 MB.`)
+      return
+    }
     setBaseImageUploading(true)
     try {
       const fd = new FormData()

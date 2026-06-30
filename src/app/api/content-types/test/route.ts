@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { genai } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit'
 import type { Profile, Channel } from '@/types/database'
 
 const VALID_CHANNELS: Channel[] = ['linkedin','instagram','facebook','x','blog','email','newsletter']
@@ -17,6 +18,15 @@ export async function POST(req: NextRequest) {
     .from('profiles').select('id, role, active').eq('id', user.id)
     .single<Pick<Profile, 'id' | 'role' | 'active'>>()
   if (!profile || !profile.active) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  // Rate-limit: 10 previews/min por usuario (Gemini)
+  const rl = checkRateLimit(`ct-test:${user.id}`, 10, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', resetInMs: rl.resetInMs },
+      { status: 429, headers: { 'Retry-After': Math.ceil(rl.resetInMs / 1000).toString() } },
+    )
+  }
 
   let body: { process?: string; style?: string; channel?: string; example_title?: string }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }

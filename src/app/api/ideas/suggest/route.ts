@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { genai } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { buildMarketRulesPrompt } from '@/lib/market-rules'
+import { checkRateLimit } from '@/lib/rate-limit'
 import type { Idea, Profile, Channel, Market } from '@/types/database'
 
 const ALLOWED_COUNT = [3, 5, 10] as const
@@ -39,6 +40,15 @@ export async function POST(req: NextRequest) {
     .single<Pick<Profile, 'id' | 'role' | 'active'>>()
   if (!profile || !profile.active) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  // Rate-limit: 5 sugerencias por minuto por usuario (Gemini cuesta dinero)
+  const rl = checkRateLimit(`ideas-suggest:${user.id}`, 5, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', resetInMs: rl.resetInMs },
+      { status: 429, headers: { 'Retry-After': Math.ceil(rl.resetInMs / 1000).toString() } },
+    )
   }
 
   // 2) Validar body

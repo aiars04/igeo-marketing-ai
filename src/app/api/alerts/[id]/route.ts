@@ -17,11 +17,16 @@ async function requireActor() {
   return { profile, admin }
 }
 
-// PATCH /api/alerts/[id] — marcar resuelta / desresolver
+// PATCH /api/alerts/[id] — marcar resuelta / desresolver. Solo admin/manager.
+// Antes cualquier active user podía resolver alertas ajenas (IDOR) — auditoría
+// adversarial lo flagueó como MEDIUM real.
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const auth = await requireActor()
   if ('response' in auth) return auth.response
   const { profile: me, admin } = auth
+  if (me.role !== 'admin' && me.role !== 'manager') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
   const { id } = await ctx.params
 
   let body: { resolved?: boolean }

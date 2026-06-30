@@ -34,10 +34,15 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient()
   const { data: profile } = await admin
-    .from('profiles').select('id, active').eq('id', user.id)
-    .single<Pick<Profile, 'id' | 'active'>>()
+    .from('profiles').select('id, role, active').eq('id', user.id)
+    .single<Pick<Profile, 'id' | 'role' | 'active'>>()
   if (!profile || !profile.active) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  // Subir vídeos consume Storage y bandwidth — restringido a admin/manager
+  // por consistencia con creative-templates/sign-upload.
+  if (profile.role !== 'admin' && profile.role !== 'manager') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
   let body: { filename?: string; contentType?: string }
