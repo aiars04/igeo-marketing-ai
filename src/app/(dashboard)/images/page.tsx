@@ -590,22 +590,41 @@ export default function ImagesPage() {
       body: JSON.stringify({ position }),
     })
 
+    let phaseReached: 0 | 1 | 2 | 3 = 0
     try {
       // 1) a → SENTINEL (libera posA para que b lo pueda usar sin colisión)
       let res = await patch(a.id, SENTINEL)
       if (!res.ok) throw new Error('phase1')
+      phaseReached = 1
       // 2) b → posA (libera posB)
       res = await patch(b.id, posA)
       if (!res.ok) throw new Error('phase2')
+      phaseReached = 2
       // 3) a → posB (posición final)
       res = await patch(a.id, posB)
       if (!res.ok) throw new Error('phase3')
+      phaseReached = 3
     } catch {
-      // Revert: el patrón 3-step puede dejar `a` en SENTINEL si phase2 falla;
-      // restauramos snapshot local y avisamos para que el usuario refresque.
+      // Compensación server-side para no dejar la BD en estado intermedio.
+      // Sin esto el optimistic revert solo arreglaba el state local — al
+      // refrescar, el carrusel salía mal porque `a` quedaba en SENTINEL=9999.
+      try {
+        if (phaseReached === 1) {
+          // b sigue en posB, a está en SENTINEL — devolver a a posA.
+          await patch(a.id, posA)
+        } else if (phaseReached === 2) {
+          // b está en posA, a está en SENTINEL — deshacer ambos.
+          // Orden inverso para no colisionar: a → posB, b → posB... no funciona.
+          // Mejor: b → posB de vuelta (libera posA), luego a → posA.
+          await patch(b.id, posB)
+          await patch(a.id, posA)
+        }
+      } catch (rollErr) {
+        console.error('[reorder] rollback compensatorio fallido:', rollErr instanceof Error ? rollErr.message : rollErr)
+      }
       setCarouselDetail(prevDetail)
       setImages(prevImages)
-      showToast('No se pudo reordenar. Reintenta o recarga la página.', 'error')
+      showToast('No se pudo reordenar. Estado restaurado.', 'error')
     }
   }
 
@@ -791,7 +810,7 @@ export default function ImagesPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg,image/webp,application/pdf"
             onChange={handleUpload}
             style={{ display: 'none' }}
           />

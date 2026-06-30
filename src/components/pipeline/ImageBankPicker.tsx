@@ -131,8 +131,22 @@ export function ImageBankPicker({ open, onClose, channel, onSelected, onMultiSel
     e.target.value = ''
     if (files.length === 0) return
     setUploadError(null)
+
+    // Validación cliente de tamaño ANTES de subir. El endpoint multipart
+    // /api/images/upload pasa por Vercel, que tope el body en ~4.5MB en
+    // serverless. Files más grandes fallan con 413 opaco antes de llegar al
+    // handler. Avisamos con mensaje claro y cortamos.
+    const MAX_BYTES = 4 * 1024 * 1024  // margen seguro bajo el límite Vercel
+    const tooBig = files.filter(f => f.size > MAX_BYTES)
+    if (tooBig.length > 0) {
+      const big = tooBig[0]
+      const mb = (big.size / (1024 * 1024)).toFixed(1)
+      setUploadError(`"${big.name}" pesa ${mb} MB. El banco soporta hasta 4 MB por archivo. Para PDFs/imágenes grandes usa el flujo de plantillas en /admin.`)
+      return
+    }
+
     setUploading(true)
-    let lastCreated: ImageAsset | null = null
+    const created: ImageAsset[] = []
     const errors: string[] = []
     try {
       for (let i = 0; i < files.length; i++) {
@@ -146,7 +160,7 @@ export function ImageBankPicker({ open, onClose, channel, onSelected, onMultiSel
           errors.push(`${f.name}: ${j.error ?? res.statusText}`)
           continue
         }
-        lastCreated = await res.json() as ImageAsset
+        created.push(await res.json() as ImageAsset)
       }
       if (errors.length > 0) {
         setUploadError(errors.length === files.length
@@ -154,10 +168,24 @@ export function ImageBankPicker({ open, onClose, channel, onSelected, onMultiSel
           : `${files.length - errors.length} subidas, ${errors.length} fallaron. Primer error: ${errors[0]}`,
         )
       }
-      // Si AL MENOS uno se subio, auto-asignamos el ULTIMO al item y cerramos
-      // el picker. Los demas quedan en el banco para asignacion manual.
-      if (lastCreated) {
-        onSelected(lastCreated.id, lastCreated.url)
+      if (created.length === 0) return
+      // Recargar el listado del banco para que las nuevas aparezcan inmediatas.
+      await load()
+      if (created.length === 1) {
+        // Una sola subida → asignar directo al item (flujo histórico).
+        onSelected(created[0].id, created[0].url)
+        return
+      }
+      // VARIAS subidas: si el caller soporta multi-asignación, activamos el
+      // modo selección múltiple Y pre-marcamos las nuevas en orden de subida.
+      // El usuario solo tiene que pulsar 'Asignar N' para crear el carrusel.
+      // Sin esto, las N-1 quedaban huérfanas en el banco — confuso.
+      if (supportsMulti) {
+        setMultiMode(true)
+        setMultiSelected(created.map(c => ({ id: c.id, url: c.url })))
+      } else {
+        // Fallback al comportamiento legacy si el caller no acepta múltiple.
+        onSelected(created[created.length - 1].id, created[created.length - 1].url)
       }
     } finally {
       setUploading(false)
@@ -186,6 +214,9 @@ export function ImageBankPicker({ open, onClose, channel, onSelected, onMultiSel
     setMultiAssigning(true)
     try {
       await onMultiSelected(multiSelected)
+      // Limpiar tras éxito: si el usuario reabre, ve un estado fresco.
+      setMultiSelected([])
+      setMultiMode(false)
     } finally {
       setMultiAssigning(false)
     }

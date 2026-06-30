@@ -94,8 +94,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Estrategia para evitar conflicto del UNIQUE INDEX (carousel_id, position):
+  // Estrategia para evitar conflicto del UNIQUE INDEX (carousel_id, position)
+  // Y para no dejar assets viejos huérfanos vinculados al item destino:
   //
+  //   Fase 0: limpiar TODOS los assets que YA estaban vinculados al item
+  //           destino y que NO están en los ids nuevos. Sin esto, un item
+  //           que ya tenía A,B y recibe C,D,E acabaría con A,B,C,D,E (los
+  //           viejos huérfanos). Esto sustituye la asignación previa por
+  //           la nueva (semántica esperada del usuario).
   //   Fase 1: poner los N assets en un estado "limbo" — carousel_id=null,
   //           position=null. Sin esto, si reusamos un carousel_id de uno de
   //           los assets, los positions nuevos podrían chocar con los viejos.
@@ -107,7 +113,20 @@ export async function POST(req: NextRequest) {
   // manualmente debe tener identidad propia.
   const newCarouselId = randomUUID()
 
-  // Fase 1: limbo (libera carousel_id y position viejos)
+  // Fase 0: desvincular los assets que YA estaban en este item y que NO
+  // forman parte del nuevo carrusel. Best-effort: si falla, log warning y
+  // seguimos — el usuario verá los huérfanos pero la nueva asignación
+  // funciona (mejor que abortar todo).
+  const { error: clearPrevErr } = await admin
+    .from('content_assets')
+    .update({ content_item_id: null, carousel_id: null, position: null } as never)
+    .eq('content_item_id', contentItemId)
+    .not('id', 'in', `(${ids.map(id => `"${id}"`).join(',')})`)
+  if (clearPrevErr) {
+    console.warn('[images/bulk-assign] phase0 clearPrev failed:', clearPrevErr.message)
+  }
+
+  // Fase 1: limbo (libera carousel_id y position viejos de los ids nuevos)
   const { error: clearErr } = await admin
     .from('content_assets')
     .update({ carousel_id: null, position: null } as never)

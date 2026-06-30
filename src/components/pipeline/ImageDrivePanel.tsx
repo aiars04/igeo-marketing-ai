@@ -251,27 +251,25 @@ export function ImageDrivePanel({
   }, [generating])
 
   // ── Asignar una imagen al content_item ───────────────────────────────────
+  //
+  // Usa bulk-assign con 1 id (en lugar de 2 PATCH manuales como antes) para
+  // que el backend limpie atómicamente TODOS los assets viejos vinculados al
+  // item (Fase 0 del endpoint). Sin esto, si el item tenía un carrusel y
+  // hacíamos cambio single (regenerar, cambiar del banco, traducir, vídeo),
+  // los slides extra del carrusel anterior quedaban huérfanos vinculados al
+  // item → mezcla rara al publicar a Postiz.
   const assignAsset = useCallback(async (assetId: string, url: string) => {
     setAssigningId(assetId)
     setActionError(null)
     try {
-      // Desasignar la previa si era distinta. Si falla no bloqueamos la nueva
-      // asignación, pero sí lo registramos en consola (antes se tragaba en silencio).
-      if (assignedImageId && assignedImageId !== assetId) {
-        await fetch(`/api/images/${assignedImageId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content_item_id: null }),
-        }).catch((e) => { console.warn('[ImageDrivePanel] no se pudo desasignar la imagen previa:', e) })
-      }
-      const res = await fetch(`/api/images/${assetId}`, {
-        method: 'PATCH',
+      const res = await fetch('/api/images/bulk-assign', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content_item_id: itemId }),
+        body: JSON.stringify({ ids: [assetId], content_item_id: itemId }),
       })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
-        setActionError(`No se pudo asignar la imagen: ${j.error ?? `HTTP ${res.status}`}`)
+        setActionError(`No se pudo asignar la imagen: ${j.detail ?? j.error ?? `HTTP ${res.status}`}`)
         return
       }
       onAssigned(assetId, url)
@@ -280,7 +278,7 @@ export function ImageDrivePanel({
     } finally {
       setAssigningId(null)
     }
-  }, [assignedImageId, itemId, onAssigned])
+  }, [itemId, onAssigned])
 
   // Picker del banco: cuando elige imagen → asignar al item y cerrar el modal
   const handleBankSelected = useCallback(async (assetId: string, url: string) => {
