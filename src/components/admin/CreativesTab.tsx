@@ -562,28 +562,60 @@ function TemplateModal({
     setSaving(true)
     try {
       if (!isEdit) {
-        // CREATE: multipart
+        // CREATE: flujo de subida directa para salvar el límite de body de
+        // Vercel (~4.5MB). Bug Ramon 30-jun: imágenes 13504×5625 ~7MB+
+        // fallaban con HTTP 413 antes de llegar al endpoint multipart.
+        //
+        //   1) POST /sign-upload   → URL firmada de Supabase Storage
+        //   2) PUT directo al bucket  (browser → Supabase, sin pasar por Vercel)
+        //   3) POST /register      → crea row + pivot content_types
         if (!file) { setError('Sube un archivo'); return }
-        const fd = new FormData()
-        fd.set('file', file)
-        fd.set('name', name.trim())
-        if (description.trim()) fd.set('description', description.trim())
-        fd.set('channel', channel)
-        if (market) fd.set('market', market)
-        fd.set('asset_role', assetRole.trim() || 'banner')
-        if (notes.trim()) fd.set('notes', notes.trim())
-        if (dimensions) {
-          fd.set('width',  String(dimensions.w))
-          fd.set('height', String(dimensions.h))
-        }
-        for (const id of selectedCtIds) fd.append('content_type_id', id)
 
-        const res = await fetch('/api/creative-templates', { method: 'POST', body: fd })
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}))
-          throw new Error(j.error ?? `HTTP ${res.status}`)
+        // 1. Pedir signed URL
+        const signRes = await fetch('/api/creative-templates/sign-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contentType: file.type, channel }),
+        })
+        if (!signRes.ok) {
+          const j = await signRes.json().catch(() => ({}))
+          throw new Error(j.detail ?? j.error ?? `sign HTTP ${signRes.status}`)
         }
-        const created = await res.json() as CreativeTemplateWithRefs
+        const { path, signedUrl } = await signRes.json() as { path: string; token: string; signedUrl: string }
+
+        // 2. PUT directo al bucket — sin pasar por Vercel
+        const putRes = await fetch(signedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type, 'x-upsert': 'false' },
+          body: file,
+        })
+        if (!putRes.ok) {
+          throw new Error(`Subida directa falló (HTTP ${putRes.status}). Reintenta o usa un archivo más pequeño.`)
+        }
+
+        // 3. Registrar la plantilla con los metadatos
+        const regRes = await fetch('/api/creative-templates/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            path,
+            mime_type: file.type,
+            name: name.trim(),
+            channel,
+            description: description.trim() || undefined,
+            market: market || undefined,
+            asset_role: assetRole.trim() || 'banner',
+            notes: notes.trim() || undefined,
+            width: dimensions?.w,
+            height: dimensions?.h,
+            content_type_ids: selectedCtIds,
+          }),
+        })
+        if (!regRes.ok) {
+          const j = await regRes.json().catch(() => ({}))
+          throw new Error(j.detail ?? j.error ?? `register HTTP ${regRes.status}`)
+        }
+        const created = await regRes.json() as CreativeTemplateWithRefs
         onSaved(created)
         onClose()
       } else {
