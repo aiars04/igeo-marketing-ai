@@ -8,9 +8,16 @@ import {
   Maximize2, ZoomIn, ZoomOut,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
+import { useCurrentUser } from '@/hooks/use-current-user'
 import type {
   Improvement, ImprovementType, ImprovementPriority, ImprovementStatus,
 } from '@/types/database'
+
+// Gate por email: el botón "Copiar prompt para Claude" solo es visible
+// para la cuenta del owner del proyecto, no para el resto de admins. El
+// resto del modal (lectura de la sugerencia, cambios de estado) sigue
+// disponible para todos los admins/managers.
+const CLAUDE_PROMPT_OWNER_EMAIL = 'ai@igeoerp.com'
 
 const TYPE_META: Record<ImprovementType, { label: string; color: string; icon: React.ElementType }> = {
   bug:    { label: 'Bug',        color: '#dc2626', icon: Bug },
@@ -278,6 +285,11 @@ function DetailModal({
   const [copying, setCopying] = useState(false)
   const [copied, setCopied] = useState(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  // Gate visual del botón "Copiar prompt para Claude": solo visible para
+  // el owner del proyecto. El resto de admins/managers siguen viendo el
+  // resto del modal (lectura + cambios de estado).
+  const { user } = useCurrentUser()
+  const canSeeClaudePrompt = user?.email === CLAUDE_PROMPT_OWNER_EMAIL
 
   const handleCopyPrompt = async () => {
     setCopying(true)
@@ -446,28 +458,32 @@ function DetailModal({
 
         {/* Footer acciones */}
         <div className="flex items-center gap-2 pt-3 flex-wrap" style={{ borderTop: '1px solid var(--border)' }}>
-          {/* Botón estrella: copiar prompt Claude */}
-          <button
-            onClick={handleCopyPrompt}
-            disabled={copying}
-            style={{
-              padding: '0 16px', height: 36,
-              background: copied
-                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                : 'linear-gradient(135deg, #fb923c 0%, #ea580c 100%)',
-              color: '#fff', fontWeight: 700, fontSize: 12.5,
-              border: 'none', borderRadius: 'var(--radius-pill)',
-              cursor: copying ? 'wait' : 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              boxShadow: '0 2px 8px rgba(234, 88, 12, 0.25)',
-            }}
-          >
-            {copying
-              ? <><Loader2 size={13} className="animate-spin" aria-hidden="true" /> Generando…</>
-              : copied
-                ? <><ClipboardCheck size={13} aria-hidden="true" /> Copiado · pégalo en Claude</>
-                : <><CopyIcon size={13} aria-hidden="true" /> Copiar prompt para Claude</>}
-          </button>
+          {/* Botón estrella: copiar prompt Claude — restringido al owner del
+              proyecto. El resto de admins ven las sugerencias y pueden
+              gestionarlas (cambiar estado, eliminar) pero NO esta acción. */}
+          {canSeeClaudePrompt && (
+            <button
+              onClick={handleCopyPrompt}
+              disabled={copying}
+              style={{
+                padding: '0 16px', height: 36,
+                background: copied
+                  ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                  : 'linear-gradient(135deg, #fb923c 0%, #ea580c 100%)',
+                color: '#fff', fontWeight: 700, fontSize: 12.5,
+                border: 'none', borderRadius: 'var(--radius-pill)',
+                cursor: copying ? 'wait' : 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                boxShadow: '0 2px 8px rgba(234, 88, 12, 0.25)',
+              }}
+            >
+              {copying
+                ? <><Loader2 size={13} className="animate-spin" aria-hidden="true" /> Generando…</>
+                : copied
+                  ? <><ClipboardCheck size={13} aria-hidden="true" /> Copiado · pégalo en Claude</>
+                  : <><CopyIcon size={13} aria-hidden="true" /> Copiar prompt para Claude</>}
+            </button>
+          )}
 
           <div style={{ flex: 1 }} />
 
