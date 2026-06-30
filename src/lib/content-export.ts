@@ -24,9 +24,31 @@
 export interface ExportContext {
   title?:       string | null
   imageUrl?:    string | null
+  /** Lista completa de imágenes asignadas al item (carrusel). La primera
+   *  se usa como "hero" (después del título), las restantes se intercalan
+   *  dentro del cuerpo cada N bloques. Si solo hay 1, equivale a imageUrl.
+   *  Útil para emails/artículos largos donde Ramon quiere todas las
+   *  imágenes embebidas para importar directo a WordPress / Mailchimp. */
+  imageUrls?:   string[]
   imageAlt?:    string | null
   channel?:     string | null
   authorName?:  string | null
+}
+
+/** Cada cuántos bloques de contenido intercalamos una imagen extra (si hay
+ *  más de una asignada al item). Valor pensado para artículos de 4-10 párrafos:
+ *  cada 3 bloques = 1 imagen tras cabecera, 1 tras párrafo 3, 1 tras 6, etc. */
+const IMAGE_INTERLEAVE_EVERY = 3
+
+/** Devuelve la lista deduplicada de URLs a embeber (imageUrl + imageUrls). */
+function collectImageUrls(ctx: ExportContext): string[] {
+  const raw = [
+    ...(ctx.imageUrls ?? []),
+    ...(ctx.imageUrl ? [ctx.imageUrl] : []),
+  ].filter(Boolean) as string[]
+  // Dedupe preservando orden — si imageUrl ya está en imageUrls (caso normal
+  // cuando llaman con ambos), no duplicar el hero.
+  return Array.from(new Set(raw)).map(u => safeImageSrc(u)).filter(Boolean)
 }
 
 // ─── Markdown parser mínimo (sin dependencias externas) ──────────────────
@@ -155,20 +177,16 @@ function safeImageSrc(url: string): string {
   return /^(https?:\/\/|data:image\/)/i.test(url.trim()) ? url.trim() : ''
 }
 
-function imageHtmlInline(ctx: ExportContext): string {
-  if (!ctx.imageUrl) return ''
-  const src = safeImageSrc(ctx.imageUrl)
+function imageHtmlInline(url: string, alt: string): string {
+  const src = safeImageSrc(url)
   if (!src) return ''
-  const alt = escapeHtml(ctx.imageAlt ?? ctx.title ?? 'Imagen del contenido')
-  return `<p style="margin:0 0 18px 0;"><img src="${escapeHtml(src)}" alt="${alt}" style="max-width:100%;height:auto;border-radius:8px;display:block;" /></p>`
+  return `<p style="margin:0 0 18px 0;"><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" style="max-width:100%;height:auto;border-radius:8px;display:block;" /></p>`
 }
 
-function imageHtmlSemantic(ctx: ExportContext): string {
-  if (!ctx.imageUrl) return ''
-  const src = safeImageSrc(ctx.imageUrl)
+function imageHtmlSemantic(url: string, alt: string): string {
+  const src = safeImageSrc(url)
   if (!src) return ''
-  const alt = escapeHtml(ctx.imageAlt ?? ctx.title ?? 'Imagen del contenido')
-  return `<figure><img src="${escapeHtml(src)}" alt="${alt}" /></figure>`
+  return `<figure><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" /></figure>`
 }
 
 // ─── Exporters públicos ─────────────────────────────────────────────────
@@ -185,15 +203,25 @@ export function exportClientifyHTML(markdown: string, ctx: ExportContext = {}): 
 
   const blocks = parseBlocks(markdown)
   const parts: string[] = []
+  // Imágenes a embeber: la 1ª va como hero después del título, las
+  // siguientes se intercalan cada IMAGE_INTERLEAVE_EVERY bloques del cuerpo.
+  const imgs = collectImageUrls(ctx)
+  const altBase = ctx.imageAlt ?? ctx.title ?? 'Imagen del contenido'
+  const imgAlt = (i: number) => imgs.length === 1 ? altBase : `${altBase} (${i + 1}/${imgs.length})`
+  let imgIdx = 0
 
   // Title como H1 si lo hay y no empieza ya el contenido con uno
   if (ctx.title && !(blocks[0]?.kind === 'h1')) {
     parts.push(`<h1 style="${baseFont}font-size:24px;font-weight:700;margin:0 0 16px 0;line-height:1.25;">${escapeHtml(ctx.title)}</h1>`)
   }
 
-  // Imagen primero si existe
-  parts.push(imageHtmlInline(ctx))
+  // Hero: primera imagen tras el título
+  if (imgs[imgIdx]) {
+    parts.push(imageHtmlInline(imgs[imgIdx], imgAlt(imgIdx)))
+    imgIdx++
+  }
 
+  let blockSinceImg = 0
   for (const b of blocks) {
     switch (b.kind) {
       case 'h1':
@@ -232,6 +260,18 @@ export function exportClientifyHTML(markdown: string, ctx: ExportContext = {}): 
         parts.push(`<blockquote style="${baseFont}font-size:15px;border-left:4px solid ${linkColor};margin:0 0 14px 0;padding:6px 0 6px 14px;color:#374151;font-style:italic;">${applyInlines(b.text, { linkColor })}</blockquote>`)
         break
     }
+    blockSinceImg++
+    // Intercalar imagen extra cada N bloques de contenido si quedan imgs.
+    if (imgIdx < imgs.length && blockSinceImg >= IMAGE_INTERLEAVE_EVERY) {
+      parts.push(imageHtmlInline(imgs[imgIdx], imgAlt(imgIdx)))
+      imgIdx++
+      blockSinceImg = 0
+    }
+  }
+  // Imágenes que sobren se añaden al final (caso: cuerpo corto, muchas imgs).
+  while (imgIdx < imgs.length) {
+    parts.push(imageHtmlInline(imgs[imgIdx], imgAlt(imgIdx)))
+    imgIdx++
   }
 
   // Footer ligero con atribución
@@ -253,12 +293,21 @@ export function exportClientifyHTML(markdown: string, ctx: ExportContext = {}): 
 export function exportWordPressHTML(markdown: string, ctx: ExportContext = {}): string {
   const blocks = parseBlocks(markdown)
   const parts: string[] = []
+  const imgs = collectImageUrls(ctx)
+  const altBase = ctx.imageAlt ?? ctx.title ?? 'Imagen del contenido'
+  const imgAlt = (i: number) => imgs.length === 1 ? altBase : `${altBase} (${i + 1}/${imgs.length})`
+  let imgIdx = 0
 
   if (ctx.title && !(blocks[0]?.kind === 'h1')) {
     parts.push(`<h1>${escapeHtml(ctx.title)}</h1>`)
   }
-  parts.push(imageHtmlSemantic(ctx))
+  // Hero: primera imagen como <figure> antes del cuerpo
+  if (imgs[imgIdx]) {
+    parts.push(imageHtmlSemantic(imgs[imgIdx], imgAlt(imgIdx)))
+    imgIdx++
+  }
 
+  let blockSinceImg = 0
   for (const b of blocks) {
     switch (b.kind) {
       case 'h1': parts.push(`<h1>${applyInlines(b.text)}</h1>`); break
@@ -271,6 +320,17 @@ export function exportWordPressHTML(markdown: string, ctx: ExportContext = {}): 
       case 'hr': parts.push(`<hr />`); break
       case 'blockquote': parts.push(`<blockquote><p>${applyInlines(b.text)}</p></blockquote>`); break
     }
+    blockSinceImg++
+    if (imgIdx < imgs.length && blockSinceImg >= IMAGE_INTERLEAVE_EVERY) {
+      parts.push(imageHtmlSemantic(imgs[imgIdx], imgAlt(imgIdx)))
+      imgIdx++
+      blockSinceImg = 0
+    }
+  }
+  // Imágenes restantes al final si el cuerpo era corto.
+  while (imgIdx < imgs.length) {
+    parts.push(imageHtmlSemantic(imgs[imgIdx], imgAlt(imgIdx)))
+    imgIdx++
   }
   return parts.filter(Boolean).join('\n')
 }
@@ -282,7 +342,15 @@ export function exportWordPressHTML(markdown: string, ctx: ExportContext = {}): 
 export function exportMarkdown(markdown: string, ctx: ExportContext = {}): string {
   const parts: string[] = []
   if (ctx.title) parts.push(`# ${ctx.title}\n`)
-  if (ctx.imageUrl) parts.push(`![${ctx.imageAlt ?? ctx.title ?? 'Imagen'}](${ctx.imageUrl})\n`)
+  const imgs = collectImageUrls(ctx)
+  const altBase = ctx.imageAlt ?? ctx.title ?? 'Imagen'
+  // 1ª imagen como hero, las demás se listan a continuación. En Markdown no
+  // intercalamos dentro del cuerpo porque el caller (Notion, Obsidian, etc.)
+  // suele preferir todas las imágenes seguidas para reordenarlas a mano.
+  for (let i = 0; i < imgs.length; i++) {
+    const alt = imgs.length === 1 ? altBase : `${altBase} (${i + 1}/${imgs.length})`
+    parts.push(`![${alt}](${imgs[i]})\n`)
+  }
   parts.push(markdown)
   if (ctx.channel || ctx.authorName) {
     const bits: string[] = []

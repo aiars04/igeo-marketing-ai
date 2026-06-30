@@ -1063,6 +1063,11 @@ function ContentDetailModal({
                     ctx={{
                       title: item.title,
                       imageUrl: imageUrl,
+                      // imageUrls: lista completa para que email/blog/newsletter
+                      // exporten un HTML con TODAS las imágenes asignadas al
+                      // item intercaladas (Ramon 30-jun) — antes solo iba la
+                      // principal y las demás había que pegarlas a mano.
+                      imageUrls: imageUrls,
                       imageAlt: item.title,
                       channel: item.channel,
                       authorName: resolveUserName(item.approved_by, profilesById) || undefined,
