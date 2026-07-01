@@ -261,14 +261,26 @@ ESTILO: ${ct.style}`
       ].filter(Boolean).join('\n')
 
       // 5f) Llamar Gemini
+      //
+      // Cap dinámico: como ADAPTAMOS un texto existente (no lo generamos de
+      // cero), la longitud de salida es proporcional a la del original. Idiomas
+      // románicos (fr/it/pt) suelen expandir 15-25% respecto al español, así
+      // que multiplicamos por 1.5 con suelo generoso. Antes: cap fijo 1500
+      // para canales FAST truncaba réplicas largas (bug Ramon 30-jun: "corta
+      // el contenido ahí donde dice continúa").
+      //
+      // Estimación grosera: 1 token ≈ 4 chars en románicos.
+      const srcTokens = Math.ceil((source.content ?? '').length / 4)
+      const isPro = PRO_CHANNELS.includes(source.channel as Channel)
+      const cap = isPro
+        ? Math.max(8000, Math.min(16000, srcTokens * 2))
+        : Math.max(3000, Math.min(6000, Math.ceil(srcTokens * 1.5)))
       const res = await genai.models.generateContent({
         model: modelUsed,
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         config: {
           systemInstruction: systemPrompt,
-          // 8000 para LONG (consistente con /generate — sin esto, emails y
-          // newsletters largos quedaban truncados a media frase).
-          maxOutputTokens: PRO_CHANNELS.includes(source.channel as Channel) ? 8000 : 1500,
+          maxOutputTokens: cap,
         },
       })
       const adaptedText = (res.text ?? '').trim()

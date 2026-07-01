@@ -157,8 +157,15 @@ function ReplicateModal({ open, item, onClose, onReplicated }: ModalProps) {
           }}
         >
           {item.content?.trim().slice(0, 400)}
-          {(item.content?.length ?? 0) > 400 && <span style={{ color: 'var(--ink-3)' }}>… (continúa)</span>}
+          {(item.content?.length ?? 0) > 400 && (
+            <span style={{ color: 'var(--ink-3)' }}>…</span>
+          )}
         </div>
+        {(item.content?.length ?? 0) > 400 && (
+          <p style={{ fontSize: 10.5, color: 'var(--ink-3)', margin: '4px 2px 0', lineHeight: 1.35 }}>
+            Vista previa recortada. La réplica se hace sobre el <strong>texto completo</strong> ({item.content?.length.toLocaleString('es-ES')} caracteres).
+          </p>
+        )}
       </Section>
 
       {!results && (
