@@ -39,11 +39,10 @@ export async function POST(req: NextRequest) {
   if (!profile || !profile.active) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
-  // Subir vídeos consume Storage y bandwidth — restringido a admin/manager
-  // por consistencia con creative-templates/sign-upload.
-  if (profile.role !== 'admin' && profile.role !== 'manager') {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
-  }
+  // Cualquier usuario activo puede subir vídeos para sus propios contenidos.
+  // El path va bajo `${user.id}/` (línea siguiente) — sirve como
+  // anti-suplantación. Alineado con creative-templates/sign-upload, relajado
+  // 1-jul tras bug Ramon (rol `user` no podía adjuntar vídeo/plantilla).
 
   let body: { filename?: string; contentType?: string }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
