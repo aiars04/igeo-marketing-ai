@@ -46,6 +46,11 @@ export function PackageBar({
 }) {
   const [packages, setPackages] = useState<PackageWithStats[]>([])
   const [loading, setLoading] = useState(true)
+  // Los paquetes "vacío" son ruido visual: flujos como content-items/batch y
+  // POST /api/content-items no propagan package_id, así que un paquete puede
+  // quedar sin items aunque el pipeline tenga muchos. Por defecto los ocultamos.
+  // El usuario puede activar el toggle para verlos y gestionarlos.
+  const [showEmpty, setShowEmpty] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -72,8 +77,37 @@ export function PackageBar({
     )
   }
 
-  if (packages.length === 0) {
-    return null  // No paquetes activos → no se muestra barra
+  // Filtramos vacíos según toggle. Contamos por separado para mostrar el badge.
+  const emptyCount   = packages.filter(p => p.stats.total === 0).length
+  const nonEmptyPkgs = packages.filter(p => p.stats.total > 0)
+  const visiblePackages = showEmpty ? packages : nonEmptyPkgs
+
+  // Nada que mostrar y ningún vacío que enseñar → barra oculta.
+  if (packages.length === 0) return null
+  if (nonEmptyPkgs.length === 0 && !showEmpty && emptyCount > 0) {
+    // Todos los packages están vacíos. En vez de sección "vacía", mostramos
+    // solo el toggle para que el usuario pueda expandir si quiere gestionarlos.
+    return (
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 20px', margin: '0 20px 12px',
+          fontSize: 11, color: 'var(--ink-3)',
+        }}
+      >
+        <span>Hay {emptyCount} paquete{emptyCount === 1 ? '' : 's'} sin piezas asignadas.</span>
+        <button
+          onClick={() => setShowEmpty(true)}
+          style={{
+            fontSize: 11, fontWeight: 600, color: 'var(--accent)',
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          Ver
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -118,7 +152,7 @@ export function PackageBar({
         Todos
       </button>
 
-      {packages.map(pkg => {
+      {visiblePackages.map(pkg => {
         const selected = pkg.id === selectedPackageId
         const statusCfg = STATUS_COLOR[pkg.status]
         const progress = pkg.stats.total > 0
@@ -179,6 +213,26 @@ export function PackageBar({
           </button>
         )
       })}
+
+      {/* Toggle "Ver/ocultar vacíos" — solo si hay algún vacío que gestionar */}
+      {emptyCount > 0 && (
+        <button
+          onClick={() => setShowEmpty(v => !v)}
+          title={showEmpty ? 'Ocultar paquetes sin piezas' : 'Ver paquetes sin piezas'}
+          style={{
+            marginLeft: 4,
+            height: 28, padding: '0 10px',
+            fontSize: 10.5, fontWeight: 600,
+            background: 'transparent',
+            color: 'var(--ink-3)',
+            border: '1px dashed var(--border)',
+            borderRadius: 'var(--radius-pill)',
+            cursor: 'pointer', flexShrink: 0,
+          }}
+        >
+          {showEmpty ? `Ocultar vacíos (${emptyCount})` : `+ ${emptyCount} vacío${emptyCount === 1 ? '' : 's'}`}
+        </button>
+      )}
     </div>
   )
 }
