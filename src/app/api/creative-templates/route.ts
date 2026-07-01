@@ -32,10 +32,6 @@ async function requireActor() {
   return { profile, admin }
 }
 
-function isPriv(role: string): boolean {
-  return role === 'admin' || role === 'manager'
-}
-
 /** Calcula aspect ratio "1:1", "16:9", etc. desde W×H. Devuelve "free" si no encaja. */
 function aspectRatioOf(w: number | null, h: number | null): string | null {
   if (!w || !h || w <= 0 || h <= 0) return null
@@ -162,9 +158,10 @@ export async function POST(req: NextRequest) {
   if ('response' in auth) return auth.response
   const { profile: me, admin } = auth
 
-  if (!isPriv(me.role)) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
-  }
+  // Antes exigía admin/manager. Se relajó para permitir a rol `user` crear
+  // sus propias plantillas (bug Ramon 1-jul: "forbidden" al subir carrusel).
+  // PATCH/DELETE en /[id] mantienen el gate admin/manager para no permitir
+  // editar plantillas ajenas.
 
   let formData: FormData
   try { formData = await req.formData() }

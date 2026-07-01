@@ -45,8 +45,11 @@ function aspectRatioOf(w: number | null, h: number | null): string | null {
  *   height?:           number
  *   content_type_ids?: string[]
  *
- * Auth: admin/manager. El path debe estar bajo templates/<channel>/<userId>/
- * (impide registrar archivos ajenos).
+ * Auth: cualquier usuario activo (antes admin/manager — se relajó para
+ * permitir a `user` crear sus propias plantillas). El anti-suplantación
+ * sigue firme: el path DEBE estar bajo templates/<channel>/<userId>/, así
+ * que un user no puede registrar archivos ajenos. Edit/delete siguen siendo
+ * admin/manager.
  */
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -58,9 +61,6 @@ export async function POST(req: NextRequest) {
     .from('profiles').select('id, role, active').eq('id', user.id)
     .single<Pick<Profile, 'id' | 'role' | 'active'>>()
   if (!me || !me.active) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  if (me.role !== 'admin' && me.role !== 'manager') {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
-  }
 
   let body: {
     path?: string

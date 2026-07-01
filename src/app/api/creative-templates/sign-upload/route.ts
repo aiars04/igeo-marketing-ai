@@ -23,7 +23,10 @@ export const runtime = 'nodejs'
  *
  * Body: { contentType: string, channel: Channel }
  *
- * Auth: admin o manager (mismo gate que el POST multipart legacy).
+ * Auth: cualquier usuario activo. Antes exigía admin/manager, pero Ramon
+ * (rol `user`) necesita crear sus propias plantillas de carrusel. El
+ * anti-suplantación sigue firme: el path va bajo templates/<channel>/<userId>/,
+ * y edit/delete de plantillas ajenas siguen siendo admin/manager.
  */
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -35,9 +38,6 @@ export async function POST(req: NextRequest) {
     .from('profiles').select('id, role, active').eq('id', user.id)
     .single<Pick<Profile, 'id' | 'role' | 'active'>>()
   if (!me || !me.active) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  if (me.role !== 'admin' && me.role !== 'manager') {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
-  }
 
   let body: { contentType?: string; channel?: string }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }
