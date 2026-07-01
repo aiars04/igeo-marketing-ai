@@ -159,7 +159,14 @@ function CardMenu({ item, onMove }: { item: ContentItem; onMove: (id: string, s:
 
       {mounted && pos && createPortal(
         <>
-          <div className="fixed inset-0 z-[60]" onClick={e => { e.stopPropagation(); setPos(null) }} />
+          <div
+            className="fixed inset-0 z-[60]"
+            onMouseDown={e => {
+              // Solo cerrar si el mousedown ES el backdrop — evita cerrar al
+              // soltar un drag iniciado dentro del menú.
+              if (e.target === e.currentTarget) { e.stopPropagation(); setPos(null) }
+            }}
+          />
           <div
             className="fixed z-[61] rounded-[var(--radius-md)] py-2 animate-scale-in min-w-[220px]"
             style={{

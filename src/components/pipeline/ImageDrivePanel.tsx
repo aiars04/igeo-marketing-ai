@@ -323,6 +323,7 @@ export function ImageDrivePanel({
   const handleUnassign = useCallback(async () => {
     if (!assignedImageId) return
     setUnassigning(true)
+    setActionError(null)
     setGenError(null)
     try {
       const res = await fetch(`/api/images/${assignedImageId}`, {

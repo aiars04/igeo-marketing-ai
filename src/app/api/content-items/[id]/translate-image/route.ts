@@ -247,9 +247,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     .from('content_assets').insert(insertRow as never)
     .select('id, created_at').single<{ id: string; created_at: string }>()
   if (insErr || !asset) {
-    // Rollback del archivo huérfano
-    await admin.storage.from(BUCKET).remove([filename]).catch(() => {})
-    console.error('[translate-image] db insert failed:', insErr?.message)
+    // Rollback del archivo huérfano. Si la limpieza falla, LOGUEAR (no
+    // silenciar) — el archivo queda huérfano pero al menos hay rastro para
+    // auditoría/limpieza manual.
+    const { error: rmErr } = await admin.storage.from(BUCKET).remove([filename])
+    if (rmErr) {
+      console.error('[translate-image] db insert failed Y storage rollback FALLÓ (archivo huérfano):', filename, rmErr.message)
+    } else {
+      console.error('[translate-image] db insert failed:', insErr?.message)
+    }
     return NextResponse.json({ error: 'db_failed' }, { status: 500 })
   }
 

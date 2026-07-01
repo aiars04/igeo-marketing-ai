@@ -98,9 +98,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Comprobamos que el archivo realmente existe en el bucket (anti-fantasma).
+  // Usar `search` para no listar 1000 archivos ni fallar con usuarios prolíficos.
   const dir = path.substring(0, path.lastIndexOf('/'))
   const filename = path.substring(path.lastIndexOf('/') + 1)
-  const { data: files } = await admin.storage.from(BUCKET).list(dir, { limit: 1000 })
+  const { data: files } = await admin.storage.from(BUCKET).list(dir, {
+    limit: 100,
+    search: filename,
+  })
   if (!files?.find(f => f.name === filename)) {
     return NextResponse.json({ error: 'file_not_found_in_storage' }, { status: 404 })
   }
@@ -158,18 +162,24 @@ export async function POST(req: NextRequest) {
     .from('creative_templates').insert(insertRow as never)
     .select('*').single<CreativeTemplate>()
   if (insertErr || !created) {
-    // Rollback del archivo si el insert falla
-    await admin.storage.from(BUCKET).remove([path]).catch(() => {})
+    // Rollback del archivo si el insert falla. Log del rollback si falla.
+    const { error: rbErr } = await admin.storage.from(BUCKET).remove([path])
+    if (rbErr) console.error('[creative-templates/register] storage rollback FALLÓ (archivo huérfano):', path, rbErr.message)
     console.error('[creative-templates/register] insert failed:', insertErr?.message)
     return NextResponse.json({ error: 'create_failed' }, { status: 500 })
   }
 
+  let pivotWarning: string | null = null
   if (contentTypeIds.length > 0) {
     const pivot = contentTypeIds.map(id => ({ template_id: created.id, content_type_id: id }))
     const { error: pivotErr } = await admin
       .from('creative_template_content_types').insert(pivot as never)
     if (pivotErr) {
       console.error('[creative-templates/register] pivot insert failed:', pivotErr.message)
+      // La plantilla ya existe en BD y Storage — no rollbackamos (perder la
+      // subida por un vínculo secundario es peor). Exponemos warning para
+      // que la UI muestre banner "creada pero sin vínculos a content-types".
+      pivotWarning = 'pivot_failed'
     }
   }
 
@@ -181,5 +191,6 @@ export async function POST(req: NextRequest) {
     ...created,
     content_type_ids: contentTypeIds,
     signed_url: signed?.signedUrl ?? null,
+    warning: pivotWarning,
   })
 }

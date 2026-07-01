@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { genai } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { sanitizeUserInput, wrapUserInput, USER_INPUT_GUARD } from '@/lib/prompt-safety'
 import type { Profile, Channel } from '@/types/database'
 
 const VALID_CHANNELS: Channel[] = ['linkedin','instagram','facebook','x','blog','email','newsletter']
@@ -39,17 +40,24 @@ export async function POST(req: NextRequest) {
   if (!processInstr || !styleInstr) return NextResponse.json({ error: 'process_and_style_required' }, { status: 400 })
   if (!channel || !VALID_CHANNELS.includes(channel)) return NextResponse.json({ error: 'invalid_channel' }, { status: 400 })
 
+  // Sanitizamos todos los inputs del usuario (contra prompt injection).
+  const safeProcess = sanitizeUserInput(processInstr, { max: 3000 })
+  const safeStyle   = sanitizeUserInput(styleInstr,   { max: 3000 })
+  const safeTitle   = sanitizeUserInput(example_title, { max: 200 })
+
   const systemPrompt = `Eres un copywriter B2B para iGEO (ERP especializado en sanidad ambiental, control de plagas y Legionella).
 Genera un EJEMPLO BREVE (máx 150 palabras) que ilustre cómo será el copy producido con estas instrucciones.
-PROCESO: ${processInstr}
-ESTILO: ${styleInstr}
 CANAL: ${channel}
-Devuelve SOLO el ejemplo, sin meta-comentarios ni explicaciones tuyas.`
+PROCESO:
+${wrapUserInput(safeProcess)}
+ESTILO:
+${wrapUserInput(safeStyle)}
+Devuelve SOLO el ejemplo, sin meta-comentarios ni explicaciones tuyas.${USER_INPUT_GUARD}`
 
   try {
     const res = await genai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: `Genera un ejemplo breve para un contenido titulado: "${example_title}"` }] }],
+      contents: [{ role: 'user', parts: [{ text: `Genera un ejemplo breve para un contenido titulado:\n${wrapUserInput(safeTitle)}` }] }],
       config: { systemInstruction: systemPrompt, maxOutputTokens: 500 },
     })
     const preview = (res.text ?? '').trim()

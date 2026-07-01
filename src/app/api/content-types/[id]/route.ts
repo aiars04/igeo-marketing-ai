@@ -73,8 +73,8 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   if (!target) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const isOwner = target.created_by === me.id
-  const isAdmin = me.role === 'admin'
-  if (!isOwner && !isAdmin) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  const isPriv = me.role === 'admin' || me.role === 'manager'
+  if (!isOwner && !isPriv) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
   const { error } = await admin.from('content_types').delete().eq('id', id)
   if (error) { console.error('[api]', error.message); return NextResponse.json({ error: 'db_failed' }, { status: 500 }) }

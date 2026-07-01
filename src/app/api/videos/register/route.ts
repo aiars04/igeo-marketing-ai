@@ -56,13 +56,15 @@ export async function POST(req: NextRequest) {
   }
 
   // Verificamos que el archivo realmente exista en el bucket. Sin esto, un
-  // cliente malicioso podría registrar paths fantasma. NO usamos `search`
-  // porque es ILIKE/substring y con limit:1 podría devolver un archivo
-  // distinto cuyo nombre contenga al nuestro (orden no determinista),
-  // dando un 404 espurio justo después del PUT exitoso.
+  // cliente malicioso podría registrar paths fantasma. Usamos `search` con
+  // MATCH EXACTO por nombre para evitar el problema del list() con
+  // paginación 1000 (un user prolífico con 1000+ vídeos verá 404 espurios).
   const dir = path.substring(0, path.lastIndexOf('/'))
   const name = path.substring(path.lastIndexOf('/') + 1)
-  const { data: files } = await admin.storage.from(BUCKET).list(dir, { limit: 1000 })
+  const { data: files } = await admin.storage.from(BUCKET).list(dir, {
+    limit: 100,
+    search: name,   // ILIKE %name% — el name incluye timestamp, hits ~1
+  })
   const exists = !!files?.find(f => f.name === name)
   if (!exists) {
     return NextResponse.json({ error: 'file_not_found_in_storage' }, { status: 404 })
@@ -119,7 +121,8 @@ export async function POST(req: NextRequest) {
   if (dbError || !asset) {
     // Rollback: si el insert falla, borramos el archivo huérfano del bucket
     // (el cliente acaba de subirlo a través del signed URL).
-    await admin.storage.from(BUCKET).remove([path]).catch(() => {})
+    const { error: rbErr } = await admin.storage.from(BUCKET).remove([path])
+    if (rbErr) console.error('[videos/register] storage rollback FALLÓ (archivo huérfano):', path, rbErr.message)
     console.error('[videos/register] db failed:', dbError?.message)
     return NextResponse.json({ error: 'db_failed' }, { status: 500 })
   }

@@ -120,14 +120,26 @@ async function postizFetch<T>(
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
+      // redirect:'manual' — defensa en profundidad. Si el operador cambiara
+      // POSTIZ_API_URL a un endpoint hostil (o Postiz emitiera un 3xx a otro
+      // host), el fetch por defecto seguiría el redirect y podría exponer la
+      // API_KEY a un tercero. Con `manual`, un 3xx se trata como error y NO
+      // reenvía el Authorization header.
       const res = await fetch(`${BASE_URL}${path}`, {
         method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: AUTH_HEADER,
         },
+        redirect: 'manual',
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
       })
+
+      // 3xx con redirect:'manual' se reporta como status 0 o el 3xx real.
+      // Postiz no debería redirigir nunca; tratamos cualquier 3xx como error.
+      if (res.status >= 300 && res.status < 400) {
+        throw new Error(`Postiz API ${method} ${path} → redirect inesperado (${res.status})`)
+      }
 
       // OK rápido
       if (res.ok) {

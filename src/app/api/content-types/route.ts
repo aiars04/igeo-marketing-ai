@@ -43,11 +43,15 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data ?? [])
 }
 
-// POST /api/content-types
+// POST /api/content-types — admin/manager (afecta a toda la organización)
 export async function POST(req: NextRequest) {
   const auth = await requireActor()
   if ('response' in auth) return auth.response
   const { profile: me, admin } = auth
+
+  if (me.role !== 'admin' && me.role !== 'manager') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
 
   let body: Partial<ContentType>
   try { body = await req.json() } catch { return NextResponse.json({ error: 'bad_json' }, { status: 400 }) }

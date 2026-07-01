@@ -114,11 +114,19 @@ async function downloadTemplatesAsRefs(
   admin: ReturnType<typeof createAdminClient>,
   templates: CreativeTemplate[],
 ): Promise<{ refs: NanoBananaReference[]; usedIds: string[] }> {
+  // Cap por template: una plantilla LinkedIn puede llegar a 15+ MB (13504×5625).
+  // Base64 infla ×1.33 → 20 MB. Con 5 refs eso son 100 MB al modelo — arriesga
+  // timeout de Gemini. Rechazamos plantillas individuales sobre 15 MB.
+  const TEMPLATE_MAX_BYTES = 15 * 1024 * 1024
   const results = await Promise.all(
     templates.map(async t => {
       try {
         const { data, error } = await admin.storage.from(BUCKET).download(t.storage_path)
         if (error || !data) return null
+        if (data.size > TEMPLATE_MAX_BYTES) {
+          console.warn(`[images/generate] template ${t.id} descartada (${data.size} bytes > ${TEMPLATE_MAX_BYTES})`)
+          return null
+        }
         const arrBuf = await data.arrayBuffer()
         const base64 = Buffer.from(arrBuf).toString('base64')
         return {
@@ -229,6 +237,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Flag para reportar al cliente si la carga de plantillas falló. La imagen
+  // se sigue generando (best-effort, sin refs) pero la UI puede mostrar un
+  // badge "degradado: sin plantillas visuales" para que el usuario sepa que
+  // el resultado puede desviarse del estilo esperado.
+  let templatesLoaded: boolean | null = null
   if (contentItemId) {
     try {
       const { templates, promptNotes } = await matchTemplatesForItem(
@@ -239,9 +252,13 @@ export async function POST(req: NextRequest) {
         templateRefs = refs.refs
         usedTemplateIds = refs.usedIds
         templatesPromptNotes = promptNotes
+        templatesLoaded = refs.refs.length > 0
+      } else {
+        templatesLoaded = true  // no había ninguna que cargar → no es degradación
       }
     } catch (e) {
       console.warn('[images/generate] template loading failed (no bloqueante):', e instanceof Error ? e.message : e)
+      templatesLoaded = false
     }
   }
 
@@ -258,9 +275,13 @@ export async function POST(req: NextRequest) {
     let respStatus: number | string = '?'
     let respMime = ''
     try {
-      const resp = await fetch(baseImageUrl)
+      // redirect:'manual' — defensa en profundidad contra SSRF por redirect.
+      // La URL YA está validada contra el host de Supabase arriba, pero un
+      // proxy/CDN podría emitir un 3xx a otro host y el fetch por defecto
+      // lo seguiría. `manual` hace que 3xx se trate como error.
+      const resp = await fetch(baseImageUrl, { redirect: 'manual' })
       respStatus = resp.status
-      if (!resp.ok) {
+      if (!resp.ok || (resp.status >= 300 && resp.status < 400)) {
         return NextResponse.json(
           { error: 'base_image_unavailable', detail: `No se pudo descargar la foto base (HTTP ${resp.status}). Reintenta o sube la foto de nuevo.` },
           { status: 502 },
@@ -272,6 +293,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           { error: 'base_image_invalid_mime', detail: `Formato no soportado para foto base: ${rawMime || 'desconocido'}. Usa PNG, JPG o WebP.` },
           { status: 400 },
+        )
+      }
+      // Cap por Content-Length ANTES de bajar todo el buffer (evita DoS por
+      // un servidor que devuelva un GB). Si no viene header, dejamos que el
+      // check de arrBuf.byteLength de abajo actúe como red de seguridad.
+      const cl = Number(resp.headers.get('content-length') ?? 0)
+      if (cl > BASE_IMAGE_MAX_BYTES) {
+        return NextResponse.json(
+          { error: 'base_image_too_large', detail: `La foto base pesa más de ${BASE_IMAGE_MAX_BYTES / (1024*1024)} MB.` },
+          { status: 413 },
         )
       }
       const arrBuf = await resp.arrayBuffer()
@@ -377,7 +408,8 @@ export async function POST(req: NextRequest) {
       .single()
     if (dbError) {
       // Rollback: limpia el archivo huérfano en Storage si el insert falla
-      await admin.storage.from(BUCKET).remove([filename]).catch(() => {})
+      const { error: rbErr } = await admin.storage.from(BUCKET).remove([filename])
+      if (rbErr) console.error('[images/generate] storage rollback FALLÓ (archivo huérfano):', filename, rbErr.message)
       console.error('[images/generate] db insert failed:', dbError.message)
       return NextResponse.json({ error: 'db_failed' }, { status: 500 })
     }
@@ -393,6 +425,8 @@ export async function POST(req: NextRequest) {
       height: size.height,
       template_ids: usedTemplateIds,
       content_item_id: contentItemId,
+      // null si no se pidió matching, true si se pidió y cargó OK, false si falló.
+      templates_loaded: templatesLoaded,
     })
   } catch (err: unknown) {
     console.error('[images/generate] error:', err instanceof Error ? err.message : err)

@@ -54,6 +54,9 @@ export async function GET(req: NextRequest) {
 }
 
 // ── POST /api/ideas ───────────────────────────────────────────────
+// Abierto a cualquier user activo por diseño: las ideas son el input inicial
+// del pipeline y queremos que TODO el equipo aporte, no solo admin/manager.
+// La aprobación de ideas → content_item sí es privilegio (via instantiate).
 export async function POST(req: NextRequest) {
   const auth = await requireActor()
   if ('response' in auth) return auth.response

@@ -3,6 +3,7 @@ import { genai } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { buildMarketRulesPrompt } from '@/lib/market-rules'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { sanitizeUserInput, wrapUserInput, USER_INPUT_GUARD } from '@/lib/prompt-safety'
 import type {
   Profile, Market, Channel,
   SeoBrief, SeoIntent,
@@ -103,12 +104,16 @@ export async function POST(req: NextRequest) {
 
   // Inyectar market_rules
   const marketRulesSection = await buildMarketRulesPrompt(admin, market, channel ?? undefined)
-  const systemWithRules = SYSTEM_PROMPT + marketRulesSection
+  const systemWithRules = SYSTEM_PROMPT + marketRulesSection + USER_INPUT_GUARD
+
+  // Sanitizar keywords contra prompt injection.
+  const safePrimaryKw   = sanitizeUserInput(primaryKw, { max: 200 })
+  const safeSecondaryKw = sanitizeUserInput(secondaryKws.join(', '), { max: 2000 })
 
   const userPrompt = [
     `Genera un brief SEO completo.`,
-    `Keyword principal: ${primaryKw}`,
-    secondaryKws.length > 0 ? `Keywords secundarias: ${secondaryKws.join(', ')}` : null,
+    `Keyword principal: ${wrapUserInput(safePrimaryKw)}`,
+    safeSecondaryKw ? `Keywords secundarias: ${wrapUserInput(safeSecondaryKw)}` : null,
     `Mercado: ${market}`,
     channel ? `Canal: ${channel}` : `Canal: blog (por defecto)`,
   ].filter(Boolean).join('\n')

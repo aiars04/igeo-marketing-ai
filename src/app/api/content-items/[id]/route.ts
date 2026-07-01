@@ -53,6 +53,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   // 3. Server-only: approved_by, approved_at — SIEMPRE seteados desde el servidor (no se aceptan del cliente)
   const patch: Record<string, unknown> = {}
 
+  // Flag compartido entre el bloque de stage y la CAS final del update.
+  let isGoingBack = false
+
   // Tier 1 — campos libres
   if (body.stage !== undefined) {
     if (!STAGES.includes(body.stage as Stage)) {
@@ -80,7 +83,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     // postiz_id viejo apunta a un post ya muerto en Postiz → lo desligamos.
     const fromIdx = STAGES.indexOf(target.stage as Stage)
     const toIdx = STAGES.indexOf(body.stage as Stage)
-    const isGoingBack = fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx
+    isGoingBack = fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx
     // Defensa en backend de la regla canGoBack (que en frontend vive en
     // PipelineBoard.tsx). Sin esto, un curl directo, una pestaña stale o un
     // cliente desactualizado podría retroceder un item con publicación VIVA
@@ -199,12 +202,24 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ error: 'no_changes' }, { status: 400 })
   }
 
-  const { data, error } = await admin
+  // Si estamos LIMPIANDO postiz_id como parte de un retroceso desde 'failed',
+  // usamos CAS: solo actualizamos si el postiz_id sigue siendo el mismo que
+  // vimos en target. Un publish concurrente que asigne un postiz_id nuevo
+  // no debería ser sobrescrito por este PATCH.
+  let updateQuery = admin
     .from('content_items')
     .update(patch as never)
     .eq('id', id)
+  if (isGoingBack && target.postiz_id && (patch as { postiz_id?: string | null }).postiz_id === null) {
+    updateQuery = updateQuery.eq('postiz_id', target.postiz_id)
+  }
+  const { data, error } = await updateQuery
     .select('*')
-    .single<ContentItem>()
+    .maybeSingle<ContentItem>()
+  if (!error && !data) {
+    // CAS falló: alguien publicó/cambió postiz_id entre nuestro read y write.
+    return NextResponse.json({ error: 'stale_state', detail: 'El item cambió entre la lectura y la escritura. Recarga y reintenta.' }, { status: 409 })
+  }
   if (error) {
     console.error('[content-items/PATCH] update failed:', error.message)
     return NextResponse.json({ error: 'update_failed' }, { status: 500 })
@@ -228,8 +243,8 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   if (!target) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const isOwner = target.created_by === me.id
-  const isAdmin = me.role === 'admin'
-  if (!isOwner && !isAdmin) {
+  const isPriv = me.role === 'admin' || me.role === 'manager'
+  if (!isOwner && !isPriv) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 

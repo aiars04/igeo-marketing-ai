@@ -5,6 +5,7 @@ import { buildMarketRulesPrompt, detectForbiddenTerms } from '@/lib/market-rules
 import { buildFormatSpecPromptBlock } from '@/lib/content-type-format-spec'
 import { matchTemplatesForItem } from '@/lib/creative-templates-match'
 import { checkRateLimit, maybeCleanupRateLimits } from '@/lib/rate-limit'
+import { sanitizeUserInput, wrapUserInput, USER_INPUT_GUARD } from '@/lib/prompt-safety'
 import { ALL_MARKETS } from '@/lib/utils'
 import type { ContentItem, ContentType, BrandContext, Profile, Channel, Market, Stage } from '@/types/database'
 
@@ -234,14 +235,25 @@ ${promptNotes.map(n => `  · ${n}`).join('\n')}`
 
       // 5d) Plantillas visuales: ya calculadas fuera del loop (creativeTemplatesSection).
 
-      // 5e) Construir prompt
-      const systemPrompt = ct
-        ? `${SYSTEM_BASE}${brandSection}${marketRulesSection}${formatSpecSection}${creativeTemplatesSection}
+      // 5e) Construir prompt — sanitizamos inputs de usuario contra prompt injection.
+      const safeCtName    = ct ? sanitizeUserInput(ct.name, { max: 200 })    : ''
+      const safeCtProcess = ct ? sanitizeUserInput(ct.process, { max: 3000 }) : ''
+      const safeCtStyle   = ct ? sanitizeUserInput(ct.style, { max: 3000 })   : ''
+      const safeCampaign  = sanitizeUserInput(source.campaign, { max: 200 })
+      const safeDesc      = sanitizeUserInput(source.description, { max: 2000 })
+      // El content puede ser largo — cap a 20k caracteres. Suficiente para
+      // adaptar cualquier post de RRSS / newsletter / blog.
+      const safeContent   = sanitizeUserInput(source.content, { max: 20000 })
 
-════ INSTRUCCIONES ESPECÍFICAS PARA ESTE CONTENIDO (${ct.name}) ════
-PROCESO: ${ct.process}
-ESTILO: ${ct.style}`
-        : `${SYSTEM_BASE}${brandSection}${marketRulesSection}${creativeTemplatesSection}
+      const systemPrompt = ct
+        ? `${SYSTEM_BASE}${brandSection}${marketRulesSection}${formatSpecSection}${creativeTemplatesSection}${USER_INPUT_GUARD}
+
+════ INSTRUCCIONES ESPECÍFICAS PARA ESTE CONTENIDO (${safeCtName}) ════
+PROCESO:
+${wrapUserInput(safeCtProcess)}
+ESTILO:
+${wrapUserInput(safeCtStyle)}`
+        : `${SYSTEM_BASE}${brandSection}${marketRulesSection}${creativeTemplatesSection}${USER_INPUT_GUARD}
 
 (No hay content_type configurado para canal ${source.channel}. Usa criterio general.)`
 
@@ -249,11 +261,11 @@ ESTILO: ${ct.style}`
         `Adapta el siguiente copy del mercado ${source.market} al mercado ${target}.`,
         `Idioma destino: ${MARKET_LANG[target]}.`,
         `Canal: ${source.channel}.`,
-        source.campaign ? `Campaña: ${source.campaign}` : null,
-        source.description ? `Descripción/contexto: ${source.description}` : null,
+        safeCampaign ? `Campaña: ${wrapUserInput(safeCampaign)}` : null,
+        safeDesc ? `Descripción/contexto: ${wrapUserInput(safeDesc)}` : null,
         ``,
         `════ COPY ORIGINAL (${source.market}) ════`,
-        source.content,
+        wrapUserInput(safeContent),
         ``,
         `════ TU TAREA ════`,
         `Devuelve SOLO el copy adaptado al mercado ${target}, sin explicaciones.`,

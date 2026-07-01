@@ -3,6 +3,7 @@ import { genai } from '@/lib/gemini'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { buildMarketRulesPrompt } from '@/lib/market-rules'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { sanitizeUserInput, wrapUserInput, USER_INPUT_GUARD } from '@/lib/prompt-safety'
 import type {
   Profile, Market, Channel,
   SeoResearchSession, SeoKeyword, SeoIntent, SeoLevel,
@@ -95,13 +96,16 @@ export async function POST(req: NextRequest) {
 
   // Inyectar market_rules para contextualizar el research al mercado
   const marketRulesSection = await buildMarketRulesPrompt(admin, market, channel ?? undefined)
-  const systemWithRules = SYSTEM_PROMPT + marketRulesSection
+  const systemWithRules = SYSTEM_PROMPT + marketRulesSection + USER_INPUT_GUARD
+
+  const safeTopic = sanitizeUserInput(topic, { max: 200 })
+  const safeNotes = sanitizeUserInput(body.notes, { max: 2000 })
 
   const userPrompt = [
-    `Tema: ${topic}`,
+    `Tema: ${wrapUserInput(safeTopic)}`,
     `Mercado: ${market}`,
     channel ? `Canal objetivo: ${channel}` : null,
-    body.notes ? `Contexto adicional: ${body.notes}` : null,
+    safeNotes ? `Contexto adicional: ${wrapUserInput(safeNotes)}` : null,
     `\nGenera el keyword research.`,
   ].filter(Boolean).join('\n')
 

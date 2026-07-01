@@ -103,7 +103,8 @@ export async function POST(req: NextRequest) {
     .single()
   if (dbError) {
     // Rollback: limpia el archivo huérfano en Storage si el insert falla
-    await admin.storage.from(BUCKET).remove([filename]).catch(() => {})
+    const { error: rbErr } = await admin.storage.from(BUCKET).remove([filename])
+    if (rbErr) console.error('[images/upload] storage rollback FALLÓ (archivo huérfano):', filename, rbErr.message)
     console.error('[images/upload] db failed:', dbError.message)
     return NextResponse.json({ error: 'db_failed' }, { status: 500 })
   }

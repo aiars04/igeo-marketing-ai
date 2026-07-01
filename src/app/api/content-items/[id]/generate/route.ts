@@ -5,6 +5,7 @@ import { buildMarketRulesPrompt, detectForbiddenTerms } from '@/lib/market-rules
 import { buildFormatSpecPromptBlock } from '@/lib/content-type-format-spec'
 import { matchTemplatesForItem } from '@/lib/creative-templates-match'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { sanitizeUserInput, wrapUserInput, USER_INPUT_GUARD } from '@/lib/prompt-safety'
 import type { ContentItem, ContentType, BrandContext, Profile, Channel, Market } from '@/types/database'
 
 const MARKET_LANG: Record<Market, string> = {
@@ -198,29 +199,45 @@ ${promptNotes.map(n => `  · ${n}`).join('\n')}`
     console.warn('[content-items/generate] template match failed (no bloqueante):', e instanceof Error ? e.message : e)
   }
 
-  // 5) Construir prompts
-  const systemPrompt = ct
-    ? `${SYSTEM_BASE}${brandSection}${marketRulesSection}${formatSpecSection}${creativeTemplatesSection}
+  // 5) Construir prompts. Sanitizamos todos los inputs de usuario y los
+  //    envolvemos en bloques <user_input> para que el modelo no los interprete
+  //    como instrucciones (defensa contra prompt injection).
+  const safeTitle = sanitizeUserInput(item.title, { max: 300 })
+  const safeDesc  = sanitizeUserInput(item.description, { max: 2000 })
+  const safeCampaign = sanitizeUserInput(item.campaign, { max: 200 })
+  const safeExtraInstr = sanitizeUserInput(extraInstructions, { max: 1000 })
+  // Los campos de content_type (process, style, name) también vienen de
+  // usuarios internos y podrían contener frases que parezcan instrucciones —
+  // sanitizamos por consistencia.
+  const safeCtName    = ct ? sanitizeUserInput(ct.name, { max: 200 })    : ''
+  const safeCtProcess = ct ? sanitizeUserInput(ct.process, { max: 3000 }) : ''
+  const safeCtStyle   = ct ? sanitizeUserInput(ct.style, { max: 3000 })   : ''
 
-════ INSTRUCCIONES ESPECÍFICAS PARA ESTE CONTENIDO (${ct.name}) ════
-PROCESO: ${ct.process}
-ESTILO: ${ct.style}`
-    : `${SYSTEM_BASE}${brandSection}${marketRulesSection}${creativeTemplatesSection}
+  const systemPrompt = ct
+    ? `${SYSTEM_BASE}${brandSection}${marketRulesSection}${formatSpecSection}${creativeTemplatesSection}${USER_INPUT_GUARD}
+
+════ INSTRUCCIONES ESPECÍFICAS PARA ESTE CONTENIDO (${safeCtName}) ════
+PROCESO:
+${wrapUserInput(safeCtProcess)}
+ESTILO:
+${wrapUserInput(safeCtStyle)}`
+    : `${SYSTEM_BASE}${brandSection}${marketRulesSection}${creativeTemplatesSection}${USER_INPUT_GUARD}
 
 (No hay content_type configurado para canal ${item.channel}. Usa criterio general de marketing B2B.)`
 
   const userPromptParts = [
     `Genera el copy final para esta pieza de contenido:`,
-    `TÍTULO: ${item.title}`,
-    item.description ? `DESCRIPCIÓN/CONTEXTO: ${item.description}` : null,
+    `TÍTULO: ${wrapUserInput(safeTitle)}`,
+    safeDesc ? `DESCRIPCIÓN/CONTEXTO: ${wrapUserInput(safeDesc)}` : null,
     `CANAL: ${item.channel}`,
     `MERCADO: ${item.market} (escribe en ${MARKET_LANG[item.market] ?? 'español'})`,
-    item.campaign ? `CAMPAÑA: ${item.campaign}` : null,
+    safeCampaign ? `CAMPAÑA: ${wrapUserInput(safeCampaign)}` : null,
     body.regenerate ? '\nNota: es una regeneración, prueba un enfoque distinto al anterior.' : null,
     // Las instrucciones del usuario van AL FINAL y en bloque marcado, para
-    // que el modelo las trate como override prioritario sobre el resto.
-    extraInstructions
-      ? `\n════ INSTRUCCIONES ADICIONALES DEL USUARIO (prioridad alta) ════\n${extraInstructions}`
+    // que el modelo las trate como override prioritario sobre el resto —
+    // pero siguen envueltas en <user_input> (nunca son instrucciones al sistema).
+    safeExtraInstr
+      ? `\n════ INSTRUCCIONES ADICIONALES DEL USUARIO (prioridad alta) ════\n${wrapUserInput(safeExtraInstr)}`
       : null,
   ].filter(Boolean).join('\n')
 

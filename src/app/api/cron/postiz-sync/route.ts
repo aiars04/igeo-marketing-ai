@@ -76,7 +76,15 @@ export async function GET(req: NextRequest) {
     if (!item) continue
 
     const state = mapPostizStateToOurs(post.state)
-    if (!state) continue // estado no relevante (draft, etc.)
+    if (!state) {
+      // Estado no mapeado: puede ser 'draft' esperable, o algo NUEVO que
+      // Postiz añadió sin que nosotros lo cubramos. Loguear con nivel error
+      // para que sea grep-able en Vercel logs y podamos actualizarlo.
+      if (!['DRAFT', 'draft'].includes(post.state)) {
+        console.error(`[cron/postiz-sync] estado Postiz no mapeado: "${post.state}" (post ${post.id})`)
+      }
+      continue
+    }
 
     // No tocar si nada cambia (evita escrituras innecesarias)
     if (item.publish_state === state && state !== 'failed') {

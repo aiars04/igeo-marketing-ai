@@ -357,19 +357,52 @@ export async function POST(req: NextRequest) {
             .is('postiz_id', null)
             .select('id')
           if (updErr) {
-            console.warn('[postiz/publish] no se pudo actualizar content_item:', updErr.message)
-          } else if (!updated || updated.length === 0) {
-            // Race detectada: otro request ya escribió postiz_id en el item.
-            // Borramos el post recién creado en Postiz para no dejar huérfano.
-            console.warn('[postiz/publish] race detectada — rollback del post huérfano:', postizId)
+            // El UPDATE falló por razón NO relacionada con la race (error de
+            // BD real, permisos, etc.). El post ya está en Postiz pero no
+            // linkeado — huérfano igual que en la race. Rollback en Postiz.
+            console.error('[postiz/publish] update BD falló, rollback en Postiz:', updErr.message)
+            let rollbackOk = false
             if (postizId) {
-              try { await postizDeletePost(postizId) }
-              catch (rbErr) {
+              try {
+                const rb = await postizDeletePost(postizId)
+                rollbackOk = rb.ok
+              } catch (rbErr) {
                 console.error('[postiz/publish] rollback fallido — post huérfano en Postiz:', postizId, rbErr instanceof Error ? rbErr.message : rbErr)
               }
             }
             return NextResponse.json(
-              { error: 'race_conflict', detail: 'Otro usuario publicó este item simultáneamente. El post duplicado se ha cancelado en Postiz.' },
+              {
+                error: 'link_failed',
+                detail: rollbackOk
+                  ? 'Post creado pero no pudimos guardarlo en BD. Se ha cancelado en Postiz.'
+                  : `Post creado pero no pudimos guardarlo en BD Y el rollback en Postiz falló. Post huérfano: ${postizId}. Contacta admin.`,
+                postizId,
+                rollbackOk,
+              },
+              { status: 500 },
+            )
+          } else if (!updated || updated.length === 0) {
+            // Race detectada: otro request ya escribió postiz_id en el item.
+            // Borramos el post recién creado en Postiz para no dejar huérfano.
+            console.warn('[postiz/publish] race detectada — rollback del post huérfano:', postizId)
+            let rollbackOk = false
+            if (postizId) {
+              try {
+                const rb = await postizDeletePost(postizId)
+                rollbackOk = rb.ok
+              } catch (rbErr) {
+                console.error('[postiz/publish] rollback fallido — post huérfano en Postiz:', postizId, rbErr instanceof Error ? rbErr.message : rbErr)
+              }
+            }
+            return NextResponse.json(
+              {
+                error: 'race_conflict',
+                detail: rollbackOk
+                  ? 'Otro usuario publicó este item simultáneamente. El post duplicado se ha cancelado en Postiz.'
+                  : `Otro usuario publicó este item simultáneamente. El duplicado NO se pudo cancelar en Postiz. Post huérfano: ${postizId}. Contacta admin.`,
+                postizId,
+                rollbackOk,
+              },
               { status: 409 },
             )
           } else {
@@ -381,20 +414,38 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // success_level:
+    //   'full'    → post creado + todas las imágenes subidas + link BD OK
+    //   'partial' → post creado pero faltó alguna imagen (o ninguna)
+    //   'link_failed' → post creado + imágenes OK pero content_item no linkeó
+    //                   (contentItemId dado + linkedItemId null y no fue race).
+    // La UI debería mostrar banner amarillo en 'partial' y rojo con contacto
+    // admin si se quedó sin link.
+    const requestedImages = allImageUrls.length
+    const linkExpected    = !!contentItemId
+    const successLevel: 'full' | 'partial' | 'link_failed' =
+      (linkExpected && !linkedItemId) ? 'link_failed'
+      : (requestedImages > 0 && imagesUploaded < requestedImages) ? 'partial'
+      : 'full'
+    // status HTTP: 200 en full, 207 (multi-status) en partial/link_failed para
+    // que la UI pueda distinguir sin parsear el body.
+    const httpStatus = successLevel === 'full' ? 200 : 207
     return NextResponse.json({
-      ok: true,
+      ok: successLevel !== 'link_failed',
+      successLevel,
       type,
       channelIds,
       linkedItemId,
       postizId,
       publishedAt,
       // Reportar conteo real de imágenes para que la UI lo refleje.
-      imagesRequested: allImageUrls.length,
+      imagesRequested: requestedImages,
       imagesUploaded,
       imageUploaded: imagesUploaded > 0,
       imageUploadError: imageUploadErrors.length > 0 ? 'upload_failed' : null,
+      imageUploadErrors: imageUploadErrors.length > 0 ? imageUploadErrors : undefined,
       result,
-    })
+    }, { status: httpStatus })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[postiz/publish] upstream error:', msg)

@@ -266,8 +266,10 @@ export async function POST(req: NextRequest) {
     .select('*')
     .single<CreativeTemplate>()
   if (insertErr || !created) {
-    // Rollback del archivo subido si la inserción falla
-    await admin.storage.from(BUCKET).remove([storagePath]).catch(() => {})
+    // Rollback del archivo subido si la inserción falla. Loguear si el
+    // rollback ALSO falla — el archivo quedaría huérfano pero al menos hay rastro.
+    const { error: rbErr } = await admin.storage.from(BUCKET).remove([storagePath])
+    if (rbErr) console.error('[creative-templates/POST] storage rollback FALLÓ (archivo huérfano):', storagePath, rbErr.message)
     console.error('[creative-templates/POST] insert failed:', insertErr?.message)
     return NextResponse.json({ error: 'create_failed' }, { status: 500 })
   }
