@@ -2038,31 +2038,10 @@ function Column({
 // BOARD — scroll horizontal funcional, gap 16px entre columnas
 // ═══════════════════════════════════════════════════════════════════════════
 
-const GROUP_REPLICAS_LS_KEY = 'pipeline.groupReplicas.v1'
+export const GROUP_REPLICAS_LS_KEY = 'pipeline.groupReplicas.v1'
 
-export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, onApprove, onReject, onItemUpdated, itemImageMap, onImageAssigned, onImagesAssigned, onImageUnassigned, profilesById }: BoardProps) {
+export function PipelineBoard({ items, filterChannels, groupReplicas, onAdd, onMove, onDelete, onApprove, onReject, onItemUpdated, itemImageMap, onImageAssigned, onImagesAssigned, onImageUnassigned, profilesById }: BoardProps & { groupReplicas: boolean }) {
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
-  // Toggle de agrupación de réplicas — persistido por usuario (LocalStorage).
-  // Default true: el usuario que ya sufre la aglomeración del original + N
-  // réplicas las ve agrupadas de entrada. Si lo prefiere desactivado, lo
-  // guardamos en localStorage para que se respete entre sesiones.
-  const [groupReplicas, setGroupReplicas] = useState<boolean>(true)
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(GROUP_REPLICAS_LS_KEY)
-      if (stored === '0') {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setGroupReplicas(false)
-      }
-    } catch {}
-  }, [])
-  const toggleGroupReplicas = useCallback(() => {
-    setGroupReplicas(prev => {
-      const next = !prev
-      try { window.localStorage.setItem(GROUP_REPLICAS_LS_KEY, next ? '1' : '0') } catch {}
-      return next
-    })
-  }, [])
 
   // Sincroniza selectedItem con la última versión cuando items se actualiza
   useEffect(() => {
@@ -2106,34 +2085,6 @@ export function PipelineBoard({ items, filterChannels, onAdd, onMove, onDelete, 
 
   return (
     <>
-      {/* Toggle compacto para agrupar/desagrupar réplicas. Se renderiza
-          encima del board como pill discreta. La preferencia se guarda en
-          localStorage. */}
-      <div
-        className="flex items-center gap-2 shrink-0"
-        style={{ padding: '0 28px 8px', marginTop: -4 }}
-      >
-        <button
-          type="button"
-          onClick={toggleGroupReplicas}
-          title={groupReplicas
-            ? 'Las réplicas a otros mercados se agrupan en una sola tarjeta apilada'
-            : 'Las réplicas a otros mercados se muestran como tarjetas independientes'}
-          aria-pressed={groupReplicas}
-          style={{
-            height: 26, padding: '0 10px', fontSize: 11, fontWeight: 600,
-            borderRadius: 'var(--radius-pill)',
-            border: `1px solid ${groupReplicas ? 'var(--accent)' : 'var(--border)'}`,
-            background: groupReplicas ? 'var(--accent-soft)' : 'var(--surface-2)',
-            color: groupReplicas ? 'var(--accent-2)' : 'var(--ink-2)',
-            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-          }}
-        >
-          <Layers size={11} aria-hidden="true" />
-          {groupReplicas ? 'Réplicas agrupadas' : 'Réplicas separadas'}
-        </button>
-      </div>
-
       <div className="pipeline-board">
         {STAGES.map((stage, idx) => (
           <Column

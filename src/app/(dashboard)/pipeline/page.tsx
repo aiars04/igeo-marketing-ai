@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { PipelineBoard } from '@/components/pipeline/PipelineBoard'
+import { PipelineBoard, GROUP_REPLICAS_LS_KEY } from '@/components/pipeline/PipelineBoard'
 import { PackageBar, PackageDetailModal, type PackageWithStats } from '@/components/pipeline/PackageBar'
 import { BatchGenerateModal } from '@/components/pipeline/BatchGenerateModal'
-import { Sparkles, Filter, X, Loader2 } from 'lucide-react'
+import { Sparkles, Filter, X, Loader2, Layers } from 'lucide-react'
 import { cn, STAGE_CONFIG, STAGES, ALL_MARKETS, MARKET_LABELS } from '@/lib/utils'
 import { useToast, Toasts } from '@/components/ui/Toast'
 import type { ContentItem, Stage, Channel, Market } from '@/types/database'
@@ -72,6 +72,25 @@ export default function PipelinePage() {
   const [packageBarRefresh, setPackageBarRefresh] = useState(0)
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
+  // Toggle de agrupación de réplicas — persistido por usuario (LocalStorage).
+  // Default true: usuario que ya sufre la aglomeración del original + N réplicas
+  // las ve agrupadas de entrada. Vive en el page para que el botón encaje en
+  // el header (antes flotaba solo encima del board — bug visual 1-jul).
+  const [groupReplicas, setGroupReplicas] = useState<boolean>(true)
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(GROUP_REPLICAS_LS_KEY)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (stored === '0') setGroupReplicas(false)
+    } catch {}
+  }, [])
+  const toggleGroupReplicas = useCallback(() => {
+    setGroupReplicas(prev => {
+      const next = !prev
+      try { window.localStorage.setItem(GROUP_REPLICAS_LS_KEY, next ? '1' : '0') } catch {}
+      return next
+    })
+  }, [])
   const [profilesById, setProfilesById] = useState<Record<string, { full_name: string | null; email: string }>>({})
   // Set de IDs en-vuelo para prevenir doble-disparo en move/delete/approve
   const inFlightRef = useRef<Set<string>>(new Set())
@@ -398,6 +417,20 @@ export default function PipelinePage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0" style={{ marginLeft: 'auto' }}>
+          {/* Toggle réplicas agrupadas/separadas — vive en el header en vez de
+              flotar solo encima del board. */}
+          <button
+            type="button"
+            onClick={toggleGroupReplicas}
+            title={groupReplicas
+              ? 'Las réplicas a otros mercados se agrupan en una sola tarjeta apilada'
+              : 'Las réplicas a otros mercados se muestran como tarjetas independientes'}
+            aria-pressed={groupReplicas}
+            className={cn('btn-pill-secondary', groupReplicas && 'is-active')}
+          >
+            <Layers size={13} aria-hidden="true" />
+            {groupReplicas ? 'Réplicas agrupadas' : 'Réplicas separadas'}
+          </button>
           <button
             onClick={() => setFilterOpen(v => !v)}
             className={cn('btn-pill-secondary relative', filterOpen && 'is-active')}
@@ -584,6 +617,7 @@ export default function PipelinePage() {
           <PipelineBoard
             items={visibleItems}
             filterChannels={filterChannels}
+            groupReplicas={groupReplicas}
             onAdd={handleAdd}
             onMove={handleMove}
             onDelete={handleDelete}
