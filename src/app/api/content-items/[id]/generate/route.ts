@@ -243,6 +243,18 @@ ${wrapUserInput(safeCtStyle)}`
 
   const modelUsed = modelForChannel(item.channel as Channel)
 
+  // Cap de tokens: PRO_CHANNELS (blog/newsletter/email) siempre necesitan cap
+  // alto. Pero el canal NO es el único factor — un content_type con
+  // needs_script (guion de vídeo con "Visual:"/"Voz en off"...) o carousel
+  // (N slides + caption feed) genera un output largo AUNQUE el canal sea
+  // Instagram/LinkedIn (FAST). El cap fijo de 1500 para FAST truncaba guiones
+  // a media frase incluso pidiendo explícitamente "completa el guion" en
+  // extraInstructions (bug Ramon 2-jul).
+  const needsLongOutput = ct?.format_spec?.needs_script || !!ct?.format_spec?.carousel
+  const maxOutputTokens = PRO_CHANNELS.includes(item.channel as Channel) || needsLongOutput
+    ? 8000
+    : 1500
+
   try {
     // 6) Llamar Gemini
     const res = await genai.models.generateContent({
@@ -250,11 +262,7 @@ ${wrapUserInput(safeCtStyle)}`
       contents: [{ role: 'user', parts: [{ text: userPromptParts }] }],
       config: {
         systemInstruction: systemPrompt,
-        // 8000 para canales LONG (blog/newsletter/email) — un email completo
-        // con asunto + preheader + cuerpo + CTA, o un brief que pida "X
-        // palabras", podía truncarse con 4000. Gemini cobra solo lo generado,
-        // así que el cap alto no aumenta coste salvo cuando se usa de verdad.
-        maxOutputTokens: PRO_CHANNELS.includes(item.channel as Channel) ? 8000 : 1500,
+        maxOutputTokens,
       },
     })
 
